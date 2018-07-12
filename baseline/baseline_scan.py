@@ -12,7 +12,7 @@ def_mem = "500mb"
 def_script='job_script.sh'
 def_dir='./'
 def_time = 1
-
+def_verbose = 0
 
 def_max_bl_registers = 32
 
@@ -49,6 +49,15 @@ def_pastrec_bl_coff = [
         0x00b00,    # cha 8
     ]
 def_pastrec_bl_range = [ 0x00, def_max_bl_registers ]
+
+def_scan_type = None
+
+def print_verbose(rc):
+    cmd = ' '.join(rc.args)
+    rtc = rc.returncode
+
+    if def_verbose == 1:
+        print("[{:d}]  {:s}".format(rtc, cmd))
 
 class Scalers:
     scalers = None
@@ -104,18 +113,18 @@ def reset_asic(address):
                 for r in list(range(len(def_pastrec_config_reg))):
                     l = [ 'trbcmd', 'w', hex(a), hex(def_pastrec_comm), hex(def_pastrec_base_w | _c | _a | def_pastrec_config_reg[r] | def_pastrec_config_val[r]) ]
                     rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                    #print(rc)
+                    print_verbose(rc)
 
                 # set all baselines to min
                 for coff in def_pastrec_bl_coff:
                     l = [ 'trbcmd', 'w', hex(a), hex(def_pastrec_comm), hex(def_pastrec_base_w | _c | _a | def_pastrec_bl_base | coff + def_pastrec_bl_range[0]) ]
                     rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                    #print(rc)
+                    print_verbose(rc)
 
 def read_rm_scalers(address):
     l = [ 'trbcmd', 'rm', hex(address), hex(def_scalers_reg), hex(def_pastrec_channels_all), '0' ]
     rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    #print(rc)
+    print_verbose(rc)
     return rc.stdout.decode()
 
 def parse_rm_scalers(res):
@@ -146,7 +155,7 @@ def parse_rm_scalers(res):
 def read_r_scalers(address, channel):
     l = [ 'trbcmd', 'r', hex(address), hex(def_scalers_reg + channel) ]
     rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    #print(rc)
+    print_verbose(rc)
     return rc.stdout.decode()
 
 def parse_r_scalers(res):
@@ -163,7 +172,7 @@ def parse_r_scalers(res):
 
     return r
 
-def scan_baseline(address):
+def scan_baseline_single(address):
     bbb = Baselines()
 
     print("  address   channel   bl 0                              31")
@@ -191,7 +200,7 @@ def scan_baseline(address):
                         haddr = hex(addr)
                         l = [ 'trbcmd', 'w', haddr, hex(def_pastrec_comm), hex(v) ]
                         rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                        #print(rc)
+                        print_verbose(rc)
 
             chan = calc_channel(cable, asic, c)
             #print(cable, asic, c, chan)
@@ -245,11 +254,103 @@ def scan_baseline(address):
                         haddr = hex(addr)
                         l = [ 'trbcmd', 'w', haddr, hex(def_pastrec_comm), hex(v) ]
                         rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                        #print(rc)
+                        print_verbose(rc)
 
         print("  done")
 
     return bbb
+
+
+def scan_baseline_multi(address):
+    bbb = Baselines()
+
+    print("  address   channel   bl 0                              31")
+    print("                         |------------------------------|")
+    print("  {:s}    {:s}         ".format(hex(0xfe4f), 'all'), end='', flush=True)
+
+    # loop over bl register value
+    for blv in range(def_pastrec_bl_range[0], def_pastrec_bl_range[1]):
+        print("#", end='', flush=True)
+
+        # loop over channels
+        for c in list(range(def_pastrec_channel_range)):
+
+            # looop over Cable
+            for cable in list(range(len(def_pastrec_cable))):
+                _c = def_pastrec_cable[cable]
+
+                # loop over ASIC
+                for asic in list(range(len(def_pastrec_asic))):
+                    _a = def_pastrec_asic[asic]
+
+                    v = def_pastrec_base_w | _a | _c | def_pastrec_bl_base | def_pastrec_bl_coff[c] | blv
+
+                    # loop over TDC
+                    for addr in address:
+                        haddr = hex(addr)
+                        l = [ 'trbcmd', 'w', haddr, hex(def_pastrec_comm), hex(v) ]
+                        rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                        print_verbose(rc)
+
+        #chan = calc_channel(cable, asic, c)
+        #print(cable, asic, c, chan)
+
+        #v1 = read_r_scalers(def_broadcast_addr, chan)
+        #a1 = parse_r_scalers(v1)
+        #sleep(def_time)
+        #v2 = read_r_scalers(def_broadcast_addr, chan)
+        #a2 = parse_r_scalers(v2)
+
+        v1 = read_rm_scalers(def_broadcast_addr)
+        a1 = parse_rm_scalers(v1)
+        sleep(def_time)
+        v2 = read_rm_scalers(def_broadcast_addr)
+        a2 = parse_rm_scalers(v2)
+        bb = a2.diff(a1)
+
+        #print(v1, v2)
+        #for addr in address:
+            #haddr = hex(addr)
+            #bbb.add_trb(haddr)
+
+            #vv = a2[haddr] - a1[haddr]
+            #print(vv)
+            #if vv < 0:
+                #vv += 0x80000000
+
+            #bbb.baselines[haddr][cable][asic][c][blv] = vv
+
+        # reset base line
+        for c in list(range(def_pastrec_channel_range)):
+            for cable in list(range(len(def_pastrec_cable))):
+                _c = def_pastrec_cable[cable]
+                for asic in list(range(len(def_pastrec_asic))):
+                    _a = def_pastrec_asic[asic]
+
+                    chan = calc_channel(cable, asic, c)
+
+                    for addr in address:
+                        haddr = hex(addr)
+                        bbb.add_trb(haddr)
+
+                        vv = bb.scalers[haddr][chan]
+                        #print(vv)
+                        if vv < 0:
+                            vv += 0x80000000
+
+                        bbb.baselines[haddr][cable][asic][c][blv] = vv
+
+                    v = def_pastrec_base_w | _c | _a | def_pastrec_bl_base | def_pastrec_bl_coff[c] + 0x00
+                    for addr in address:
+                        haddr = hex(addr)
+                        l = [ 'trbcmd', 'w', haddr, hex(def_pastrec_comm), hex(v) ]
+                        rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                        print_verbose(rc)
+
+    print("  done")
+
+    return bbb
+
 
 if __name__=="__main__":
     parser=argparse.ArgumentParser(description='Scan baseline of PASTTREC chips',
@@ -259,6 +360,8 @@ if __name__=="__main__":
 
     parser.add_argument('-t', '--time', help='sleep time', type=int, default=def_time)
     parser.add_argument('-o', '--output', help='output file', type=str, default='result.json')
+    parser.add_argument('-s', '--scan', help='scan type: singel-low/high: one channel at a time, baseline set to low/high, multi: all channels parallel', choices=[ 'single-low', 'single-high', 'multi'], default='single-low')
+    parser.add_argument('-v', '--verbose', help='verbose level: 0, 1, 2, 3', type=int, choices=[ 0, 1, 2, 3 ], default=0)
 
     parser.add_argument('-Bg', '--source', help='baseline set: internally or externally', type=int, choices=[1,0], default=1)
     parser.add_argument('-K', '--gain', help='amplification: 4, 2, 1 or 0.67 [mV/fC]', type=int, choices=[3,2,1,0], default=3)
@@ -272,11 +375,14 @@ if __name__=="__main__":
     parser.add_argument('-Vth', '--threshold', help='threshold: 0-127', type=lambda x: int(x,0), default=def_pastrec_config_val[3])
 
     args=parser.parse_args()
-    print(args)
 
+    def_verbose = args.verbose
     def_time = args.time
 
-    def_pastrec_config_val[0] = (args.gain << 2) | args.peaking
+    if def_verbose > 0:
+        print(args)
+
+    def_pastrec_config_val[0] = (args.source << 4) | (args.gain << 2) | args.peaking
     def_pastrec_config_val[1] = (args.timecancelationC1 << 3) | args.timecancelationR1
     def_pastrec_config_val[2] = (args.timecancelationC2 << 3) | args.timecancelationR2
 
@@ -286,6 +392,15 @@ if __name__=="__main__":
 
     def_pastrec_config_val[3] = args.threshold
 
+    # scan type
+    def_scan_type = args.scan
+    if def_scan_type is 'single-low':
+        def_pastrec_bl_base = def_pastrec_bl_range[0]
+    elif def_scan_type is 'single-high':
+        def_pastrec_bl_base = def_pastrec_bl_range[1]-1
+    elif def_scan_type is 'multi':
+        def_pastrec_bl_range = def_pastrec_bl_range[0]
+
     # loop here
     ex = True
     #ex = False
@@ -293,7 +408,13 @@ if __name__=="__main__":
         a = args.trbids
 
         reset_asic(a)
-        r = scan_baseline(a)
+
+        if def_scan_type == 'multi':
+            r = scan_baseline_multi(a)
+        else:
+            r = scan_baseline_single(a)
+
+        reset_asic(a)
 
         with open(args.output, 'w') as fp:
             json.dump(r.baselines, fp, indent=2)
