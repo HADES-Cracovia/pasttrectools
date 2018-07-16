@@ -87,7 +87,10 @@ class PasttrecRegs(PasttrecDefaults):
         return r_all
 
     def dump_config_hex(self, cable, asic):
-        return [ hex(i) for i in p.dump_config(cable, asic) ]
+        return [ hex(i) for i in self.dump_config(cable, asic) ]
+
+    def dump_bl_hex(self, cable, asic):
+        return [ hex(i) for i in self.dump_config(cable, asic)[4:] ]
 
 def print_verbose(rc):
     cmd = ' '.join(rc.args)
