@@ -239,7 +239,7 @@ def scan_baseline_single(address):
 
             chan = calc_channel(cable, asic, c)
 
-            sleep(def_time)
+            sleep(0.1)
             v1 = read_rm_scalers(def_broadcast_addr)
             sleep(def_time)
             v2 = read_rm_scalers(def_broadcast_addr)
@@ -311,7 +311,7 @@ def scan_baseline_multi(address):
                         rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                         print_verbose(rc)
 
-        sleep(def_time)
+        sleep(0.1)
         v1 = read_rm_scalers(def_broadcast_addr)
         sleep(def_time)
         v2 = read_rm_scalers(def_broadcast_addr)
