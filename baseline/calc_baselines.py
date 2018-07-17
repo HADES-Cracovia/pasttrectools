@@ -21,7 +21,9 @@ if __name__=="__main__":
 
     parser.add_argument('-blo', '--offset', help='offset to baselines (ask for each chip if not given)', type=lambda x: int(x,0))
 
-    parser.add_argument('-Vth', '--threshold', help='threshold: -1-127 (-1 copies value from input file)', type=lambda x: int(x,0), default=-1)
+    parser.add_argument('-Vth', '--threshold', help='threshold: 0-127 (overwrites value from input file)', type=lambda x: int(x,0))
+    parser.add_argument('-g', '--gain', help='gain: 0-3 (overwrites value from input file)', type=lambda x: int(x,0))
+
 
     args=parser.parse_args()
 
@@ -50,6 +52,12 @@ if __name__=="__main__":
 
     for k,v in cfg.items():
         setattr(p, k, v)
+
+    if args.threshold is not None:
+        p.vth = args.threshold
+
+    if args.gain is not None:
+        p.gain = args.gain
 
     print(cfg)
 
