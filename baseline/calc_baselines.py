@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import copy
 import json
 import sys
 
@@ -10,7 +11,7 @@ if __name__=="__main__":
     parser=argparse.ArgumentParser(description='Submit dst analysis to GSI batch farm')
     parser.add_argument('json_file', help='list of arguments', type=str)
 
-    parser.add_argument('-o', '--output', help='output file', type=str, default='result.json')
+    parser.add_argument('-o', '--output', help='output file', type=str)
 
     group = parser.add_mutually_exclusive_group()
     group.add_argument('-d', '--dump', help='trbcmd dump file, bl regs only', type=str)
@@ -37,6 +38,10 @@ if __name__=="__main__":
     if args.Dump:
         dump_file = open(args.Dump, 'w')
 
+    out_file = None
+    if args.output:
+        out_file = open(args.output, 'w')
+
     bls = d['baselines']
     cfg = d['config']
 
@@ -50,8 +55,12 @@ if __name__=="__main__":
 
     x = list(range(0,32))
 
+    outd = {}
+
     idx = 1
     for k,v in bls.items():
+
+        outd[k] = [[ None for _a in range(2)] for _c in range(3)]
 
         for c in [0,1,2]:
             for a in [0,1]:
@@ -96,23 +105,28 @@ if __name__=="__main__":
                     _r = min(_r, 127)
 
                     p.bl[ch] = _r
-                    
+
+                outd[k][c][a] = copy.deepcopy(p.__dict__)
 
                 if args.dump:
                     regs = p.dump_bl_hex(c, a)
                     for r in regs:
-                        dump_file.write("{:s} {:s} {:s}\n".format(k, hex(PasttrecRegs.c_trbnet_reg), r))
+                        dump_file.write("trbcmd w {:s} {:s} {:s}\n".format(k, hex(PasttrecRegs.c_trbnet_reg), r))
 
                         if args.verbose >= 1:
-                            print("{:s} {:s} {:s}".format(k, hex(PasttrecRegs.c_trbnet_reg), r))
+                            print("trbcmd w {:s} {:s} {:s}".format(k, hex(PasttrecRegs.c_trbnet_reg), r))
 
                 if args.Dump:
                     regs = p.dump_config_hex(c, a)
                     for r in regs:
-                        dump_file.write("{:s} {:s} {:s}\n".format(k, hex(PasttrecRegs.c_trbnet_reg), r))
+                        dump_file.write("trbcmd w {:s} {:s} {:s}\n".format(k, hex(PasttrecRegs.c_trbnet_reg), r))
 
                         if args.verbose >= 1:
-                            print("{:s} {:s} {:s}".format(k, hex(PasttrecRegs.c_trbnet_reg), r))
+                            print("trbcmd w {:s} {:s} {:s}".format(k, hex(PasttrecRegs.c_trbnet_reg), r))
 
     if dump_file:
         dump_file.close()
+
+    if out_file:
+        out_file.write(json.dumps(outd, indent=2))
+        out_file.close()
