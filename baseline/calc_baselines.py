@@ -1,14 +1,35 @@
 #!/usr/bin/env python3
+#
+# Copyright 2018 Rafal Lalik <rafal.lalik@uj.edu.pl>
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 
 import argparse
+from colorama import Fore, Style
 import copy
 import json
 import sys
 
-from baseline_scan import PasttrecRegs
+from pasttrec import *
 
 if __name__=="__main__":
-    parser=argparse.ArgumentParser(description='Submit dst analysis to GSI batch farm')
+    parser=argparse.ArgumentParser(description='Calculates baselines from scan results')
     parser.add_argument('json_file', help='list of arguments', type=str)
 
     parser.add_argument('-o', '--output', help='output file', type=str)
@@ -48,6 +69,7 @@ if __name__=="__main__":
     cfg = d['config']
 
 
+    tlist = []
     p = PasttrecRegs()
 
     for k,v in cfg.items():
@@ -68,11 +90,14 @@ if __name__=="__main__":
     idx = 1
     for k,v in bls.items():
 
+        t = TdcConnection(k)
         outd[k] = [[ None for _a in range(2)] for _c in range(3)]
 
         for c in [0,1,2]:
+            card = PasttrecCard("noname")
+
             for a in [0,1]:
-                print("Scanning {:s}  CARD: {:d}  ASIC: {:d}".format(k, c, a))
+                print(Fore.YELLOW + "Scanning {:s}  CARD: {:d}  ASIC: {:d}".format(k, c, a) + Style.RESET_ALL)
                 bl = [0] * 8
 
                 for ch in list(range(8)):
@@ -87,8 +112,10 @@ if __name__=="__main__":
                     else:
                         b = s/w
                     bl[ch] = int(round(b))
-                    print(ch, v[c][a][ch], "==> bl: ", bl[ch])
-                    #print("s={:d}  w={:d}  avg={:f}  bl={:d}".format(s, w, bl, r))
+                    print(ch, v[c][a][ch],
+                          "==> bl:", Fore.GREEN, bl[ch], Style.RESET_ALL,
+                          "(hex: 0x{:s})".format(hex(bl[ch])[2:].zfill(2)),
+                          "==", Fore.RED, -31 + 2 * bl[ch], "mV", Style.RESET_ALL)
 
                 if args.offset == None:
                     while True:
@@ -114,6 +141,7 @@ if __name__=="__main__":
 
                     p.bl[ch] = _r
 
+                card.set_asic(a, copy.deepcopy(p))
                 outd[k][c][a] = copy.deepcopy(p.__dict__)
 
                 if args.dump:
@@ -132,9 +160,15 @@ if __name__=="__main__":
                         if args.verbose >= 1:
                             print("trbcmd w {:s} {:s} {:s}".format(k, hex(PasttrecRegs.c_trbnet_reg), r))
 
+            t.set_card(c, card)
+
+        tlist.append(t)
+
     if dump_file:
         dump_file.close()
 
     if out_file:
         out_file.write(json.dumps(outd, indent=2))
         out_file.close()
+
+    print(json.dumps(dump(tlist), indent=2))
