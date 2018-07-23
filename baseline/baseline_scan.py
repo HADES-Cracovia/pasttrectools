@@ -1,4 +1,24 @@
 #!/usr/bin/env python3
+#
+# Copyright 2018 Rafal Lalik <rafal.lalik@uj.edu.pl>
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 
 import os,sys,glob
 import argparse
@@ -7,25 +27,14 @@ from time import sleep
 import json
 import math
 
+from pasttrec import *
+
 def_asics = '0x6400'
 def_mem = "500mb"
 def_script='job_script.sh'
 def_dir='./'
 def_time = 1
 def_verbose = 0
-
-class PasttrecDefaults:
-    c_cable = [ 0x00 << 19, 0x01 << 19, 0x02 << 19 ]
-    c_asic = [ 0x2000, 0x4000 ]
-
-#                Bg_int,K,Tp      TC1      TC2      Vth
-    c_config_reg = [ 0x00000, 0x00100, 0x00200, 0x00300 ]
-    c_bl_reg = [ 0x00400, 0x00500, 0x00600, 0x00700,
-                0x00800, 0x00900, 0x00a00, 0x00b00 ]
-
-    c_trbnet_reg = 0xa000
-    c_base_w = 0x0050000
-    c_base_r = 0x0051000
 
 def_max_bl_registers = 32
 
@@ -45,52 +54,6 @@ def_pastrec_bl_base = 0x00000
 def_pastrec_bl_range = [ 0x00, def_max_bl_registers ]
 
 def_scan_type = None
-
-class PasttrecRegs(PasttrecDefaults):
-    bg_int = 0
-    gain = 0
-    peaking = 0
-    tc1c = 0
-    tc1r = 0
-    tc2c = 0
-    tc2r = 0
-    vth = 0
-    bl = [0] * 8
-
-    def __init__(self, bg_int = 1, gain = 0, peaking = 0,
-                 tc1c = 0, tc1r = 0, tc2c = 0, tc2r = 0,
-                 vth = 0, bl = [0] * 8):
-        self.bg_int   = bg_int
-        self.gain     = gain
-        self.peaking  = peaking
-        self.tc1c     = tc1c
-        self.tc1r     = tc1r
-        self.tc2c     = tc2c
-        self.tc2r     = tc2r
-        self.vth      = vth
-        self.bl       = bl
-
-    def dump_config(self, cable, asic):
-        r_all = [0] * 12
-        offset = self.c_base_w | self.c_cable[cable] | self.c_asic[asic]
-        t = (self.bg_int << 4) | (self.gain << 2) | self.peaking
-        r_all[0] = offset | self.c_config_reg[0] | t
-        t = (self.tc1c << 3) | self.tc1r
-        r_all[1] = offset | self.c_config_reg[1] | t
-        t = (self.tc2c << 3) | self.tc2r
-        r_all[2] = offset | self.c_config_reg[2] | t
-        r_all[3] = offset | self.c_config_reg[3] | self.vth
-
-        for i in range(8):
-            r_all[4+i] = offset | self.c_bl_reg[i] | self.bl[i]
-
-        return r_all
-
-    def dump_config_hex(self, cable, asic):
-        return [ hex(i) for i in self.dump_config(cable, asic) ]
-
-    def dump_bl_hex(self, cable, asic):
-        return [ hex(i) for i in self.dump_config(cable, asic)[4:] ]
 
 def print_verbose(rc):
     cmd = ' '.join(rc.args)
