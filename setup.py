@@ -33,7 +33,7 @@ else:
             'baseline/baseline_scan.py',
             'baseline/calc_baselines.py',
             'baseline/draw_baseline_scan.py'
-            ]
+            ],
         install_requires=[
             'colorama',
             ],
