@@ -85,13 +85,10 @@ if __name__=="__main__":
 
     x = list(range(0,32))
 
-    outd = {}
-
     idx = 1
     for k,v in bls.items():
 
         t = TdcConnection(k)
-        outd[k] = [[ None for _a in range(2)] for _c in range(3)]
 
         for c in [0,1,2]:
             card = PasttrecCard("noname")
@@ -142,7 +139,6 @@ if __name__=="__main__":
                     p.bl[ch] = _r
 
                 card.set_asic(a, copy.deepcopy(p))
-                outd[k][c][a] = copy.deepcopy(p.__dict__)
 
                 if args.dump:
                     regs = p.dump_bl_hex(c, a)
@@ -168,7 +164,5 @@ if __name__=="__main__":
         dump_file.close()
 
     if out_file:
-        out_file.write(json.dumps(outd, indent=2))
+        out_file.write(json.dumps(dump(tlist), indent=2))
         out_file.close()
-
-    print(json.dumps(dump(tlist), indent=2))
