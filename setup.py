@@ -29,6 +29,11 @@ else:
         author_email='rafal.lalik@uj.edu.pl',
         license='MIT',
         packages=['pasttrec'],
+        scripts = [
+            'baseline/baseline_scan.py',
+            'baseline/calc_baselines.py',
+            'baseline/draw_baseline_scan.py'
+            ]
         install_requires=[
             'colorama',
             ],
