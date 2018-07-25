@@ -35,7 +35,7 @@ class PasttrecRegs(PasttrecDefaults):
         self.tc2c     = tc2c
         self.tc2r     = tc2r
         self.vth      = vth
-        self.bl       = bl
+        self.bl       = [ i for i in bl]
 
     @staticmethod
     def load_asic_from_dict(d, test_version=None):
