@@ -151,9 +151,9 @@ def load(d, test_version=True):
     if test_version:
         if 'version' in d:
             if d['version'] != LIBVERSION:
-                return False, None
+                return False, d['version']
         else:
-            return False, None
+            return False, '0.0.0'
 
     connections = []
     for k, v in d.items():
