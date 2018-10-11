@@ -47,6 +47,9 @@ def_pastrec_channel_range = 8
 def_pastrec_channels_all = def_pastrec_channel_range * \
     len(PasttrecDefaults.c_asic) * len(PasttrecDefaults.c_cable)
 
+def_pastrec_bl_base = 0x00000
+def_pastrec_bl_range = [ 0x00, def_max_bl_registers ]
+
 def_scan_type = None
 
 def print_verbose(rc):
@@ -170,8 +173,8 @@ def parse_r_scalers(res):
 def scan_threshold(address):
     bbb = Baselines()
 
-    print("  address   channel   bl 0                                31")
-    print("                         |--------------------------------|")
+    print("  address   channel   th 0                                                                                                                                127")
+    print("                         |--------------------------------------------------------------------------------------------------------------------------------|")
     print("  {:s}    {:s}           ".format(hex(0xfe4f), 'all'), end='', flush=True)
 
     # loop over bl register value
@@ -203,6 +206,26 @@ def scan_threshold(address):
         a1 = parse_rm_scalers(v1)
         a2 = parse_rm_scalers(v2)
         bb = a2.diff(a1)
+
+        for cable in list(range(len(PasttrecDefaults.c_cable))):
+            _c = PasttrecDefaults.c_cable[cable]
+            for asic in list(range(len(PasttrecDefaults.c_asic))):
+                _a = PasttrecDefaults.c_asic[asic]
+                for c in list(range(def_pastrec_channel_range)):
+                    print("  {:s}    {:d}            ".format(hex(0xfe4f), c), end='', flush=True)
+                    for blv in range(def_pastrec_bl_range[0], def_pastrec_bl_range[1]):
+
+                        chan = calc_channel(cable, asic, c)
+
+                        for addr in address:
+                            haddr = hex(addr)
+                            bbb.add_trb(haddr)
+
+                            vv = bb.scalers[haddr][chan]
+                            if vv < 0:
+                                vv += 0x80000000
+
+                            bbb.baselines[haddr][cable][asic][c][blv] = vv
 
     print("  done")
 
@@ -236,10 +259,10 @@ if __name__=="__main__":
     if def_verbose > 0:
         print(args)
 
-    #p = PasttrecRegs(bg_int = args.source, gain = args.gain, peaking = args.peaking,
-                     #tc1c = args.timecancelationC1, tc1r = args.timecancelationR1,
-                     #tc2c = args.timecancelationC2, tc2r = args.timecancelationR2,
-                     #vth = args.threshold, bl = [ def_pastrec_bl_base ] * 8)
+    p = PasttrecRegs(bg_int = args.source, gain = args.gain, peaking = args.peaking,
+                     tc1c = args.timecancelationC1, tc1r = args.timecancelationR1,
+                     tc2c = args.timecancelationC2, tc2r = args.timecancelationR2,
+                     vth = 0, bl = [ 0 ] * 8)
 
     # loop here
     ex = True
