@@ -1,4 +1,4 @@
-#!/bin/env python3
+#!/usr/bin/env python3
 
 from setuptools import setup
 import re
@@ -22,7 +22,7 @@ if vercmp(dist.version, "40.0.0") >= 0:
 else:
     setup(
         name='pasttrectools',
-        version='0.1',
+        version='0.2',
         description='Tools for scanning and configuring pasttrec ASICs',
         url='https://github.com/HADES-Cracovia/pasttrectools',
         author='Rafal Lalik',
