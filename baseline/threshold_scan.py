@@ -212,7 +212,6 @@ def scan_threshold(address):
             for asic in list(range(len(PasttrecDefaults.c_asic))):
                 _a = PasttrecDefaults.c_asic[asic]
                 for c in list(range(def_pastrec_channel_range)):
-                    print("  {:s}    {:d}            ".format(hex(0xfe4f), c), end='', flush=True)
                     for blv in range(def_pastrec_bl_range[0], def_pastrec_bl_range[1]):
 
                         chan = calc_channel(cable, asic, c)

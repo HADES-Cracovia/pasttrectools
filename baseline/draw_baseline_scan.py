@@ -41,7 +41,10 @@ if __name__=="__main__":
     plt.figure(1)
 
     idx = 1
-    for k,v in d.items():
+
+    bls = d['baselines']
+
+    for k,v in bls.items():
         plt.figure(idx)
         for c in [0,1,2]:
             for a in [0,1]:
@@ -58,7 +61,7 @@ if __name__=="__main__":
                     else:
                         n = 1.0
                     d = [i * n for i in dd]
-                    plt.plot(x, d, label='{:d}'.format(ch))
+                    plt.semilogy(x, d, label='{:d}'.format(ch))
 
                     plt.xlabel('baseline register')
                     plt.ylabel('pdf')
