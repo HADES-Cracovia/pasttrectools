@@ -32,7 +32,9 @@ else:
         scripts = [
             'baseline/baseline_scan.py',
             'baseline/calc_baselines.py',
-            'baseline/draw_baseline_scan.py'
+            'baseline/draw_baseline_scan.py',
+            'baseline/threshold_scan.py',
+            'baseline/communication_test.py',
             ],
         install_requires=[
             'colorama',
