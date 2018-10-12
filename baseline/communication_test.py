@@ -142,6 +142,7 @@ def scan_communication(address):
                         print(Fore.RED + " Test failed for register {:d}".format(reg) + Style.RESET_ALL)
                         asic_test_ok = False
                         test_ok = False
+                        break
 
                 if asic_test_ok:
                     print(Fore.GREEN + " done" + Style.RESET_ALL)
