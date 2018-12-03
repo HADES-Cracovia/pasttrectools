@@ -34,6 +34,7 @@ else:
             'baseline/calc_baselines.py',
             'baseline/draw_baseline_scan.py',
             'baseline/threshold_scan.py',
+            'baseline/dump_threshold_scan.py',
             'baseline/communication_test.py',
             ],
         install_requires=[

@@ -122,7 +122,7 @@ def scan_communication(address):
             # loop over ASIC
 
             for asic in list(range(len(PasttrecDefaults.c_asic))):
-                print("Testing {:s} cable {:d} asic {:d}".format(hex(a), cable, asic))
+                print(Fore.YELLOW + "Testing {:s} cable {:d} asic {:d}".format(hex(a), cable, asic) + Style.RESET_ALL)
 
                 asic_test_ok = True
 
@@ -136,10 +136,12 @@ def scan_communication(address):
                         _t = int(read_reg(a, cable, asic, reg).split()[1], 16)
 
                         if _t != t:
+                            print(Fore.RED + " Test failed for register {:d}".format(reg) + Style.RESET_ALL)
+                            print("  Sent {:d}, received {:d}".format(t, _t))
                             reg_test_ok = False
+                            break
 
                     if reg_test_ok == False:
-                        print(Fore.RED + " Test failed for register {:d}".format(reg) + Style.RESET_ALL)
                         asic_test_ok = False
                         test_ok = False
                         break
