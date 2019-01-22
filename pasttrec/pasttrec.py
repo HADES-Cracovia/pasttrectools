@@ -90,6 +90,14 @@ class PasttrecCard():
                 'asic2' : self.asic2.__dict__ if self.asic2 is not None else None
         }
 
+    def export_script(self, cable):
+        regs = []
+        if self.asic1:
+            regs.extend(self.asic1.dump_config(cable, 0))
+        if self.asic2:
+            regs.extend(self.asic2.dump_config(cable, 1))
+        return regs
+
     @staticmethod
     def load_card_from_dict(d, test_version=None):
         if (test_version is not None) and (test_version != LIBVERSION):
@@ -97,7 +105,7 @@ class PasttrecCard():
 
         if d is None:
             return False, None
-        
+
         pc = PasttrecCard(d['name'],
                           PasttrecRegs().load_asic_from_dict(d['asic1']),
                           PasttrecRegs().load_asic_from_dict(d['asic2']))
@@ -135,6 +143,13 @@ class TdcConnection():
             'cable3' : c3
         }
 
+    def export_script(self):
+        c1 = self.cable1.export_script(0) if isinstance(self.cable1, PasttrecCard) else None
+        c2 = self.cable2.export_script(1) if isinstance(self.cable2, PasttrecCard) else None
+        c3 = self.cable3.export_script(2) if isinstance(self.cable3, PasttrecCard) else None
+
+        return self.id, c1 + c2 + c3
+
 def dump(tdcs):
     d = { 'version' : LIBVERSION }
     if isinstance(tdcs, list):
@@ -146,7 +161,21 @@ def dump(tdcs):
         d[k] = v
 
     return d
-            
+
+def dump_script(tdcs):
+    d = []
+    if isinstance(tdcs, list):
+        for t in tdcs:
+            k, v = t.export_script()
+            for _v in v:
+                d.append("trbcmd w {:s} 0xa000 {:s}".format(k, hex(_v)))
+    elif isinstance(tdcs, TdcConnection):
+        k, v = tdcs.export_script()
+        for _v in v:
+            d.append("trbcmd w {:s} 0xa000 {:s}".format(k, hex(_v)))
+
+    return d
+
 def load(d, test_version=True):
     if test_version:
         if 'version' in d:
