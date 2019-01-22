@@ -32,6 +32,7 @@ from pasttrec import *
 def_asics = '0x6400'
 def_time = 1
 def_verbose = 0
+def_threshold_max = 0
 
 def_max_bl_registers = 32
 
@@ -81,17 +82,17 @@ class Scalers:
                     s.scalers[k][i] = vv
         return s
 
-class Baselines:
-    baselines = None
+class Thresholds:
+    thresholds = None
     config = None
 
     def __init__(self):
-        self.baselines = {}
+        self.thresholds = {}
 
     def add_trb(self, trb):
-        if trb not in self.baselines:
-            w, h, a, c = def_max_bl_registers, def_pastrec_channel_range, len(PasttrecDefaults.c_asic), len(PasttrecDefaults.c_cable)
-            self.baselines[trb] = [[[[0 for x in range(w)] for y in range(h)] for _a in range(a)] for _c in range(c)]
+        if trb not in self.thresholds:
+            w, h, a, c = 128, def_pastrec_channel_range, len(PasttrecDefaults.c_asic), len(PasttrecDefaults.c_cable)
+            self.thresholds[trb] = [[[[0 for x in range(w)] for y in range(h)] for _a in range(a)] for _c in range(c)]
 
 def calc_channel(cable, asic, channel):
     return channel + def_pastrec_channel_range * asic + \
@@ -171,14 +172,14 @@ def parse_r_scalers(res):
 
 
 def scan_threshold(address):
-    bbb = Baselines()
+    ttt = Thresholds()
 
     print("  address   channel   th 0                                                                                                                                127")
     print("                         |--------------------------------------------------------------------------------------------------------------------------------|")
     print("  {:s}    {:s}           ".format(hex(0xfe4f), 'all'), end='', flush=True)
 
     # loop over bl register value
-    for vth in range(def_pastrec_thresh_range[0], def_pastrec_thresh_range[1]):
+    for vth in range(def_pastrec_thresh_range[0], def_threshold_max):
         print("#", end='', flush=True)
 
         # looop over Cable
@@ -212,24 +213,20 @@ def scan_threshold(address):
             for asic in list(range(len(PasttrecDefaults.c_asic))):
                 _a = PasttrecDefaults.c_asic[asic]
                 for c in list(range(def_pastrec_channel_range)):
-                    print("  {:s}    {:d}            ".format(hex(0xfe4f), c), end='', flush=True)
-                    for blv in range(def_pastrec_bl_range[0], def_pastrec_bl_range[1]):
+                    chan = calc_channel(cable, asic, c)
 
-                        chan = calc_channel(cable, asic, c)
+                    for addr in address:
+                        haddr = hex(addr)
+                        ttt.add_trb(haddr)
 
-                        for addr in address:
-                            haddr = hex(addr)
-                            bbb.add_trb(haddr)
-
-                            vv = bb.scalers[haddr][chan]
-                            if vv < 0:
-                                vv += 0x80000000
-
-                            bbb.baselines[haddr][cable][asic][c][blv] = vv
+                        vv = bb.scalers[haddr][chan]
+                        if vv < 0:
+                            vv += 0x80000000
+                        ttt.thresholds[haddr][cable][asic][c][vth] = vv
 
     print("  done")
 
-    return bbb
+    return ttt
 
 
 if __name__=="__main__":
@@ -241,6 +238,7 @@ if __name__=="__main__":
     parser.add_argument('-t', '--time', help='sleep time', type=int, default=def_time)
     parser.add_argument('-o', '--output', help='output file', type=str, default='result.json')
     parser.add_argument('-v', '--verbose', help='verbose level: 0, 1, 2, 3', type=int, choices=[ 0, 1, 2, 3 ], default=0)
+    parser.add_argument('-l', '--limit', help='threshold scan limit', type=int, choices=range(128), default=127)
 
     parser.add_argument('-Bg', '--source', help='baseline set: internally or externally', type=int, choices=[1,0], default=1)
     parser.add_argument('-K', '--gain', help='amplification: 4, 2, 1 or 0.67 [mV/fC]', type=int, choices=[0, 1, 2, 3], default=0)
@@ -255,6 +253,7 @@ if __name__=="__main__":
 
     def_verbose = args.verbose
     def_time = args.time
+    def_threshold_max = args.limit
 
     if def_verbose > 0:
         print(args)

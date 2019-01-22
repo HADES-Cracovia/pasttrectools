@@ -245,9 +245,9 @@ def scan_baseline_single(address):
 def scan_baseline_multi(address):
     bbb = Baselines()
 
-    print("  address   channel   bl 0                              31")
-    print("                         |------------------------------|")
-    print("  {:s}    {:s}          ".format(hex(0xfe4f), 'all'), end='', flush=True)
+    print("  address   channel   bl 0                                31")
+    print("                         |--------------------------------|")
+    print("  {:s}    {:s}           ".format(hex(0xfe4f), 'all'), end='', flush=True)
 
     # loop over bl register value
     for blv in range(def_pastrec_bl_range[0], def_pastrec_bl_range[1]):
