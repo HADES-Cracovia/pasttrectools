@@ -22,7 +22,7 @@
 
 import argparse
 import json
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import sys
 
 if __name__=="__main__":
@@ -38,37 +38,41 @@ if __name__=="__main__":
 
     x = list(range(0,32))
 
-    plt.figure(1)
+#    plt.figure(1)
 
     idx = 1
 
-    bls = d['baselines']
+    bls = d['thresholds']
 
     for k,v in bls.items():
-        plt.figure(idx)
-        for c in [0,1,2]:
-            for a in [0,1]:
-                for ch in list(range(8)):
+#        plt.figure(idx)
+        for t in list(range(128)):
+            print('{:d}   '.format(t), end='')
+            for c in [0,1,2]:
+                for a in [0,1]:
+                    for ch in list(range(8)):
 
-                    plt.subplot(3, 2, c*2 + a + 1)
-                    dd = v[c][a][ch]
+#                        plt.subplot(3, 2, c*2 + a + 1)
+                        tt = v[c][a][ch][t]
+                        print('{:d} '.format(tt), end='')
 
-                    sum_d = sum(dd)
-                    if sum_d > 0:
-                        n = 1.0/sum_d
-                    elif sum_d < 0:
-                        n = 0
-                    else:
-                        n = 1.0
-                    d = [i * n for i in dd]
-                    plt.semilogy(x, d, label='{:d}'.format(ch))
+#                        sum_d = sum(dd)
+#                        if sum_d > 0:
+#                            n = 1.0/sum_d
+#                        elif sum_d < 0:
+#                            n = 0
+#                        else:
+#                            n = 1.0
+#                        d = [i * n for i in dd]
+#                        plt.semilogy(x, d, label='{:d}'.format(ch))
 
-                    plt.xlabel('baseline register')
-                    plt.ylabel('pdf')
+#                        plt.xlabel('baseline register')
+#                        plt.ylabel('pdf')
 
-                plt.legend(loc=6, title='C: {:d}  A: {:d}'.format(c, a))
+#                    plt.legend(loc=6, title='C: {:d}  A: {:d}'.format(c, a))
 
-        idx += 1
+#            idx += 1
+            print(' '.format(t))
 
 
-    plt.show()
+#    plt.show()

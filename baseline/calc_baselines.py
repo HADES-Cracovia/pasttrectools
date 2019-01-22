@@ -28,6 +28,15 @@ import sys
 
 from pasttrec import *
 
+def bl_list_with_marker(l, pos):
+    s = ""
+    for i in range(len(l)):
+        if i == pos:
+            s += Fore.YELLOW + "{:d}".format(l[i]) + Style.RESET_ALL + ", "
+        else:
+            s += "{:d}, ".format(l[i])
+    return s
+
 if __name__=="__main__":
     parser=argparse.ArgumentParser(description='Calculates baselines from scan results')
     parser.add_argument('json_file', help='list of arguments', type=str)
@@ -102,17 +111,18 @@ if __name__=="__main__":
                     s = 0
                     w = 0
                     for i in range(32):
-                        s = s + i * b[i]
+                        s = s + (i+1) * b[i]
                         w += b[i]
                     if w == 0:
                         b = 0
                     else:
-                        b = s/w
+                        b = s/w - 1
                     bl[ch] = int(round(b))
-                    print(ch, v[c][a][ch],
-                          "==> bl:", Fore.GREEN, bl[ch], Style.RESET_ALL,
-                          "(hex: 0x{:s})".format(hex(bl[ch])[2:].zfill(2)),
-                          "==", Fore.RED, -31 + 2 * bl[ch], "mV", Style.RESET_ALL)
+                    print(ch,
+                          " bl:", Fore.GREEN, "{:2d}".format(bl[ch]), Style.RESET_ALL,
+                          "(0x{:s})".format(hex(bl[ch])[2:].zfill(2)),
+                          Fore.RED, "{:>+3d} mV".format(-31 + 2 * bl[ch]), Style.RESET_ALL,
+                          " [ ", bl_list_with_marker(v[c][a][ch], bl[ch]), "]")
 
                 if args.offset == None:
                     while True:
@@ -159,6 +169,22 @@ if __name__=="__main__":
             t.set_card(c, card)
 
         tlist.append(t)
+
+        # *** printing
+
+        #print(Fore.YELLOW + "{:s}".format(k) + Style.RESET_ALL)
+
+        #for c in [0,1,2]:
+            #for a in [0,1]:
+                #print(Fore.YELLOW + "  CARD: {:d} ASIC: {:d}".format(k, c, a))
+        #print("-----------------------------------------------------------------------------------------------------------------------")
+        #print(Style.RESET_ALL)
+
+        #for ch in list(range(8)):
+            #for c in [0,1,2]:
+                #for a in [0,1]:
+
+        # *** end printing
 
     if dump_file:
         dump_file.close()

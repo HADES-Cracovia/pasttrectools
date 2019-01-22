@@ -26,6 +26,7 @@ import subprocess
 from time import sleep
 import json
 import math
+from colorama import Fore, Style
 
 from pasttrec import *
 
@@ -90,7 +91,7 @@ def write_reg(address, card, asic, reg, val):
     _b = PasttrecDefaults.c_base_w | _c | _a
     v = _b | (reg << 8) | val
 
-    l = [ 'trbcmd', 'w', address, hex(PasttrecDefaults.c_trbnet_reg), hex(v) ]
+    l = [ 'trbcmd', 'w', hex(address), hex(PasttrecDefaults.c_trbnet_reg), hex(v) ]
     rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     print_verbose(rc)
 
@@ -100,35 +101,57 @@ def read_reg(address, card, asic, reg):
     _b = PasttrecDefaults.c_base_r | _c | _a
     v = _b | (reg << 8)
 
-    l = [ 'trbcmd', 'w', address, hex(PasttrecDefaults.c_trbnet_reg), hex(v) ]
+    l = [ 'trbcmd', 'w', hex(address), hex(PasttrecDefaults.c_trbnet_reg), hex(v) ]
     rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     print_verbose(rc)
 
-    l = [ 'trbcmd', 'r', address, hex(PasttrecDefaults.c_trbnet_reg), 0 ]
+    l = [ 'trbcmd', 'r', hex(address), hex(PasttrecDefaults.c_trbnet_reg) ]
     rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     print_verbose(rc)
+    return rc.stdout.decode()
 
 def scan_communication(address):
 
-    print("  address   channel   th 0                                                                                                                                127")
-    print("                         |--------------------------------------------------------------------------------------------------------------------------------|")
-    print("  {:s}    {:s}           ".format(hex(0xfe4f), 'all'), end='', flush=True)
+    print("|--- TEST RANGE -------------------------------------------|")
 
-    reg_test_vals[5] = [ 1, 4, 7, 10, 13 ]
-    # looop over Cable
-    for cable in list(range(len(PasttrecDefaults.c_cable))):
-        # loop over ASIC
-        for asic in list(range(len(PasttrecDefaults.c_asic))):
+    reg_test_vals = [ 1, 4, 7, 10, 13 ]
+    test_ok = True
+    for a in address:
+        # looop over Cable
+        for cable in list(range(len(PasttrecDefaults.c_cable))):
+            # loop over ASIC
 
-            for reg in list(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12):
+            for asic in list(range(len(PasttrecDefaults.c_asic))):
+                print(Fore.YELLOW + "Testing {:s} cable {:d} asic {:d}".format(hex(a), cable, asic) + Style.RESET_ALL)
 
-                for t in reg_test_vals:
-                    write_reg(hex(address), cable, asic, reg, t)
-                    sleep(def_time)
-                    _t = read_reg(hex(address), cable, asic, reg)
-                    print("Send " , t, " received: ", _t
+                asic_test_ok = True
 
-    print("  done")
+                for reg in range(12):
+                    reg_test_ok = True
+
+                    for t in reg_test_vals:
+                        print(".", end='', flush=True)
+                        write_reg(a, cable, asic, reg, t)
+                        sleep(def_time)
+                        _t = int(read_reg(a, cable, asic, reg).split()[1], 16)
+
+                        if _t != t:
+                            print(Fore.RED + " Test failed for register {:d}".format(reg) + Style.RESET_ALL)
+                            print("  Sent {:d}, received {:d}".format(t, _t))
+                            reg_test_ok = False
+                            break
+
+                    if reg_test_ok == False:
+                        asic_test_ok = False
+                        test_ok = False
+                        break
+
+                if asic_test_ok:
+                    print(Fore.GREEN + " done" + Style.RESET_ALL)
+                #print("  done")
+
+    if test_ok:
+        print("All test done and OK")
 
     return None
 
@@ -139,7 +162,7 @@ if __name__=="__main__":
 
     parser.add_argument('trbids', help='list of TRBids to scan', type=lambda x: int(x,0), nargs='+')
 
-    parser.add_argument('-t', '--time', help='sleep time', type=int, default=def_time)
+    parser.add_argument('-t', '--time', help='sleep time', type=float, default=def_time)
     parser.add_argument('-v', '--verbose', help='verbose level: 0, 1, 2, 3', type=int, choices=[ 0, 1, 2, 3 ], default=0)
 
     args=parser.parse_args()
@@ -150,11 +173,6 @@ if __name__=="__main__":
     if def_verbose > 0:
         print(args)
 
-    p = PasttrecRegs(bg_int = args.source, gain = args.gain, peaking = args.peaking,
-                     tc1c = args.timecancelationC1, tc1r = args.timecancelationR1,
-                     tc2c = args.timecancelationC2, tc2r = args.timecancelationR2,
-                     vth = 0, bl = [ 0 ] * 8)
-
     # loop here
     ex = True
     #ex = False
@@ -163,14 +181,9 @@ if __name__=="__main__":
 
         #reset_asic(a, p)
 
-        r = scan_threshold(a)
-
-        r.config = p.__dict__
+        r = scan_communication(a)
 
         #reset_asic(a, p)
-
-        with open(args.output, 'w') as fp:
-            json.dump(r.__dict__, fp, indent=2)
 
     else:
         p = PasttrecRegs(bg_int = args.source, gain = args.gain, peaking = args.peaking,
