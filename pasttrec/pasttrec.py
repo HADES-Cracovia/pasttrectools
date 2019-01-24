@@ -1,4 +1,4 @@
-LIBVERSION = 1.0
+LIBVERSION = "1.0"
 
 class PasttrecDefaults:
     c_cable = [ 0x00 << 19, 0x01 << 19, 0x02 << 19 ]
