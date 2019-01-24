@@ -148,7 +148,14 @@ class TdcConnection():
         c2 = self.cable2.export_script(1) if isinstance(self.cable2, PasttrecCard) else None
         c3 = self.cable3.export_script(2) if isinstance(self.cable3, PasttrecCard) else None
 
-        return self.id, c1 + c2 + c3
+        c = []
+        if c1:
+            c.extend(c1)
+        if c2:
+            c.extend(c2)
+        if c3:
+            c.extend(c3)
+        return self.id, c
 
 def dump(tdcs):
     d = { 'version' : LIBVERSION }
