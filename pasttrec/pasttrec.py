@@ -212,3 +212,18 @@ def load(d, test_version=True):
         connections.append(TdcConnection(id, cable1=c1, cable2=c2, cable3=c3))
 
     return True, connections
+
+def_max_bl_registers = 32
+def_pastrec_channel_range = 8
+
+class Baselines:
+    baselines = None
+    config = None
+
+    def __init__(self):
+        self.baselines = {}
+
+    def add_trb(self, trb):
+        if trb not in self.baselines:
+            w, h, a, c = def_max_bl_registers, def_pastrec_channel_range, len(PasttrecDefaults.c_asic), len(PasttrecDefaults.c_cable)
+            self.baselines[trb] = [[[[0 for x in range(w)] for y in range(h)] for _a in range(a)] for _c in range(c)]

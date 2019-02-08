@@ -26,6 +26,7 @@ import subprocess
 from time import sleep
 import json
 import math
+from colorama import Fore, Style
 
 from pasttrec import *
 
@@ -55,6 +56,11 @@ def_scan_type = None
 def print_verbose(rc):
     cmd = ' '.join(rc.args)
     rtc = rc.returncode
+
+    if rtc != 0:
+        print()
+        print(Fore.RED + "Error code: {:d}\n{:s}".format(rtc, rc.stderr.decode()) + Style.RESET_ALL)
+        sys.exit(rtc)
 
     if def_verbose == 1:
         print("[{:d}]  {:s}".format(rtc, cmd))
@@ -256,25 +262,21 @@ def scan_baseline_multi(address):
         # loop over channels
         for c in list(range(def_pastrec_channel_range)):
 
-            # looop over Cable
-            for cable in list(range(len(PasttrecDefaults.c_cable))):
+            # get addressess
+            for addr, cable, asic in address:
                 _c = PasttrecDefaults.c_cable[cable]
+                _a = PasttrecDefaults.c_asic[asic]
 
-                # loop over ASIC
-                for asic in list(range(len(PasttrecDefaults.c_asic))):
-                    _a = PasttrecDefaults.c_asic[asic]
+                b = PasttrecDefaults.c_base_w | _c | _a
+                v = b | PasttrecDefaults.c_bl_reg[c] | blv
 
-                    b = PasttrecDefaults.c_base_w | _c | _a
-                    v = b | PasttrecDefaults.c_bl_reg[c] | blv
+                # loop over TDC
+                haddr = addr #hex(addr)
+                l = [ 'trbcmd', 'w', haddr, hex(PasttrecDefaults.c_trbnet_reg), hex(v) ]
+                rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                print_verbose(rc)
 
-                    # loop over TDC
-                    for addr in address:
-                        haddr = hex(addr)
-                        l = [ 'trbcmd', 'w', haddr, hex(PasttrecDefaults.c_trbnet_reg), hex(v) ]
-                        rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                        print_verbose(rc)
-
-        sleep(1)
+        #sleep(1)
         v1 = read_rm_scalers(def_broadcast_addr)
         sleep(def_time)
         v2 = read_rm_scalers(def_broadcast_addr)
@@ -283,32 +285,32 @@ def scan_baseline_multi(address):
         bb = a2.diff(a1)
 
         # reset base line
+        # loop over channels
         for c in list(range(def_pastrec_channel_range)):
-            for cable in list(range(len(PasttrecDefaults.c_cable))):
+            for addr, cable, asic in address:
                 _c = PasttrecDefaults.c_cable[cable]
-                for asic in list(range(len(PasttrecDefaults.c_asic))):
-                    _a = PasttrecDefaults.c_asic[asic]
+                _a = PasttrecDefaults.c_asic[asic]
 
-                    chan = calc_channel(cable, asic, c)
+                b = PasttrecDefaults.c_base_w | _c | _a
+                v = b | PasttrecDefaults.c_bl_reg[c] | blv
 
-                    for addr in address:
-                        haddr = hex(addr)
-                        bbb.add_trb(haddr)
+                chan = calc_channel(cable, asic, c)
 
-                        vv = bb.scalers[haddr][chan]
-                        #print(vv)
-                        if vv < 0:
-                            vv += 0x80000000
+                haddr = addr#hex(addr)
+                bbb.add_trb(haddr)
 
-                        bbb.baselines[haddr][cable][asic][c][blv] = vv
+                vv = bb.scalers[haddr][chan]
+                if vv < 0:
+                    vv += 0x80000000
 
-                    b = PasttrecDefaults.c_base_w | _c | _a
-                    v = b | def_pastrec_bl_base | PasttrecDefaults.c_bl_reg[c]
-                    for addr in address:
-                        haddr = hex(addr)
-                        l = [ 'trbcmd', 'w', haddr, hex(PasttrecDefaults.c_trbnet_reg), hex(v) ]
-                        rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                        print_verbose(rc)
+                bbb.baselines[haddr][cable][asic][c][blv] = vv
+
+                b = PasttrecDefaults.c_base_w | _c | _a
+                v = b | def_pastrec_bl_base | PasttrecDefaults.c_bl_reg[c]
+
+                l = [ 'trbcmd', 'w', haddr, hex(PasttrecDefaults.c_trbnet_reg), hex(v) ]
+                rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                print_verbose(rc)
 
     print("  done")
 
@@ -319,7 +321,7 @@ if __name__=="__main__":
     parser=argparse.ArgumentParser(description='Scan baseline of PASTTREC chips',
                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument('trbids', help='list of TRBids to scan', type=lambda x: int(x,0), nargs='+')
+    parser.add_argument('trbids', help='list of TRBids to scan in form addres[:card-0-1-2[:asic-0-1]]', type=str, nargs="+")
 
     parser.add_argument('-t', '--time', help='sleep time', type=int, default=def_time)
     parser.add_argument('-o', '--output', help='output file', type=str, default='result.json')
@@ -366,19 +368,22 @@ if __name__=="__main__":
     # loop here
     ex = True
     #ex = False
+
+    tup = communication.decode_address(args.trbids)
+    print(tup)
     if ex:
         a = args.trbids
 
-        reset_asic(a, p)
+#        reset_asic(a, p)
 
         if def_scan_type == 'multi':
-            r = scan_baseline_multi(a)
+            r = scan_baseline_multi(tup)
         else:
-            r = scan_baseline_single(a)
+            r = scan_baseline_single(tup)
 
         r.config = p.__dict__
 
-        reset_asic(a, p)
+#        reset_asic(a, p)
 
         with open(args.output, 'w') as fp:
             json.dump(r.__dict__, fp, indent=2)
@@ -389,3 +394,4 @@ if __name__=="__main__":
                          tc2c = args.timecancelationC2, tc2r = args.timecancelationR2,
                          vth = args.threshold)
         print(p.__dict__, p.dump_config_hex(0, 0))
+
