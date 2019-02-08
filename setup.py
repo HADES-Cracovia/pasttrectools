@@ -36,6 +36,8 @@ else:
             'baseline/threshold_scan.py',
             'baseline/dump_threshold_scan.py',
             'baseline/communication_test.py',
+            'baseline/reset_asic.py',
+            'baseline/pasttrec_write_and_verify.py',
             ],
         install_requires=[
             'colorama',
