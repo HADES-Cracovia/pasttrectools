@@ -110,19 +110,13 @@ def calc_address(channel):
     return cable, asic, c
 
 def reset_asic(address, def_pasttrec):
-    for a in address:
-        for cable in list(range(len(PasttrecDefaults.c_cable))):
-            _c = PasttrecDefaults.c_cable[cable]
+    for addr, cable, asic in address:
+        d = def_pasttrec.dump_config_hex(cable, asic)
 
-            for asic in list(range(len(PasttrecDefaults.c_asic))):
-                _a = PasttrecDefaults.c_asic[asic]
-
-                d = def_pasttrec.dump_config_hex(cable, asic)
-
-                for _d in d:
-                    l = [ 'trbcmd', 'w', hex(a), hex(PasttrecDefaults.c_trbnet_reg), _d ]
-                    rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                    print_verbose(rc)
+        for _d in d:
+            l = [ 'trbcmd', 'w', addr, hex(PasttrecDefaults.c_trbnet_reg), _d ]
+            rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            print_verbose(rc)
 
 def read_rm_scalers(address):
     l = [ 'trbcmd', 'rm', hex(address), hex(def_scalers_reg), hex(def_pastrec_channels_all), '0' ]
@@ -300,6 +294,7 @@ def scan_baseline_multi(address):
                 bbb.add_trb(haddr)
 
                 vv = bb.scalers[haddr][chan]
+                #print(vv)
                 if vv < 0:
                     vv += 0x80000000
 
@@ -374,7 +369,7 @@ if __name__=="__main__":
     if ex:
         a = args.trbids
 
-#        reset_asic(a, p)
+        reset_asic(tup, p)
 
         if def_scan_type == 'multi':
             r = scan_baseline_multi(tup)
@@ -383,7 +378,7 @@ if __name__=="__main__":
 
         r.config = p.__dict__
 
-#        reset_asic(a, p)
+        reset_asic(tup, p)
 
         with open(args.output, 'w') as fp:
             json.dump(r.__dict__, fp, indent=2)
