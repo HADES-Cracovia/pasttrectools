@@ -26,12 +26,11 @@ import subprocess
 from time import sleep
 import json
 import math
-from colorama import Fore, Style
 
 from pasttrec import *
 
 def_asics = '0x6400'
-def_time = 0.01
+def_time = 1
 def_verbose = 0
 
 def_max_bl_registers = 32
@@ -70,100 +69,37 @@ def calc_address(channel):
     c = channel % def_pastrec_channel_range
     return cable, asic, c
 
-def reset_asic(address, def_pasttrec):
+def reset_asic(address):
     for a in address:
         for cable in list(range(len(PasttrecDefaults.c_cable))):
-            _c = PasttrecDefaults.c_cable[cable]
-
             for asic in list(range(len(PasttrecDefaults.c_asic))):
-                _a = PasttrecDefaults.c_asic[asic]
+                d = PasttrecRegs.reset_config(cable, asic) | a
 
-                d = def_pasttrec.dump_config_hex(cable, asic)
-
-                for _d in d:
-                    l = [ 'trbcmd', 'w', hex(a), hex(PasttrecDefaults.c_trbnet_reg), _d ]
-                    rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                    print_verbose(rc)
-
-def write_reg(address, card, asic, reg, val):
-    _c = PasttrecDefaults.c_cable[card]
-    _a = PasttrecDefaults.c_asic[asic]
-    _b = PasttrecDefaults.c_base_w | _c | _a
-    v = _b | (reg << 8) | val
-
-    l = [ 'trbcmd', 'w', hex(address), hex(PasttrecDefaults.c_trbnet_reg), hex(v) ]
-    rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    print_verbose(rc)
-
-def read_reg(address, card, asic, reg):
-    _c = PasttrecDefaults.c_cable[card]
-    _a = PasttrecDefaults.c_asic[asic]
-    _b = PasttrecDefaults.c_base_r | _c | _a
-    v = _b | (reg << 8)
-
-    l = [ 'trbcmd', 'w', hex(address), hex(PasttrecDefaults.c_trbnet_reg), hex(v) ]
-    rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    print_verbose(rc)
-
-    l = [ 'trbcmd', 'r', hex(address), hex(PasttrecDefaults.c_trbnet_reg) ]
-    rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    print_verbose(rc)
-    return rc.stdout.decode()
-
-def scan_communication(address):
-
-    print("|--- TEST RANGE -------------------------------------------|")
-
-    reg_test_vals = [ 1, 4, 7, 10, 13 ]
-    test_ok = True
-    for a in address:
-        # looop over Cable
-        for cable in list(range(len(PasttrecDefaults.c_cable))):
-            # loop over ASIC
-
-            for asic in list(range(len(PasttrecDefaults.c_asic))):
-                print(Fore.YELLOW + "Testing {:s} cable {:d} asic {:d}".format(hex(a), cable, asic) + Style.RESET_ALL)
-
-                asic_test_ok = True
-
-                for reg in range(12):
-                    reg_test_ok = True
-
-                    for t in reg_test_vals:
-                        print(".", end='', flush=True)
-                        write_reg(a, cable, asic, reg, t)
-                        sleep(def_time)
-                        _t = int(read_reg(a, cable, asic, reg).split()[1], 16)
-
-                        if _t != t:
-                            print(Fore.RED + " Test failed for register {:d}".format(reg) + Style.RESET_ALL)
-                            print("  Sent {:d}, received {:d}".format(t, _t))
-                            reg_test_ok = False
-                            break
-
-                    if reg_test_ok == False:
-                        asic_test_ok = False
-                        test_ok = False
-                        break
-
-                if asic_test_ok:
-                    print(Fore.GREEN + " done" + Style.RESET_ALL)
-                #print("  done")
-
-    if test_ok:
-        print("All test done and OK")
-
-    return None
-
+                l = [ 'trbcmd', 'w', hex(a), hex(d) ]
+                rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                print_verbose(rc)
 
 if __name__=="__main__":
-    parser=argparse.ArgumentParser(description='Scan communication of PASTTREC chips',
+    parser=argparse.ArgumentParser(description='Scan baseline of PASTTREC chips',
                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument('trbids', help='list of TRBids to scan', type=lambda x: int(x,0), nargs='+')
 
-    parser.add_argument('-t', '--time', help='sleep time', type=float, default=def_time)
+    parser.add_argument('-t', '--time', help='sleep time', type=int, default=def_time)
+    parser.add_argument('-o', '--output', help='output file', type=str, default='result.json')
+    parser.add_argument('-s', '--scan', help='scan type: singel-low/high: one channel at a time, baseline set to low/high, multi: all channels parallel', choices=[ 'single-low', 'single-high', 'multi'], default='multi')
     parser.add_argument('-v', '--verbose', help='verbose level: 0, 1, 2, 3', type=int, choices=[ 0, 1, 2, 3 ], default=0)
+
+    parser.add_argument('-Bg', '--source', help='baseline set: internally or externally', type=int, choices=[1,0], default=1)
+    parser.add_argument('-K', '--gain', help='amplification: 4, 2, 1 or 0.67 [mV/fC]', type=int, choices=[0, 1, 2, 3], default=0)
+    parser.add_argument('-Tp', '--peaking', help='peaking time: 35, 20, 15 or 10 [ns]', type=int, choices=[3,2,1,0], default=3)
+
+    parser.add_argument('-TC1C', '--timecancelationC1', help='TC1 C: 35, 20, 15 or 10 [ns]', type=lambda x: int(x,0), choices=range(8), default=3)
+    parser.add_argument('-TC1R', '--timecancelationR1', help='TC1 R: 35, 20, 15 or 10 [ns]', type=lambda x: int(x,0), choices=range(8), default=2)
+    parser.add_argument('-TC2C', '--timecancelationC2', help='TC2 C: 35, 20, 15 or 10 [ns]', type=lambda x: int(x,0), choices=range(8), default=6)
+    parser.add_argument('-TC2R', '--timecancelationR2', help='TC2 R: 35, 20, 15 or 10 [ns]', type=lambda x: int(x,0), choices=range(8), default=5)
+
+    parser.add_argument('-Vth', '--threshold', help='threshold: 0-127', type=lambda x: int(x,0), default=0)
 
     args=parser.parse_args()
 
@@ -173,21 +109,34 @@ if __name__=="__main__":
     if def_verbose > 0:
         print(args)
 
+    if args.threshold > def_pastrec_thresh_range[1] or args.threshold < def_pastrec_thresh_range[0]:
+        print("\nOption error: Threshold value {:d} is to high, allowed value is 0-127".format(args.threshold))
+        sys.exit(1)
+
+    # scan type
+    def_scan_type = args.scan
+    if def_scan_type == 'single-low':
+        def_pastrec_bl_base = def_pastrec_bl_range[0]
+    elif def_scan_type == 'single-high':
+        def_pastrec_bl_base = def_pastrec_bl_range[1]-1
+    elif def_scan_type == 'multi':
+        def_pastrec_bl_base = def_pastrec_bl_range[0]
+
+    p = PasttrecRegs(bg_int = args.source, gain = args.gain, peaking = args.peaking,
+                     tc1c = args.timecancelationC1, tc1r = args.timecancelationR1,
+                     tc2c = args.timecancelationC2, tc2r = args.timecancelationR2,
+                     vth = args.threshold, bl = [ def_pastrec_bl_base ] * 8)
+
     # loop here
     ex = True
     #ex = False
     if ex:
         a = args.trbids
-
-        #reset_asic(a, p)
-
-        r = scan_communication(a)
-
-        #reset_asic(a, p)
+        reset_asic(a)
 
     else:
         p = PasttrecRegs(bg_int = args.source, gain = args.gain, peaking = args.peaking,
                          tc1c = args.timecancelationC1, tc1r = args.timecancelationR1,
                          tc2c = args.timecancelationC2, tc2r = args.timecancelationR2,
-                         vth = 0)
+                         vth = args.threshold)
         print(p.__dict__, p.dump_config_hex(0, 0))

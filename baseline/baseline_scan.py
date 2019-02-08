@@ -274,7 +274,7 @@ def scan_baseline_multi(address):
                         rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                         print_verbose(rc)
 
-        sleep(0.1)
+        sleep(1)
         v1 = read_rm_scalers(def_broadcast_addr)
         sleep(def_time)
         v2 = read_rm_scalers(def_broadcast_addr)
@@ -323,7 +323,7 @@ if __name__=="__main__":
 
     parser.add_argument('-t', '--time', help='sleep time', type=int, default=def_time)
     parser.add_argument('-o', '--output', help='output file', type=str, default='result.json')
-    parser.add_argument('-s', '--scan', help='scan type: singel-low/high: one channel at a time, baseline set to low/high, multi: all channels parallel', choices=[ 'single-low', 'single-high', 'multi'], default='single-low')
+    parser.add_argument('-s', '--scan', help='scan type: singel-low/high: one channel at a time, baseline set to low/high, multi: all channels parallel', choices=[ 'single-low', 'single-high', 'multi'], default='multi')
     parser.add_argument('-v', '--verbose', help='verbose level: 0, 1, 2, 3', type=int, choices=[ 0, 1, 2, 3 ], default=0)
 
     parser.add_argument('-Bg', '--source', help='baseline set: internally or externally', type=int, choices=[1,0], default=1)
