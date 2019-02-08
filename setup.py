@@ -38,6 +38,8 @@ else:
             'baseline/communication_test.py',
             'baseline/reset_asic.py',
             'baseline/pasttrec_write_and_verify.py',
+            'baseline/baseline_merge.py',
+            'baseline/pasttrec_threshold.py',
             ],
         install_requires=[
             'colorama',
