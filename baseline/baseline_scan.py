@@ -182,23 +182,18 @@ def scan_baseline_single(address):
         for blv in range(def_pastrec_bl_range[0], def_pastrec_bl_range[1]):
             print("#", end='', flush=True)
 
-            # looop over Cable
-            for cable in list(range(len(PasttrecDefaults.c_cable))):
+            # get addressess
+            for addr, cable, asic in address:
                 _c = PasttrecDefaults.c_cable[cable]
+                _a = PasttrecDefaults.c_asic[asic]
 
-                # loop over ASIC
-                for asic in list(range(len(PasttrecDefaults.c_asic))):
-                    _a = PasttrecDefaults.c_asic[asic]
+                b = PasttrecDefaults.c_base_w | _c | _a
+                v = b | PasttrecDefaults.c_bl_reg[c] | blv
 
-                    b = PasttrecDefaults.c_base_w | _c | _a
-                    v = b | PasttrecDefaults.c_bl_reg[c] | blv
-
-                    # loop over TDC
-                    for addr in address:
-                        haddr = hex(addr)
-                        l = [ 'trbcmd', 'w', haddr, hex(PasttrecDefaults.c_trbnet_reg), hex(v) ]
-                        rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                        print_verbose(rc)
+                haddr = addr #hex(addr)
+                l = [ 'trbcmd', 'w', haddr, hex(PasttrecDefaults.c_trbnet_reg), hex(v) ]
+                rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                print_verbose(rc)
 
             chan = calc_channel(cable, asic, c)
 
@@ -210,32 +205,29 @@ def scan_baseline_single(address):
             a2 = parse_rm_scalers(v2)
             bb = a2.diff(a1)
 
-            # reset base line
-            for cable in list(range(len(PasttrecDefaults.c_cable))):
+            # get addressess
+            for addr, cable, asic in address:
                 _c = PasttrecDefaults.c_cable[cable]
-                for asic in list(range(len(PasttrecDefaults.c_asic))):
-                    _a = PasttrecDefaults.c_asic[asic]
+                _a = PasttrecDefaults.c_asic[asic]
 
-                    chan = calc_channel(cable, asic, c)
+                chan = calc_channel(cable, asic, c)
 
-                    for addr in address:
-                        haddr = hex(addr)
-                        bbb.add_trb(haddr)
+                haddr = addr #hex(addr)
+                bbb.add_trb(haddr)
 
-                        vv = bb.scalers[haddr][chan]
-                        #print(vv)
-                        if vv < 0:
-                            vv += 0x80000000
+                vv = bb.scalers[haddr][chan]
+                #print(vv)
+                if vv < 0:
+                    vv += 0x80000000
 
-                        bbb.baselines[haddr][cable][asic][c][blv] = vv
+                bbb.baselines[haddr][cable][asic][c][blv] = vv
 
-                    b = PasttrecDefaults.c_base_w | _c | _a
-                    v = b | def_pastrec_bl_base | PasttrecDefaults.c_bl_reg[c]
-                    for addr in address:
-                        haddr = hex(addr)
-                        l = [ 'trbcmd', 'w', haddr, hex(PasttrecDefaults.c_trbnet_reg), hex(v) ]
-                        rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                        print_verbose(rc)
+                b = PasttrecDefaults.c_base_w | _c | _a
+                v = b | def_pastrec_bl_base | PasttrecDefaults.c_bl_reg[c]
+
+                l = [ 'trbcmd', 'w', haddr, hex(PasttrecDefaults.c_trbnet_reg), hex(v) ]
+                rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                print_verbose(rc)
 
         print("  done")
 
@@ -365,7 +357,7 @@ if __name__=="__main__":
     #ex = False
 
     tup = communication.decode_address(args.trbids)
-    print(tup)
+
     if ex:
         a = args.trbids
 
