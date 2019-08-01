@@ -90,12 +90,12 @@ def read_reg(address, card, asic, reg):
 
 def scan_communication(address):
 
-    print("|--- TEST RANGE -------------------------------------------|")
+    print("   TDC  Cable  Asic  >----------------------------------------------------------<")
 
     reg_test_vals = [ 1, 4, 7, 10, 13 ]
     test_ok = True
     for addr, cable, asic in address:
-        print(Fore.YELLOW + "Testing {:s} cable {:d} asic {:d}".format(addr, cable, asic) + Style.RESET_ALL)
+        print(Fore.YELLOW + "{:s}  {:5d} {:5d}  ".format(addr, cable, asic) + Style.RESET_ALL, end='', flush=True)
 
         asic_test_ok = True
 
@@ -109,7 +109,7 @@ def scan_communication(address):
                 _t = int(read_reg(addr, cable, asic, reg).split()[1], 16)
 
                 if _t != t:
-                    print(Fore.RED + " Test failed for register {:d}".format(reg) + Style.RESET_ALL)
+                    print(Fore.RED + " Test failed for register {:d}".format(reg) + Style.RESET_ALL, end='')
                     print("  Sent {:d}, received {:d}".format(t, _t))
                     reg_test_ok = False
                     break
@@ -120,7 +120,7 @@ def scan_communication(address):
                 break
 
         if asic_test_ok:
-            print(Fore.GREEN + " done" + Style.RESET_ALL)
+            print(Fore.GREEN + " OK " + Style.RESET_ALL)
 
     if test_ok:
         print("All test done and OK")
