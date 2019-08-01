@@ -135,7 +135,6 @@ def print_verbose(rc):
         print("[{:d}]  {:s}".format(rtc, cmd))
 
 def reset_asic(address, verbose = False):
-    print(address, type(address))
     if type(address) is not list:
         a = decode_address(address)
     else:
