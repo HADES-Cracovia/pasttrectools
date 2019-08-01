@@ -26,6 +26,7 @@ import subprocess
 from time import sleep
 import json
 import math
+from colorama import Fore, Style
 
 from pasttrec import *
 
@@ -52,13 +53,6 @@ def_pastrec_bl_range = [ 0x00, def_max_bl_registers ]
 
 def_scan_type = None
 
-def print_verbose(rc):
-    cmd = ' '.join(rc.args)
-    rtc = rc.returncode
-
-    if def_verbose == 1:
-        print("[{:d}]  {:s}".format(rtc, cmd))
-
 def calc_channel(cable, asic, channel):
     return channel + def_pastrec_channel_range * asic + \
         def_pastrec_channel_range * len(PasttrecDefaults.c_asic)*cable
@@ -69,21 +63,11 @@ def calc_address(channel):
     c = channel % def_pastrec_channel_range
     return cable, asic, c
 
-def reset_asic(address):
-    for a in address:
-        for cable in list(range(len(PasttrecDefaults.c_cable))):
-            for asic in list(range(len(PasttrecDefaults.c_asic))):
-                d = PasttrecRegs.reset_config(cable, asic) | a
-
-                l = [ 'trbcmd', 'w', hex(a), hex(d) ]
-                rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                print_verbose(rc)
-
 if __name__=="__main__":
     parser=argparse.ArgumentParser(description='Scan baseline of PASTTREC chips',
                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument('trbids', help='list of TRBids to scan', type=lambda x: int(x,0), nargs='+')
+    parser.add_argument('trbids', help='list of TRBids to scan in form addres[:card-0-1-2[:asic-0-1]]', type=str, nargs="+")
 
     parser.add_argument('-t', '--time', help='sleep time', type=int, default=def_time)
     parser.add_argument('-o', '--output', help='output file', type=str, default='result.json')
@@ -127,12 +111,13 @@ if __name__=="__main__":
                      tc2c = args.timecancelationC2, tc2r = args.timecancelationR2,
                      vth = args.threshold, bl = [ def_pastrec_bl_base ] * 8)
 
+    tup = communication.decode_address(args.trbids)
+
     # loop here
     ex = True
     #ex = False
     if ex:
-        a = args.trbids
-        reset_asic(a)
+        communication.reset_asic(tup)
 
     else:
         p = PasttrecRegs(bg_int = args.source, gain = args.gain, peaking = args.peaking,
