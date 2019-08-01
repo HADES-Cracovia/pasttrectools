@@ -48,7 +48,7 @@ class PasttrecRegs(PasttrecDefaults):
 
     @staticmethod
     def reset_config(cable, asic):
-        offset = 0x100000 | PasttrecDefaults.c_base_w | PasttrecDefaults.c_cable[cable] | PasttrecDefaults.c_asic[asic]
+        offset = 0x200000 | PasttrecDefaults.c_base_w | PasttrecDefaults.c_cable[cable] | PasttrecDefaults.c_asic[asic]
         return offset
 
     def dump_config(self, cable, asic):

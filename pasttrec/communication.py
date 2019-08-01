@@ -26,6 +26,7 @@ import subprocess
 from time import sleep
 import json
 import math
+from colorama import Fore, Style
 
 from pasttrec import *
 
@@ -126,7 +127,30 @@ def calc_address_from_tdc(channel, with_ref_time=False):
     c = channel % def_pastrec_channel_range
     return cable, asic, c
 
-def reset_asic(address, def_pasttrec):
+def print_verbose(rc):
+    cmd = ' '.join(rc.args)
+    rtc = rc.returncode
+
+    if def_verbose == 1:
+        print("[{:d}]  {:s}".format(rtc, cmd))
+
+def reset_asic(address, verbose = False):
+    print(address, type(address))
+    if type(address) is not list:
+        a = decode_address(address)
+    else:
+        a = address
+
+    for addr, cable, asic in a:
+        d = PasttrecRegs.reset_config(cable, asic)
+
+        l = [ 'trbcmd', 'w', addr, hex(PasttrecDefaults.c_trbnet_reg), hex(d)]
+        print(Fore.YELLOW + "Reseting {:s} cable {:d} asic {:d} with data {:s}".format(addr, cable, asic, hex(d)) + Style.RESET_ALL)
+        rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if verbose:
+            print_verbose(rc)
+
+def asic_to_defaults(address, def_pasttrec):
     for a in address:
         for cable in list(range(len(PasttrecDefaults.c_cable))):
             _c = PasttrecDefaults.c_cable[cable]
