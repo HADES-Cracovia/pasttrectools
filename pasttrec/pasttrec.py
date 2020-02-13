@@ -2,7 +2,7 @@ LIBVERSION = "1.0"
 
 
 class PasttrecDefaults:
-    c_cable = [0x00 << 19, 0x01 << 19, 0x02 << 19]
+    c_cable = [0x00 << 19, 0x00 << 19, 0x00 << 19]
     c_asic = [0x2000, 0x4000]
 
 #                Bg_int,K,Tp      TC1      TC2      Vth
@@ -10,7 +10,6 @@ class PasttrecDefaults:
     c_bl_reg = [0x00400, 0x00500, 0x00600, 0x00700,
                 0x00800, 0x00900, 0x00a00, 0x00b00]
 
-    c_trbnet_reg = 0xa000
     c_base_w = 0x0050000
     c_base_r = 0x0051000
 
