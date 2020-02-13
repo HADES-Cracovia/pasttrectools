@@ -66,11 +66,11 @@ def_pastrec_channels_all = def_pastrec_channel_range * \
 def_pastrec_bl_base = 0x00000
 def_pastrec_bl_range = [0x00, def_max_bl_registers]
 
-""" Converts address into [ trbnet, cable, card, asic ] tuples
+""" Converts address into [ trbnet, cable, cable, asic ] tuples
     input string:
     AAAAAA[:B[:C]]
       AAAAAA - trbnet address, can be in form 0xAAAA or AAAA
-      B - card: 1, 2, 3, or empty ("", all cables), or two or three cards comma separated
+      B - cable: 1, 2, 3, or empty ("", all cables), or two or three cables comma separated
       C - asic: 1 or 2 or empty ("", all asics)
      any higher section of the address can be skipped
     examples:
@@ -94,12 +94,12 @@ def decode_address_entry(string):
         asics = [0, 1]
 
     # asics
-    cards = []
+    cables = []
     if sec_len >= 2 and len(sections[1]) > 0:
-        _cards = sections[1].split(",")
-        cards = [int(c)-1 for c in _cards if int(c) in range(1,4)]
+        _cables = sections[1].split(",")
+        cables = [int(c)-1 for c in _cables if int(c) in range(1,4)]
     else:
-        cards = [0, 1, 2]
+        cables = [0, 1, 2]
 
     # check address
     address = sections[0]
@@ -113,7 +113,7 @@ def decode_address_entry(string):
         print("Incorrect address in string: ", string)
         return []
 
-    tup = [[x] + [y] + [z] for x in [address, ] for y in cards for z in asics]
+    tup = [[x] + [y] + [z] for x in [address, ] for y in cables for z in asics]
     return tup
 
 
@@ -162,7 +162,7 @@ def reset_asic(address, verbose = False):
         d = PasttrecRegs.reset_config(cable, asic)
 
         print(Fore.YELLOW + "Reseting {:s} cable {:d} asic {:d} with data {:s}".format(addr, cable, asic, hex(d)) + Style.RESET_ALL)
-        safe_command_w(addr, PasttrecDefaults.c_trbnet_reg, d)
+        write_data(addr, cable, asic, d)
 
 
 def asic_to_defaults(address, def_pasttrec):
@@ -176,7 +176,7 @@ def asic_to_defaults(address, def_pasttrec):
                 d = def_pasttrec.dump_config_hex(cable, asic)
 
                 for _d in d:
-                    safe_command_w(a, PasttrecDefaults.c_trbnet_reg, _d)
+                    write_data(a, cable, asic, _d)
 
 
 def read_rm_scalers(address):
@@ -191,38 +191,35 @@ def read_r_scalers(address, channel):
     They all call safe_command_ functions. """
 
 
-def write_reg(address, card, asic, reg, val):
-    if trbnet_available:
-        pass
-    else:
-        _c = PasttrecDefaults.c_cable[card]
-        _a = PasttrecDefaults.c_asic[asic]
-        _b = PasttrecDefaults.c_base_w | _c | _a
-        v = _b | (reg << 8) | val
-        safe_command_w(address, PasttrecDefaults.c_trbnet_reg, v)
+def write_reg(trbid, cable, asic, reg, val):
+    _c = PasttrecDefaults.c_cable[cable]
+    _a = PasttrecDefaults.c_asic[asic]
+    _b = PasttrecDefaults.c_base_w | _c | _a
+    v = _b | (reg << 8) | val
+    spi_write(trbid, cable, asic, v)
 
 
-def read_reg(address, card, asic, reg):
-    if trbnet_available:
-        pass
-    else:
-        _c = PasttrecDefaults.c_cable[card]
-        _a = PasttrecDefaults.c_asic[asic]
-        _b = PasttrecDefaults.c_base_r | _c | _a
-        v = _b | (reg << 8)
-        safe_command_w(address, PasttrecDefaults.c_trbnet_reg, v)
-        return safe_command_r(address, PasttrecDefaults.c_trbnet_reg)
+def read_reg(trbid, cable, asic, reg):
+    _c = PasttrecDefaults.c_cable[cable]
+    _a = PasttrecDefaults.c_asic[asic]
+    _b = PasttrecDefaults.c_base_r | _c | _a
+    v = _b | (reg << 8)
+    spi_write(trbid, cable, asic, v)
+    return spi_read(trbid, cable, asic)
 
 
 def write_data(trbid, cable, asic, data):
-    if trbnet_available:
-        pass
-    else:
-        _c = PasttrecDefaults.c_cable[cable]
-        _a = PasttrecDefaults.c_asic[asic]
-        _b = PasttrecDefaults.c_base_w | _c | _a
-        v = _b | data
-        safe_command_w(trbid, PasttrecDefaults.c_trbnet_reg, v)
+    _c = PasttrecDefaults.c_cable[cable]
+    _a = PasttrecDefaults.c_asic[asic]
+    _b = PasttrecDefaults.c_base_w | _c | _a
+    v = _b | data
+    spi_write(trbid, cable, asic, v)
+
+
+#def read_data(trbid, cable, asic):
+    #_c = PasttrecDefaults.c_cable[cable]
+    #_a = PasttrecDefaults.c_asic[asic]
+    #return spi_read(trbid, cable, asic)
 
 
 """ Safe commands are etsting for trbnet librray and choose between
@@ -360,8 +357,7 @@ def spi_read(trbid, cable, asic):
 
     spi_prepare(_trbid, cable, asic)
 
-    # write 1 to length register to trigger sending
-    safe_command_r(_trbid, 0xd412)
+    return safe_command_r(_trbid, 0xd412)
 
 
 def spi_prepare(trbid, cable, asic):
@@ -371,7 +367,7 @@ def spi_prepare(trbid, cable, asic):
     safe_command_w(_trbid, 0xd417, 0x0000FFFF)
 
     # (chip-)select output $CONN for i/o multiplexer reasons, remember CS lines are disabled
-    safe_command_w(_trbid, 0xd410, 0xFFFF & (1 << (cable-1)))
+    safe_command_w(_trbid, 0xd410, 0xFFFF & (1 << cable))
 
     # override: (chip-) select all ports!!
     #trbcmd w $_trbid 0xd410 0xFFFF
@@ -380,10 +376,10 @@ def spi_prepare(trbid, cable, asic):
     #trbcmd w $_trbid 0xd410 0x0000
 
     # disable all SDO outputs but output $CONN
-    safe_command_w(_trbid, 0xd415, 0xFFFF & ~(1 << (cable-1)))
+    safe_command_w(_trbid, 0xd415, 0xFFFF & ~(1 << cable))
 
     # disable all SCK outputs but output $CONN
-    safe_command_w(_trbid, 0xd416, 0xFFFF & ~(1 << (cable-1)))
+    safe_command_w(_trbid, 0xd416, 0xFFFF & ~(1 << cable))
 
     # override: disable all SDO and SCK lines
     #trbcmd w $_trbid 0xd415 0xFFFF
