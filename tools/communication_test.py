@@ -80,7 +80,7 @@ def scan_communication(address):
                 print(".", end='', flush=True)
                 communication.write_reg(addr, cable, asic, reg, t)
                 sleep(def_time)
-                _t = int(communication.read_reg(addr, cable, asic, reg).split()[1], 16)
+                _t = int(communication.read_reg(addr, cable, asic, reg).split()[1], 16) & 0xff
 
                 if _t != t:
                     print(Fore.RED + " Test failed for register {:d}".format(reg) + Style.RESET_ALL, end='')

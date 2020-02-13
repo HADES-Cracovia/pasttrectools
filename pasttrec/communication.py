@@ -204,8 +204,8 @@ def read_reg(trbid, cable, asic, reg):
     _a = PasttrecDefaults.c_asic[asic]
     _b = PasttrecDefaults.c_base_r | _c | _a
     v = _b | (reg << 8)
-    spi_write(trbid, cable, asic, v)
-    return spi_read(trbid, cable, asic)
+    spi_write(trbid, cable, asic, v << 1)
+    return spi_read(trbid, cable, asic, v)
 
 
 def write_data(trbid, cable, asic, data):
@@ -318,69 +318,59 @@ spi_mem = {}
 
 
 def spi_write(trbid, cable, asic, data):
-    #TDC = int(TDC_str, 16) FIXME test if string or int
-    _trbid = trbid
-
-    if _trbid not in spi_mem:
-        spi_mem[_trbid] = {}
-    if cable not in spi_mem[_trbid]:
-        spi_mem[_trbid][cable] = {}
-    if asic not in spi_mem[_trbid][cable]:
-        spi_mem[_trbid][cable][asic] = []
+    if trbid not in spi_mem:
+        spi_mem[trbid] = {}
+    if cable not in spi_mem[trbid]:
+        spi_mem[trbid][cable] = {}
+    if asic not in spi_mem[trbid][cable]:
+        spi_mem[trbid][cable][asic] = []
 
     if spi_queue:
         if isinstance(data, list):
-            spi_mem[_trbid][cable][asic] += data
+            spi_mem[trbid][cable][asic] += data
         else:
-            spi_mem[_trbid][cable][asic] += [data]
+            spi_mem[trbid][cable][asic] += [data]
 
     else:
         if isinstance(data, list):
-            my_data_list = spi_mem[_trbid][cable][asic] + data
+            my_data_list = spi_mem[trbid][cable][asic] + data
         else:
-            my_data_list = spi_mem[_trbid][cable][asic] + [data]
+            my_data_list = spi_mem[trbid][cable][asic] + [data]
 
-        spi_mem[_trbid][cable][asic].clear()  # empty queue
+        spi_mem[trbid][cable][asic].clear()  # empty queue
 
-        spi_prepare(_trbid, cable, asic)
+        spi_prepare(trbid, cable, asic)
 
         for data in my_data_list:
             # writing one data word, append zero to the data word, the chip will get some more SCK clock cycles
-            safe_command_w(_trbid, 0xd400, data << 4)
-
+            safe_command_w(trbid, 0xd400, data)
             # write 1 to length register to trigger sending
-            safe_command_w(_trbid, 0xd411, 0x0001)
+            safe_command_w(trbid, 0xd411, 0x0001)
 
 
-def spi_read(trbid, cable, asic):
-    _trbid = trbid
-
-    spi_prepare(_trbid, cable, asic)
-
-    return safe_command_r(_trbid, 0xd412)
+def spi_read(trbid, cable, asic, data):
+    return safe_command_r(trbid, 0xd412)
 
 
 def spi_prepare(trbid, cable, asic):
-    _trbid = trbid
-
     # bring all CS (reset lines) in the default state (1) - upper four nibbles: invert CS, lower four nibbles: disable CS
-    safe_command_w(_trbid, 0xd417, 0x0000FFFF)
+    safe_command_w(trbid, 0xd417, 0x0000FFFF)
 
     # (chip-)select output $CONN for i/o multiplexer reasons, remember CS lines are disabled
-    safe_command_w(_trbid, 0xd410, 0xFFFF & (1 << cable))
+    safe_command_w(trbid, 0xd410, 0xFFFF & (1 << cable))
 
     # override: (chip-) select all ports!!
-    #trbcmd w $_trbid 0xd410 0xFFFF
+    #trbcmd w $trbid 0xd410 0xFFFF
 
     # override: (chip-) select nothing !!
-    #trbcmd w $_trbid 0xd410 0x0000
+    #trbcmd w $trbid 0xd410 0x0000
 
     # disable all SDO outputs but output $CONN
-    safe_command_w(_trbid, 0xd415, 0xFFFF & ~(1 << cable))
+    safe_command_w(trbid, 0xd415, 0xFFFF & ~(1 << cable))
 
     # disable all SCK outputs but output $CONN
-    safe_command_w(_trbid, 0xd416, 0xFFFF & ~(1 << cable))
+    safe_command_w(trbid, 0xd416, 0xFFFF & ~(1 << cable))
 
     # override: disable all SDO and SCK lines
-    #trbcmd w $_trbid 0xd415 0xFFFF
-    #trbcmd w $_trbid 0xd416 0xFFFF
+    #trbcmd w $trbid 0xd415 0xFFFF
+    #trbcmd w $trbid 0xd416 0xFFFF
