@@ -22,10 +22,10 @@
 
 import os,sys,glob
 import argparse
-import subprocess
 from time import sleep
 import json
 import math
+from colorama import Fore, Style
 
 from pasttrec import *
 
@@ -52,33 +52,15 @@ def_pastrec_bl_range = [ 0x00, def_max_bl_registers ]
 
 def_scan_type = None
 
-def print_verbose(rc):
-    cmd = ' '.join(rc.args)
-    rtc = rc.returncode
+def calc_channel(cable, asic, channel):
+    return channel + def_pastrec_channel_range * asic + \
+        def_pastrec_channel_range * len(PasttrecDefaults.c_asic)*cable
 
-    if rtc != 0:
-        print()
-        print(Fore.RED + "Error code: {:d}\n{:s}".format(rtc, rc.stderr.decode()) + Style.RESET_ALL)
-        sys.exit(rtc)
-
-    if def_verbose == 1:
-        print("[{:d}]  {:s}".format(rtc, cmd))
-
-def send_value(address, value):
-    # loop over channels
-    for addr, cable, asic in address:
-        _c = PasttrecDefaults.c_cable[cable]
-        _a = PasttrecDefaults.c_asic[asic]
-
-        b = PasttrecDefaults.c_base_w | _c | _a
-        v = b | PasttrecDefaults.c_config_reg[3] | value if value <= 0x7ff else 0x7ff
-
-        haddr = addr #hex(addr)
-        l = [ 'trbcmd', 'w', haddr, hex(PasttrecDefaults.c_trbnet_reg), hex(v) ]
-        rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        print_verbose(rc)
-
-    print("Done")
+def calc_address(channel):
+    cable = math.floor(channel / (def_pastrec_channel_range*len(def_pastrec_asic)))
+    asic = math.floor((channel - cable*def_pastrec_channel_range*len(def_pastrec_asic)) / def_pastrec_channel_range)
+    c = channel % def_pastrec_channel_range
+    return cable, asic, c
 
 if __name__=="__main__":
     parser=argparse.ArgumentParser(description='Scan baseline of PASTTREC chips',
@@ -87,15 +69,7 @@ if __name__=="__main__":
     parser.add_argument('trbids', help='list of TRBids to scan in form addres[:card-0-1-2[:asic-0-1]]', type=str, nargs="+")
 
     parser.add_argument('-t', '--time', help='sleep time', type=int, default=def_time)
-    parser.add_argument('-o', '--output', help='output file', type=str, default='result.json')
-    parser.add_argument('-s', '--scan', help='scan type: singel-low/high: one channel at a time, baseline set to low/high, multi: all channels parallel', choices=[ 'single-low', 'single-high', 'multi'], default='multi')
     parser.add_argument('-v', '--verbose', help='verbose level: 0, 1, 2, 3', type=int, choices=[ 0, 1, 2, 3 ], default=0)
-
-    parser.add_argument('-Bg', '--source', help='baseline set: internally or externally', type=int, choices=[1,0], default=1)
-    parser.add_argument('-K', '--gain', help='amplification: 4, 2, 1 or 0.67 [mV/fC]', type=int, choices=[0, 1, 2, 3], default=0)
-    parser.add_argument('-Tp', '--peaking', help='peaking time: 35, 20, 15 or 10 [ns]', type=int, choices=[3,2,1,0], default=3)
-
-    parser.add_argument('-Vth', '--threshold', help='threshold: 0-127', type=lambda x: int(x,0), default=127)
 
     args=parser.parse_args()
 
@@ -105,13 +79,10 @@ if __name__=="__main__":
     if def_verbose > 0:
         print(args)
 
-    if args.threshold > def_pastrec_thresh_range[1] or args.threshold < def_pastrec_thresh_range[0]:
-        print("\nOption error: Threshold value {:d} is to high, allowed value is 0-127".format(args.threshold))
-        sys.exit(1)
+    tup = communication.decode_address(args.trbids)
 
+    # loop here
     ex = True
     #ex = False
-
-    tup = communication.decode_address(args.trbids)
     if ex:
-        send_value(tup, args.threshold)
+        communication.reset_asic(tup)

@@ -22,7 +22,6 @@
 
 import os,sys,glob
 import argparse
-import subprocess
 from time import sleep
 import json
 import math
@@ -63,31 +62,6 @@ def calc_address(channel):
     c = channel % def_pastrec_channel_range
     return cable, asic, c
 
-def write_reg(address, card, asic, reg, val):
-    _c = PasttrecDefaults.c_cable[card]
-    _a = PasttrecDefaults.c_asic[asic]
-    _b = PasttrecDefaults.c_base_w | _c | _a
-    v = _b | (reg << 8) | val
-
-    l = [ 'trbcmd', 'w', address, hex(PasttrecDefaults.c_trbnet_reg), hex(v) ]
-    rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    print_verbose(rc)
-
-def read_reg(address, card, asic, reg):
-    _c = PasttrecDefaults.c_cable[card]
-    _a = PasttrecDefaults.c_asic[asic]
-    _b = PasttrecDefaults.c_base_r | _c | _a
-    v = _b | (reg << 8)
-
-    l = [ 'trbcmd', 'w', address, hex(PasttrecDefaults.c_trbnet_reg), hex(v) ]
-    rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    print_verbose(rc)
-
-    l = [ 'trbcmd', 'r', address, hex(PasttrecDefaults.c_trbnet_reg) ]
-    rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    print_verbose(rc)
-    return rc.stdout.decode()
-
 def scan_communication(address):
 
     print("   TDC  Cable  Asic  >----------------------------------------------------------<")
@@ -104,9 +78,9 @@ def scan_communication(address):
 
             for t in reg_test_vals:
                 print(".", end='', flush=True)
-                write_reg(addr, cable, asic, reg, t)
+                communication.write_reg(addr, cable, asic, reg, t)
                 sleep(def_time)
-                _t = int(read_reg(addr, cable, asic, reg).split()[1], 16)
+                _t = int(communication.read_reg(addr, cable, asic, reg).split()[1], 16)
 
                 if _t != t:
                     print(Fore.RED + " Test failed for register {:d}".format(reg) + Style.RESET_ALL, end='')

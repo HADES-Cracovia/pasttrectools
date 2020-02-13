@@ -22,7 +22,6 @@
 
 import os,sys,glob
 import argparse
-import subprocess
 from time import sleep
 import json
 import math
