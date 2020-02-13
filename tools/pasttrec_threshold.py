@@ -22,11 +22,9 @@
 
 import os,sys,glob
 import argparse
-import subprocess
 from time import sleep
 import json
 import math
-from colorama import Fore, Style
 
 from pasttrec import *
 
@@ -53,15 +51,31 @@ def_pastrec_bl_range = [ 0x00, def_max_bl_registers ]
 
 def_scan_type = None
 
-def calc_channel(cable, asic, channel):
-    return channel + def_pastrec_channel_range * asic + \
-        def_pastrec_channel_range * len(PasttrecDefaults.c_asic)*cable
+def print_verbose(rc):
+    cmd = ' '.join(rc.args)
+    rtc = rc.returncode
 
-def calc_address(channel):
-    cable = math.floor(channel / (def_pastrec_channel_range*len(def_pastrec_asic)))
-    asic = math.floor((channel - cable*def_pastrec_channel_range*len(def_pastrec_asic)) / def_pastrec_channel_range)
-    c = channel % def_pastrec_channel_range
-    return cable, asic, c
+    if rtc != 0:
+        print()
+        print(Fore.RED + "Error code: {:d}\n{:s}".format(rtc, rc.stderr.decode()) + Style.RESET_ALL)
+        sys.exit(rtc)
+
+    if def_verbose == 1:
+        print("[{:d}]  {:s}".format(rtc, cmd))
+
+def send_value(address, value):
+    # loop over channels
+    for addr, cable, asic in address:
+        _c = PasttrecDefaults.c_cable[cable]
+        _a = PasttrecDefaults.c_asic[asic]
+
+        b = PasttrecDefaults.c_base_w | _c | _a
+        v = b | PasttrecDefaults.c_config_reg[3] | value if value <= 0x7ff else 0x7ff
+
+        haddr = addr #hex(addr)
+        send_command_w(haddr, PasttrecDefaults.c_trbnet_reg, v)
+
+    print("Done")
 
 if __name__=="__main__":
     parser=argparse.ArgumentParser(description='Scan baseline of PASTTREC chips',
@@ -78,12 +92,7 @@ if __name__=="__main__":
     parser.add_argument('-K', '--gain', help='amplification: 4, 2, 1 or 0.67 [mV/fC]', type=int, choices=[0, 1, 2, 3], default=0)
     parser.add_argument('-Tp', '--peaking', help='peaking time: 35, 20, 15 or 10 [ns]', type=int, choices=[3,2,1,0], default=3)
 
-    parser.add_argument('-TC1C', '--timecancelationC1', help='TC1 C: 35, 20, 15 or 10 [ns]', type=lambda x: int(x,0), choices=range(8), default=3)
-    parser.add_argument('-TC1R', '--timecancelationR1', help='TC1 R: 35, 20, 15 or 10 [ns]', type=lambda x: int(x,0), choices=range(8), default=2)
-    parser.add_argument('-TC2C', '--timecancelationC2', help='TC2 C: 35, 20, 15 or 10 [ns]', type=lambda x: int(x,0), choices=range(8), default=6)
-    parser.add_argument('-TC2R', '--timecancelationR2', help='TC2 R: 35, 20, 15 or 10 [ns]', type=lambda x: int(x,0), choices=range(8), default=5)
-
-    parser.add_argument('-Vth', '--threshold', help='threshold: 0-127', type=lambda x: int(x,0), default=0)
+    parser.add_argument('-Vth', '--threshold', help='threshold: 0-127', type=lambda x: int(x,0), default=127)
 
     args=parser.parse_args()
 
@@ -97,31 +106,9 @@ if __name__=="__main__":
         print("\nOption error: Threshold value {:d} is to high, allowed value is 0-127".format(args.threshold))
         sys.exit(1)
 
-    # scan type
-    def_scan_type = args.scan
-    if def_scan_type == 'single-low':
-        def_pastrec_bl_base = def_pastrec_bl_range[0]
-    elif def_scan_type == 'single-high':
-        def_pastrec_bl_base = def_pastrec_bl_range[1]-1
-    elif def_scan_type == 'multi':
-        def_pastrec_bl_base = def_pastrec_bl_range[0]
-
-    p = PasttrecRegs(bg_int = args.source, gain = args.gain, peaking = args.peaking,
-                     tc1c = args.timecancelationC1, tc1r = args.timecancelationR1,
-                     tc2c = args.timecancelationC2, tc2r = args.timecancelationR2,
-                     vth = args.threshold, bl = [ def_pastrec_bl_base ] * 8)
-
-    tup = communication.decode_address(args.trbids)
-
-    # loop here
     ex = True
     #ex = False
-    if ex:
-        communication.reset_asic(tup)
 
-    else:
-        p = PasttrecRegs(bg_int = args.source, gain = args.gain, peaking = args.peaking,
-                         tc1c = args.timecancelationC1, tc1r = args.timecancelationR1,
-                         tc2c = args.timecancelationC2, tc2r = args.timecancelationR2,
-                         vth = args.threshold)
-        print(p.__dict__, p.dump_config_hex(0, 0))
+    tup = communication.decode_address(args.trbids)
+    if ex:
+        send_value(tup, args.threshold)
