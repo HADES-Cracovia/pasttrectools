@@ -119,7 +119,7 @@ def reset_asic(address, def_pasttrec):
         d = def_pasttrec.dump_config_hex(cable, asic)
 
         for _d in d:
-            send_command_w(addr, PasttrecDefaults.c_trbnet_reg, _d)
+            communication.write_data(addr, cable, asic, d)
 
 
 def parse_rm_scalers(res):
@@ -177,14 +177,7 @@ def scan_baseline_single(address):
 
             # get addressess
             for addr, cable, asic in address:
-                _c = PasttrecDefaults.c_cable[cable]
-                _a = PasttrecDefaults.c_asic[asic]
-
-                b = PasttrecDefaults.c_base_w | _c | _a
-                v = b | PasttrecDefaults.c_bl_reg[c] | blv
-
-                haddr = addr #hex(addr)
-                send_command_w(addr, PasttrecDefaults.c_trbnet_reg, v)
+                communication.write_reg(addr, cable, asic, PasttrecDefaults.c_bl_reg[c], blv)
 
             chan = calc_channel(cable, asic, c)
 
@@ -213,10 +206,7 @@ def scan_baseline_single(address):
 
                 bbb.baselines[haddr][cable][asic][c][blv] = vv
 
-                b = PasttrecDefaults.c_base_w | _c | _a
-                v = b | def_pastrec_bl_base | PasttrecDefaults.c_bl_reg[c]
-
-                send_command_w(haddr, PasttrecDefaults.c_trbnet_reg, v)
+                communication.write_reg(haddr, cable, asic, PasttrecDefaults.c_bl_reg[c], 0x00)
 
         print("  done")
 
@@ -239,15 +229,7 @@ def scan_baseline_multi(address):
 
             # get addressess
             for addr, cable, asic in address:
-                _c = PasttrecDefaults.c_cable[cable]
-                _a = PasttrecDefaults.c_asic[asic]
-
-                b = PasttrecDefaults.c_base_w | _c | _a
-                v = b | PasttrecDefaults.c_bl_reg[c] | blv
-
-                # loop over TDC
-                haddr = addr #hex(addr)
-                send_command_w(haddr, PasttrecDefaults.c_trbnet_reg, v)
+                communication.write_reg(addr, cable, asic, PasttrecDefaults.c_bl_reg[c], blv)
 
         #sleep(1)
         v1 = read_rm_scalers(def_broadcast_addr)
@@ -279,10 +261,7 @@ def scan_baseline_multi(address):
 
                 bbb.baselines[haddr][cable][asic][c][blv] = vv
 
-                b = PasttrecDefaults.c_base_w | _c | _a
-                v = b | def_pastrec_bl_base | PasttrecDefaults.c_bl_reg[c]
-
-                send_command_w(haddr, PasttrecDefaults.c_trbnet_reg, v)
+                communication.write_reg(haddr, cable, asic, PasttrecDefaults.c_bl_reg[c], 0x00)
 
     print("  done")
 
