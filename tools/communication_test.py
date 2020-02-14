@@ -9,8 +9,8 @@
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
 #
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
 #
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -20,7 +20,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import os,sys,glob
+import os
+import sys
+import glob
 import argparse
 from time import sleep
 import json
@@ -29,47 +31,20 @@ from colorama import Fore, Style
 
 from pasttrec import *
 
-def_asics = '0x6400'
 def_time = 0.01
 def_verbose = 0
 
-def_max_bl_registers = 32
-
-### registers and values
-# trbnet
-def_broadcast_addr = 0xfe4f
-def_scalers_reg = 0xc001
-def_scalers_len = 0x21
-
-def_pastrec_thresh_range = [ 0x00, 0x7f ]
-
-def_pastrec_channel_range = 8
-def_pastrec_channels_all = def_pastrec_channel_range * \
-    len(PasttrecDefaults.c_asic) * len(PasttrecDefaults.c_cable)
-
-def_pastrec_bl_base = 0x00000
-def_pastrec_bl_range = [ 0x00, def_max_bl_registers ]
-
-def_scan_type = None
-
-def calc_channel(cable, asic, channel):
-    return channel + def_pastrec_channel_range * asic + \
-        def_pastrec_channel_range * len(PasttrecDefaults.c_asic)*cable
-
-def calc_address(channel):
-    cable = math.floor(channel / (def_pastrec_channel_range*len(def_pastrec_asic)))
-    asic = math.floor((channel - cable*def_pastrec_channel_range*len(def_pastrec_asic)) / def_pastrec_channel_range)
-    c = channel % def_pastrec_channel_range
-    return cable, asic, c
 
 def scan_communication(address):
 
-    print("   TDC  Cable  Asic  >----------------------------------------------------------<")
+    print("   TDC  Cable  Asic  >--------------------------------------------"
+          "--------------<")
 
-    reg_test_vals = [ 1, 4, 7, 10, 13 ]
+    reg_test_vals = [1, 4, 7, 10, 13]
     test_ok = True
     for addr, cable, asic in address:
-        print(Fore.YELLOW + "{:s}  {:5d} {:5d}  ".format(addr, cable, asic) + Style.RESET_ALL, end='', flush=True)
+        print(Fore.YELLOW + "{:s}  {:5d} {:5d}  "
+              .format(addr, cable, asic) + Style.RESET_ALL, end='', flush=True)
 
         asic_test_ok = True
 
@@ -80,15 +55,23 @@ def scan_communication(address):
                 print(".", end='', flush=True)
                 communication.write_reg(addr, cable, asic, reg, t)
                 sleep(def_time)
-                _t = int(communication.read_reg(addr, cable, asic, reg).split()[1], 16) & 0xff
+                rc = communication.read_reg(addr, cable, asic, reg)
+                try:
+                    res = int(rc.split()[1], 16)
+                    _t = res & 0xff
+                except ValueError as ve:
+                    print("Wrong result: ", rc.split()[1])
+                    print(ve)
+                    _t = 0xdeadbeef
 
-                if _t != t:
-                    print(Fore.RED + " Test failed for register {:d}".format(reg) + Style.RESET_ALL, end='')
+                if _t != t or _t == 0xdeadbeef:
+                    print(Fore.RED + " Test failed for register {:d}"
+                          .format(reg) + Style.RESET_ALL, end='')
                     print("  Sent {:d}, received {:d}".format(t, _t))
                     reg_test_ok = False
                     break
 
-            if reg_test_ok == False:
+            if reg_test_ok is False:
                 asic_test_ok = False
                 test_ok = False
                 break
@@ -102,16 +85,23 @@ def scan_communication(address):
     return None
 
 
-if __name__=="__main__":
-    parser=argparse.ArgumentParser(description='Scan communication of PASTTREC chips',
-                                    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description='Scan communication of PASTTREC chips',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument('trbids', help='list of TRBids to scan in form addres[:card-0-1-2[:asic-0-1]]', type=str, nargs="+")
+    parser.add_argument('trbids',
+                        help='list of TRBids to scan in form'
+                        ' addres[:card-0-1-2[:asic-0-1]]',
+                        type=str, nargs="+")
 
-    parser.add_argument('-t', '--time', help='sleep time', type=float, default=def_time)
-    parser.add_argument('-v', '--verbose', help='verbose level: 0, 1, 2, 3', type=int, choices=[ 0, 1, 2, 3 ], default=0)
+    parser.add_argument('-t', '--time',
+                        help='sleep time', type=float, default=def_time)
+    parser.add_argument('-v', '--verbose',
+                        help='verbose level: 0, 1, 2, 3',
+                        type=int, choices=[0, 1, 2, 3], default=0)
 
-    args=parser.parse_args()
+    args = parser.parse_args()
 
     def_verbose = args.verbose
     def_time = args.time
@@ -120,16 +110,5 @@ if __name__=="__main__":
         print(args)
 
     tup = communication.decode_address(args.trbids)
-    # loop here
-    ex = True
-    #ex = False
-    if ex:
-        a = args.trbids
-        r = scan_communication(tup)
-
-    else:
-        p = PasttrecRegs(bg_int = args.source, gain = args.gain, peaking = args.peaking,
-                         tc1c = args.timecancelationC1, tc1r = args.timecancelationR1,
-                         tc2c = args.timecancelationC2, tc2r = args.timecancelationR2,
-                         vth = 0)
-        print(p.__dict__, p.dump_config_hex(0, 0))
+    a = args.trbids
+    r = scan_communication(tup)
