@@ -47,7 +47,6 @@ else:
 
 # chip communication
 
-def_verbose = 0
 def_scalers_reg = 0xc001
 def_pastrec_channel_range = 8
 def_pastrec_channels_all = def_pastrec_channel_range * \
@@ -145,7 +144,7 @@ def print_verbose(rc):
     cmd = ' '.join(rc.args)
     rtc = rc.returncode
 
-    if def_verbose == 1:
+    if g_verbose >= 1:
         print("[{:d}]  {:s}".format(rtc, cmd))
 
 

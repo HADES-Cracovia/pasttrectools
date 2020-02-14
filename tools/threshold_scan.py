@@ -31,7 +31,6 @@ import math
 from pasttrec import *
 
 def_time = 1
-def_verbose = 0
 def_threshold_max = 0
 
 def_max_bl_registers = 32
@@ -156,11 +155,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    def_verbose = args.verbose
+    communication.g_verbose = args.verbose
     def_time = args.time
     def_threshold_max = args.limit
 
-    if def_verbose > 0:
+    if communication.g_verbose > 0:
         print(args)
 
     p = PasttrecRegs(bg_int=args.source, gain=args.gain, peaking=args.peaking,
