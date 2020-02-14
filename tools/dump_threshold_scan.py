@@ -9,8 +9,8 @@
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
 #
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
 #
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -22,13 +22,12 @@
 
 import argparse
 import json
-#import matplotlib.pyplot as plt
 import sys
 
-if __name__=="__main__":
-    parser=argparse.ArgumentParser(description='Draw baseline scan results')
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Draw baseline scan results')
     parser.add_argument('json_file', help='list of arguments', type=str)
-    args=parser.parse_args()
+    args = parser.parse_args()
 
     print(args)
 
@@ -36,43 +35,20 @@ if __name__=="__main__":
         d = json.load(json_data)
         json_data.close()
 
-    x = list(range(0,32))
-
-#    plt.figure(1)
+    x = list(range(0, 32))
 
     idx = 1
 
     bls = d['thresholds']
 
-    for k,v in bls.items():
-#        plt.figure(idx)
+    for k, v in bls.items():
         for t in list(range(128)):
             print('{:d}   '.format(t), end='')
-            for c in [0,1,2]:
-                for a in [0,1]:
+            for c in [0, 1, 2]:
+                for a in [0, 1]:
                     for ch in list(range(8)):
 
-#                        plt.subplot(3, 2, c*2 + a + 1)
                         tt = v[c][a][ch][t]
                         print('{:d} '.format(tt), end='')
 
-#                        sum_d = sum(dd)
-#                        if sum_d > 0:
-#                            n = 1.0/sum_d
-#                        elif sum_d < 0:
-#                            n = 0
-#                        else:
-#                            n = 1.0
-#                        d = [i * n for i in dd]
-#                        plt.semilogy(x, d, label='{:d}'.format(ch))
-
-#                        plt.xlabel('baseline register')
-#                        plt.ylabel('pdf')
-
-#                    plt.legend(loc=6, title='C: {:d}  A: {:d}'.format(c, a))
-
-#            idx += 1
             print(' '.format(t))
-
-
-#    plt.show()

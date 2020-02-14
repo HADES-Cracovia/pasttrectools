@@ -37,6 +37,7 @@ else:
             'tools/dump_threshold_scan.py',
             'tools/communication_test.py',
             'tools/reset_asic.py',
+            'tools/read_asic.py',
             'tools/pasttrec_write_and_verify.py',
             'tools/baseline_merge.py',
             'tools/pasttrec_threshold.py',

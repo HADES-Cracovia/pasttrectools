@@ -31,55 +31,38 @@ from colorama import Fore, Style
 
 from pasttrec import *
 
-def_time = 0.0
+def_time = 0.01
 
 
-def scan_communication(address):
+def read_asic(address):
 
-    print("   TDC  Cable  Asic  >--------------------------------------------"
-          "--------------<")
+    print("   TDC  Cable  Asic   Reg   Value")
 
-    reg_test_vals = [1, 4, 7, 10, 13]
-    test_ok = True
     for addr, cable, asic in address:
-        print(Fore.YELLOW + "{:s}  {:5d} {:5d}  "
+        print(Fore.YELLOW + "{:s}  {:5d}  {:4d}"
               .format(addr, cable, asic) + Style.RESET_ALL, end='', flush=True)
 
         asic_test_ok = True
 
         for reg in range(12):
-            reg_test_ok = True
+            if reg > 0:
+                print("                   ", end='', flush=True)
 
-            for t in reg_test_vals:
-                print(".", end='', flush=True)
-                communication.write_reg(addr, cable, asic, reg, t)
-                sleep(def_time)
-                rc = communication.read_reg(addr, cable, asic, reg)
-                try:
-                    res = int(rc.split()[1], 16)
-                    _t = res & 0xff
-                except ValueError as ve:
-                    print("Wrong result: ", rc.split()[1])
-                    print(ve)
-                    _t = 0xdeadbeef
+            rc = communication.read_reg(addr, cable, asic, reg)
+            try:
+                res = int(rc.split()[1], 16)
+                _t = res & 0xff
+            except ValueError as ve:
+                print("Wrong result: ", rc.split()[1])
+                print(ve)
+                _t = 0xdeadbeef
 
-                if _t != t or _t == 0xdeadbeef:
-                    print(Fore.RED + " Test failed for register {:d}"
-                          .format(reg) + Style.RESET_ALL, end='')
-                    print("  Sent {:d}, received {:d}".format(t, _t))
-                    reg_test_ok = False
-                    break
-
-            if reg_test_ok is False:
-                asic_test_ok = False
-                test_ok = False
-                break
-
-        if asic_test_ok:
-            print(Fore.GREEN + " OK " + Style.RESET_ALL)
-
-    if test_ok:
-        print("All test done and OK")
+            if _t == 0xdeadbeef:
+                print(Fore.RED + " Read failed for register {:d}"
+                      .format(reg) + Style.RESET_ALL, end='')
+                print("  Received {:d}".format(_t))
+            else:
+                print("   {:3d}   {:5d}".format(reg, _t))
 
     return None
 
@@ -110,4 +93,4 @@ if __name__ == "__main__":
 
     tup = communication.decode_address(args.trbids)
     a = args.trbids
-    r = scan_communication(tup)
+    r = read_asic(tup)

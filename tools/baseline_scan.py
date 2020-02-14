@@ -32,7 +32,6 @@ from colorama import Fore, Style
 from pasttrec import *
 
 def_time = 1
-def_verbose = 0
 
 def_broadcast_addr = 0xfe4f
 def_max_bl_registers = 32
@@ -197,10 +196,10 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    def_verbose = args.verbose
+    communication.g_verbose = args.verbose
     def_time = args.time
 
-    if def_verbose > 0:
+    if communication.g_verbose > 0:
         print(args)
 
     if args.threshold > def_pastrec_thresh_range[1] or \

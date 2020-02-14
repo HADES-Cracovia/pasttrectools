@@ -32,7 +32,6 @@ from colorama import Fore, Style
 from pasttrec import *
 
 def_time = 1
-def_verbose = 0
 
 
 if __name__ == "__main__":
@@ -51,10 +50,10 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    def_verbose = args.verbose
+    communication.g_verbose = args.verbose
     def_time = args.time
 
-    if def_verbose > 0:
+    if communication.g_verbose > 0:
         print(args)
 
     tup = communication.decode_address(args.trbids)
