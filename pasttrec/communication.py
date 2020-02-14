@@ -9,8 +9,8 @@
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
 #
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
 #
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -20,7 +20,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import os,sys,glob
+import os
+import sys
+import glob
 import argparse
 import subprocess
 from time import sleep
@@ -45,38 +47,27 @@ else:
 
 # chip communication
 
-def_asics = '0x6400'
-def_time = 1
 def_verbose = 0
-
-def_max_bl_registers = 32
-
-""" registers and values """
-# trbnet
-def_broadcast_addr = 0xfe4f
 def_scalers_reg = 0xc001
-def_scalers_len = 0x21
-
-def_pastrec_thresh_range = [0x00, 0x7f]
-
 def_pastrec_channel_range = 8
 def_pastrec_channels_all = def_pastrec_channel_range * \
     len(PasttrecDefaults.c_asic) * len(PasttrecDefaults.c_cable)
 
-def_pastrec_bl_base = 0x00000
-def_pastrec_bl_range = [0x00, def_max_bl_registers]
 
-""" Converts address into [ trbnet, cable, cable, asic ] tuples
+def decode_address_entry(string):
+    """Converts address into [ trbnet, cable, cable, asic ] tuples
     input string:
     AAAAAA[:B[:C]]
       AAAAAA - trbnet address, can be in form 0xAAAA or AAAA
-      B - cable: 1, 2, 3, or empty ("", all cables), or two or three cables comma separated
+      B - cable: 1, 2, 3, or empty ("", all cables), or two or three cables
+          comma separated
       C - asic: 1 or 2 or empty ("", all asics)
      any higher section of the address can be skipped
     examples:
      0x6400 - all cables and asics
-     0x6400::2 - all cables, asic 2"""
-def decode_address_entry(string):
+     0x6400::2 - all cables, asic 2
+     """
+
     sections = string.split(":")
     sec_len = len(sections)
 
@@ -89,7 +80,7 @@ def decode_address_entry(string):
     asics = []
     if sec_len == 3 and len(sections[2]) > 0:
         _asics = sections[2].split(",")
-        asics = [int(a)-1 for a in _asics if int(a) in range(1,3)]
+        asics = [int(a)-1 for a in _asics if int(a) in range(1, 3)]
     else:
         asics = [0, 1]
 
@@ -97,7 +88,7 @@ def decode_address_entry(string):
     cables = []
     if sec_len >= 2 and len(sections[1]) > 0:
         _cables = sections[1].split(",")
-        cables = [int(c)-1 for c in _cables if int(c) in range(1,4)]
+        cables = [int(c)-1 for c in _cables if int(c) in range(1, 4)]
     else:
         cables = [0, 1, 2]
 
@@ -117,8 +108,8 @@ def decode_address_entry(string):
     return tup
 
 
-# use this for a single string or list of strings
 def decode_address(string):
+    """Use this for a single string or list of strings."""
     if type(string) is str:
         return decode_address_entry(string)
     else:
@@ -128,18 +119,24 @@ def decode_address(string):
         return tup
 
 
-# calculate address of cable and asic channel in tdc (0,48) or with reference channel offset (1, 49)
 def calc_tdc_channel(cable, asic, channel, with_ref_time=False):
-    return channel + def_pastrec_channel_range * asic + \
-        def_pastrec_channel_range * len(PasttrecDefaults.c_asic)*cable + (1 if with_ref_time is True else 0)
+    """Calculate address of cable and asic channel in tdc (0,48) or with
+    reference channel offset (1, 49).
+    """
+    return channel + def_pastrec_channel_range * asic \
+        + def_pastrec_channel_range * len(PasttrecDefaults.c_asic)*cable \
+        + (1 if with_ref_time is True else 0)
 
 
-# do reverse calculation
 def calc_address_from_tdc(channel, with_ref_time=False):
+    """Do reverse address calculation."""
     if with_ref_time:
         channel = channel-1
-    cable = math.floor(channel / (def_pastrec_channel_range*len(def_pastrec_asic)))
-    asic = math.floor((channel - cable*def_pastrec_channel_range*len(def_pastrec_asic)) / def_pastrec_channel_range)
+    cable = math.floor(
+        channel / (def_pastrec_channel_range*len(def_pastrec_asic)))
+    asic = math.floor(
+        (channel - cable*def_pastrec_channel_range*len(def_pastrec_asic))
+        / def_pastrec_channel_range)
     c = channel % def_pastrec_channel_range
     return cable, asic, c
 
@@ -152,31 +149,32 @@ def print_verbose(rc):
         print("[{:d}]  {:s}".format(rtc, cmd))
 
 
-def reset_asic(address, verbose = False):
+def reset_asic(address, verbose=False):
+    """Send reset signal to asic, resets all registers to defaults."""
     if type(address) is not list:
         a = decode_address(address)
     else:
         a = address
 
     for addr, cable, asic in a:
-        d = PasttrecRegs.reset_config(cable, asic)
+        d = PasttrecRegs.reset_asic(cable, asic)
 
-        print(Fore.YELLOW + "Reseting {:s} cable {:d} asic {:d} with data {:s}".format(addr, cable, asic, hex(d)) + Style.RESET_ALL)
+        print(
+            Fore.YELLOW + "Reseting {:s} cable {:d} asic {:d} with data {:s}"
+                .format(addr, cable, asic, hex(d)) + Style.RESET_ALL)
         write_data(addr, cable, asic, d)
 
 
-def asic_to_defaults(address, def_pasttrec):
-    for a in address:
-        for cable in list(range(len(PasttrecDefaults.c_cable))):
-            _c = PasttrecDefaults.c_cable[cable]
+def asics_to_defaults(address, def_pasttrec):
+    """Set asics to defaults from config."""
+    for addr, cable, asic in address:
+        d = def_pasttrec.dump_config(cable, asic)
+        write_data(addr, cable, asic, d)
 
-            for asic in list(range(len(PasttrecDefaults.c_asic))):
-                _a = PasttrecDefaults.c_asic[asic]
 
-                d = def_pasttrec.dump_config_hex(cable, asic)
-
-                for _d in d:
-                    write_data(a, cable, asic, _d)
+def asic_to_defaults(address, cable, asic, def_pasttrec):
+    """Set asics to defaults from config."""
+    write_data(addres, cable, asic, d)
 
 
 def read_rm_scalers(address):
@@ -212,7 +210,11 @@ def write_data(trbid, cable, asic, data):
     _c = PasttrecDefaults.c_cable[cable]
     _a = PasttrecDefaults.c_asic[asic]
     _b = PasttrecDefaults.c_base_w | _c | _a
-    v = _b | data
+
+    if isinstance(data, list):
+        v = [_b | x for x in data]
+    else:
+        v = _b | data
     spi_write(trbid, cable, asic, v)
 
 
@@ -342,7 +344,8 @@ def spi_write(trbid, cable, asic, data):
         spi_prepare(trbid, cable, asic)
 
         for data in my_data_list:
-            # writing one data word, append zero to the data word, the chip will get some more SCK clock cycles
+            # writing one data word, append zero to the data word, the chip
+            # will get some more SCK clock cycles
             safe_command_w(trbid, 0xd400, data)
             # write 1 to length register to trigger sending
             safe_command_w(trbid, 0xd411, 0x0001)
@@ -353,17 +356,19 @@ def spi_read(trbid, cable, asic, data):
 
 
 def spi_prepare(trbid, cable, asic):
-    # bring all CS (reset lines) in the default state (1) - upper four nibbles: invert CS, lower four nibbles: disable CS
+    # bring all CS (reset lines) in the default state (1) - upper four nibbles:
+    # invert CS, lower four nibbles: disable CS
     safe_command_w(trbid, 0xd417, 0x0000FFFF)
 
-    # (chip-)select output $CONN for i/o multiplexer reasons, remember CS lines are disabled
+    # (chip-)select output $CONN for i/o multiplexer reasons, remember CS lines
+    # are disabled
     safe_command_w(trbid, 0xd410, 0xFFFF & (1 << cable))
 
     # override: (chip-) select all ports!!
-    #trbcmd w $trbid 0xd410 0xFFFF
+    # trbcmd w $trbid 0xd410 0xFFFF
 
     # override: (chip-) select nothing !!
-    #trbcmd w $trbid 0xd410 0x0000
+    # trbcmd w $trbid 0xd410 0x0000
 
     # disable all SDO outputs but output $CONN
     safe_command_w(trbid, 0xd415, 0xFFFF & ~(1 << cable))
@@ -372,5 +377,5 @@ def spi_prepare(trbid, cable, asic):
     safe_command_w(trbid, 0xd416, 0xFFFF & ~(1 << cable))
 
     # override: disable all SDO and SCK lines
-    #trbcmd w $trbid 0xd415 0xFFFF
-    #trbcmd w $trbid 0xd416 0xFFFF
+    # trbcmd w $trbid 0xd415 0xFFFF
+    # trbcmd w $trbid 0xd416 0xFFFF
