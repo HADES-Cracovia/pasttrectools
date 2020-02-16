@@ -157,9 +157,9 @@ def reset_asic(address, verbose=False):
 
     for addr, cable, asic in a:
         print(
-            Fore.YELLOW + "Reseting {:s} cable {:d} asic {:d}"
-                .format(addr, cable, asic) + Style.RESET_ALL)
-        spi_reset(addr, cable, asic)
+            Fore.YELLOW + "Reseting {:s} cable {:d}"
+                .format(addr, cable) + Style.RESET_ALL)
+        spi_reset(addr, cable)
 
 
 def asics_to_defaults(address, def_pasttrec):
@@ -372,7 +372,7 @@ def spi_prepare(trbid, cable, asic):
     # trbcmd w $trbid 0xd416 0xFFFF
 
 
-def spi_reset(trbid, cable, asic):
+def spi_reset(trbid, cable):
     # bring all CS (reset lines) in the default state (1) - upper four nibbles:
     # invert CS, lower four nibbles: disable CS
     safe_command_w(trbid, 0xd417, 0x0000FFFF)

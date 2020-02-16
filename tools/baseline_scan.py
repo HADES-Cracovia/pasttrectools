@@ -33,7 +33,7 @@ from pasttrec import *
 
 def_time = 1
 
-def_broadcast_addr = 0xfe4f
+def_broadcast_addr = 0xfe4c
 def_max_bl_registers = 32
 def_pastrec_thresh_range = [0x00, 0x7f]
 def_pastrec_channel_range = 8
@@ -49,7 +49,7 @@ def scan_baseline_single(address):
     # loop over channels
     for c in list(range(def_pastrec_channel_range)):
         print("  {:s}    {:d}            "
-              .format(hex(0xfe4f), c), end='', flush=True)
+              .format(hex(def_broadcast_addr), c), end='', flush=True)
 
         # loop over bl register value
         for blv in range(def_pastrec_bl_range[0], def_pastrec_bl_range[1]):
@@ -57,12 +57,8 @@ def scan_baseline_single(address):
 
             # get addressess
             for addr, cable, asic in address:
-                communication.write_reg(addr, cable, asic,
-                                        PasttrecDefaults.c_bl_reg[c], blv)
+                communication.write_reg(addr, cable, asic, 4+c, blv)
 
-            chan = calc_channel(cable, asic, c)
-
-            sleep(0.1)
             v1 = read_rm_scalers(def_broadcast_addr)
             sleep(def_time)
             v2 = read_rm_scalers(def_broadcast_addr)
@@ -72,21 +68,16 @@ def scan_baseline_single(address):
 
             # get addressess
             for addr, cable, asic in address:
-                _c = PasttrecDefaults.c_cable[cable]
-                _a = PasttrecDefaults.c_asic[asic]
-
                 chan = calc_channel(cable, asic, c)
-
-                bbb.add_trb(addr)
 
                 vv = bb.scalers[addr][chan]
                 if vv < 0:
                     vv += 0x80000000
 
+                bbb.add_trb(addr)
                 bbb.baselines[addr][cable][asic][c][blv] = vv
 
-                communication.write_reg(addr, cable, asic,
-                                        PasttrecDefaults.c_bl_reg[c], 0x00)
+                communication.write_reg(addr, cable, asic, 4+c, 0x00)
 
         print("  done")
 
@@ -99,19 +90,20 @@ def scan_baseline_multi(address):
     print("  address   channel   bl 0                                31")
     print("                         |--------------------------------|")
     print("  {:s}    {:s}           "
-          .format(hex(0xfe4f), 'all'), end='', flush=True)
+          .format(hex(def_broadcast_addr), 'all'), end='', flush=True)
 
     # loop over bl register value
     for blv in range(def_pastrec_bl_range[0], def_pastrec_bl_range[1]):
         print("#", end='', flush=True)
 
-        # loop over channels
-        for c in list(range(def_pastrec_channel_range)):
+        # get addressess
+        for addr, cable, asic in address:
+            blv_data = []
+            # loop over channels
+            for c in list(range(def_pastrec_channel_range)):
+                blv_data.append(PasttrecDefaults.c_bl_reg[c] | blv)
 
-            # get addressess
-            for addr, cable, asic in address:
-                communication.write_reg(addr, cable, asic,
-                                        PasttrecDefaults.c_bl_reg[c], blv)
+            communication.write_data(addr, cable, asic, blv_data)
 
         v1 = read_rm_scalers(def_broadcast_addr)
         sleep(def_time)
@@ -122,26 +114,21 @@ def scan_baseline_multi(address):
 
         # reset base line
         # loop over channels
-        for c in list(range(def_pastrec_channel_range)):
-            for addr, cable, asic in address:
-                _c = PasttrecDefaults.c_cable[cable]
-                _a = PasttrecDefaults.c_asic[asic]
-
-                b = PasttrecDefaults.c_base_w | _c | _a
-                v = b | PasttrecDefaults.c_bl_reg[c] | blv
+        for addr, cable, asic in address:
+            blv_data = []
+            for c in list(range(def_pastrec_channel_range)):
+                blv_data.append(PasttrecDefaults.c_bl_reg[c])
 
                 chan = calc_channel(cable, asic, c)
-
-                bbb.add_trb(addr)
 
                 vv = bb.scalers[addr][chan]
                 if vv < 0:
                     vv += 0x80000000
 
+                bbb.add_trb(addr)
                 bbb.baselines[addr][cable][asic][c][blv] = vv
 
-                communication.write_reg(addr, cable, asic,
-                                        PasttrecDefaults.c_bl_reg[c], 0x00)
+            communication.write_data(addr, cable, asic, blv_data)
 
     print("  done")
 

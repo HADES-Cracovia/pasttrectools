@@ -37,7 +37,7 @@ def_max_bl_registers = 32
 
 # registers and values
 # trbnet
-def_broadcast_addr = 0xfe4f
+def_broadcast_addr = 0xfe4c
 def_scalers_reg = 0xc001
 def_scalers_len = 0x21
 
@@ -63,7 +63,7 @@ def scan_threshold(address):
           "--------------------------------------------------------------"
           "------------------------------|")
     print("  {:s}    {:s}           "
-          .format(hex(0xfe4f), 'all'), end='', flush=True)
+          .format(hex(def_broadcast_addr), 'all'), end='', flush=True)
 
     # loop over bl register value
     for vth in range(def_pastrec_thresh_range[0], def_threshold_max):
