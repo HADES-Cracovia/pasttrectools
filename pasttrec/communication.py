@@ -215,12 +215,6 @@ def write_data(trbid, cable, asic, data):
     spi_write(trbid, cable, asic, v)
 
 
-#def read_data(trbid, cable, asic):
-    #_c = PasttrecDefaults.c_cable[cable]
-    #_a = PasttrecDefaults.c_asic[asic]
-    #return spi_read(trbid, cable, asic)
-
-
 """ Safe commands are etsting for trbnet librray and choose between
     the librray or the shell. """
 
@@ -376,6 +370,7 @@ def spi_prepare(trbid, cable, asic):
     # override: disable all SDO and SCK lines
     # trbcmd w $trbid 0xd415 0xFFFF
     # trbcmd w $trbid 0xd416 0xFFFF
+
 
 def spi_reset(trbid, cable, asic):
     # bring all CS (reset lines) in the default state (1) - upper four nibbles:
