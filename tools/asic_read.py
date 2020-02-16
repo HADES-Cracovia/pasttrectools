@@ -36,17 +36,17 @@ def_time = 0.01
 
 def read_asic(address):
 
-    print("   TDC  Cable  Asic   Reg   Value")
-
+    print("   TDC  Cable  Asic   Reg# " + Fore.YELLOW, end='', flush=True)
+    for reg in range(12):
+        print("    {:2d}".format(reg), end='', flush=True)
+    print(Style.RESET_ALL)
     for addr, cable, asic in address:
-        print(Fore.YELLOW + "{:s}  {:5d}  {:4d}"
+        print(Fore.YELLOW + "{:s}  {:5d}  {:4d}        "
               .format(addr, cable, asic) + Style.RESET_ALL, end='', flush=True)
 
         asic_test_ok = True
 
         for reg in range(12):
-            if reg > 0:
-                print("                   ", end='', flush=True)
 
             rc = communication.read_reg(addr, cable, asic, reg)
             try:
@@ -58,11 +58,20 @@ def read_asic(address):
                 _t = 0xdeadbeef
 
             if _t == 0xdeadbeef:
-                print(Fore.RED + " Read failed for register {:d}"
-                      .format(reg) + Style.RESET_ALL, end='')
-                print("  Received {:d}".format(_t))
+                print(Fore.RED + " Read failed for register {:s}"
+                      .format(hex(reg)) + Style.RESET_ALL, end='')
+                print("  Received {:s}".format(hex(_t)))
             else:
-                print("   {:3d}   {:5d}".format(reg, _t))
+                if reg == 0:
+                    print(Fore.MAGENTA, end='', flush=True)
+                if reg == 3:
+                    print(Fore.CYAN, end='', flush=True)
+                if reg == 4:
+                    print(Fore.GREEN, end='', flush=True)
+
+                print("  {:#0{}x}".format(_t, 4), end='', flush=True)
+
+        print(Style.RESET_ALL)
 
     return None
 
