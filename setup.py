@@ -32,8 +32,9 @@ else:
         license='MIT',
         packages=['pasttrec'],
         scripts=[
+            'tools/baseline_calc.py',
+            'tools/baseline_merge.py',
             'tools/baseline_scan.py',
-            'tools/calc_baselines.py',
             'tools/draw_baseline_scan.py',
             'tools/threshold_scan.py',
             'tools/dump_threshold_scan.py',
@@ -42,7 +43,6 @@ else:
             'tools/asic_reset.py',
             'tools/asic_threshold.py',
             'tools/pasttrec_write_and_verify.py',
-            'tools/baseline_merge.py',
             ],
         install_requires=[
             'colorama',

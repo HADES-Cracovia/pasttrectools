@@ -64,7 +64,6 @@ if __name__ == "__main__":
     parser.add_argument('-g', '--gain', help='gain: 0-3 (overwrites value'
                         ' from input file)', type=lambda x: int(x, 0))
 
-
     args = parser.parse_args()
 
     communication.g_verbose = args.verbose
@@ -78,9 +77,11 @@ if __name__ == "__main__":
     dump_file = None
     if args.dump:
         dump_file = open(args.dump, 'w')
+        communication.cmd_to_file = dump_file
 
     if args.Dump:
         dump_file = open(args.Dump, 'w')
+        communication.cmd_to_file = dump_file
 
     out_file = None
     if args.output:
@@ -164,44 +165,16 @@ if __name__ == "__main__":
                 card.set_asic(a, copy.deepcopy(p))
 
                 if args.dump:
-                    regs = p.dump_bl_hex(c, a)
-                    for r in regs:
-                        dump_file.write("trbcmd w {:s} {:s} {:s}\n"
-                                        .format(k, hex(PasttrecRegs.c_trbnet_reg), r))
-
-                        if args.verbose >= 1:
-                            print("trbcmd w {:s} {:s} {:s}"
-                                  .format(k, hex(PasttrecRegs.c_trbnet_reg), r))
+                    regs = p.dump_config()[4:0]
+                    communication.write_chunk(k, c, a, regs)
 
                 if args.Dump:
-                    regs = p.dump_config_hex(c, a)
-                    for r in regs:
-                        dump_file.write("trbcmd w {:s} {:s} {:s}\n"
-                                        .format(k, hex(PasttrecRegs.c_trbnet_reg), r))
-
-                        if args.verbose >= 1:
-                            print("trbcmd w {:s} {:s} {:s}"
-                                  .format(k, hex(PasttrecRegs.c_trbnet_reg), r))
+                    regs = p.dump_config()
+                    communication.write_chunk(k, c, a, regs)
 
             t.set_card(c, card)
 
         tlist.append(t)
-
-        # *** printing
-
-        #print(Fore.YELLOW + "{:s}".format(k) + Style.RESET_ALL)
-
-        #for c in [0,1,2]:
-            #for a in [0,1]:
-                #print(Fore.YELLOW + "  CARD: {:d} ASIC: {:d}".format(k, c, a))
-        #print("-----------------------------------------------------------------------------------------------------------------------")
-        #print(Style.RESET_ALL)
-
-        #for ch in list(range(8)):
-            #for c in [0,1,2]:
-                #for a in [0,1]:
-
-        # *** end printing
 
     if dump_file:
         dump_file.close()

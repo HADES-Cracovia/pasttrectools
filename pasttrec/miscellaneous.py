@@ -155,3 +155,8 @@ def calc_address(channel):
                       / def_pastrec_channel_range)
     c = channel % def_pastrec_channel_range
     return cable, asic, c
+
+
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    return [lst[i:i + n] for i in range(0, len(lst), n)]

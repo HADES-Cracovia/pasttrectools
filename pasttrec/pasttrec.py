@@ -48,27 +48,26 @@ class PasttrecRegs(PasttrecDefaults):
             setattr(p, k, v)
         return p
 
-    def dump_config(self, cable, asic):
+    def dump_config(self):
         r_all = [0] * 12
-        offset = self.c_base_w | self.c_cable[cable] | self.c_asic[asic]
         t = (self.bg_int << 4) | (self.gain << 2) | self.peaking
-        r_all[0] = offset | self.c_config_reg[0] | t
+        r_all[0] = self.c_config_reg[0] | t
         t = (self.tc1c << 3) | self.tc1r
-        r_all[1] = offset | self.c_config_reg[1] | t
+        r_all[1] = self.c_config_reg[1] | t
         t = (self.tc2c << 3) | self.tc2r
-        r_all[2] = offset | self.c_config_reg[2] | t
-        r_all[3] = offset | self.c_config_reg[3] | self.vth
+        r_all[2] = self.c_config_reg[2] | t
+        r_all[3] = self.c_config_reg[3] | self.vth
 
         for i in range(8):
-            r_all[4+i] = offset | self.c_bl_reg[i] | self.bl[i]
+            r_all[4+i] = self.c_bl_reg[i] | self.bl[i]
 
         return r_all
 
-    def dump_config_hex(self, cable, asic):
-        return [hex(i) for i in self.dump_config(cable, asic)]
+    def dump_config_hex(self):
+        return [hex(i) for i in self.dump_config()]
 
-    def dump_bl_hex(self, cable, asic):
-        return [hex(i) for i in self.dump_config(cable, asic)[4:]]
+    def dump_bl_hex(self):
+        return [hex(i) for i in self.dump_config()[4:]]
 
 
 class PasttrecCard():

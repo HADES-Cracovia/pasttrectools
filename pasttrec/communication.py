@@ -52,6 +52,8 @@ def_pastrec_channel_range = 8
 def_pastrec_channels_all = def_pastrec_channel_range * \
     len(PasttrecDefaults.c_asic) * len(PasttrecDefaults.c_cable)
 
+cmd_to_file = None  # if set to file, redirect output to this file
+
 
 def decode_address_entry(string):
     """Converts address into [ trbnet, cable, cable, asic ] tuples
@@ -215,6 +217,18 @@ def write_data(trbid, cable, asic, data):
     spi_write(trbid, cable, asic, v)
 
 
+def write_chunk(trbid, cable, asic, data):
+    _c = PasttrecDefaults.c_cable[cable]
+    _a = PasttrecDefaults.c_asic[asic]
+    _b = PasttrecDefaults.c_base_w | _c | _a
+
+    if isinstance(data, list):
+        v = [_b | x for x in data]
+    else:
+        v = _b | data
+    spi_write_chunk(trbid, cable, asic, v)
+
+
 """ Safe commands are etsting for trbnet librray and choose between
     the librray or the shell. """
 
@@ -225,7 +239,7 @@ def safe_command_w(trbid, reg, data):
     else:
         _trbid = trbid
 
-    if trbnet_available:
+    if trbnet_available and cmd_to_file is not None:
         return trbnet_command_w(_trbid, reg, data)
     else:
         return shell_command_w(_trbid, reg, data)
@@ -237,7 +251,7 @@ def safe_command_r(trbid, reg):
     else:
         _trbid = trbid
 
-    if trbnet_available:
+    if trbnet_available and cmd_to_file is not None:
         return trbnet_command_r(_trbid, reg)
     else:
         return shell_command_r(_trbid, reg)
@@ -249,7 +263,7 @@ def safe_command_rm(trbid, reg, length):
     else:
         _trbid = trbid
 
-    if trbnet_available:
+    if trbnet_available and cmd_to_file is not None:
         return trbnet_command_rm(_trbid, reg, length)
     else:
         return shell_command_rm(_trbid, reg, length)
@@ -260,6 +274,11 @@ def safe_command_rm(trbid, reg, length):
 
 def shell_command_w(trbid, reg, data):
     cmd = ['trbcmd', 'w', trbid, hex(reg), hex(data)]
+
+    if cmd_to_file is not None:
+        cmd_to_file.write(' '.join(cmd) + '\n')
+        return True
+
     rc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     print_verbose(rc)
     return rc.stdout.decode()
@@ -267,6 +286,11 @@ def shell_command_w(trbid, reg, data):
 
 def shell_command_r(trbid, reg):
     cmd = ['trbcmd', 'r', trbid, hex(reg)]
+
+    if cmd_to_file is not None:
+        cmd_to_file.write(' '.join(cmd) + '\n')
+        return True
+
     rc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     print_verbose(rc)
     return rc.stdout.decode()
@@ -274,6 +298,11 @@ def shell_command_r(trbid, reg):
 
 def shell_command_rm(trbid, reg, length):
     cmd = ['trbcmd', 'rm', trbid, hex(reg), str(length), '0']
+
+    if cmd_to_file is not None:
+        cmd_to_file.write(' '.join(cmd) + '\n')
+        return True
+
     rc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     print_verbose(rc)
     return rc.stdout.decode()
@@ -306,11 +335,10 @@ def trbnet_command_rm(trbid, reg, length):
 spi_queue = 0
 spi_mem = {}
 
-
 """ Based on GSI code from M. Wiebusch """
 
 
-def spi_write(trbid, cable, asic, data):
+def spi_fill_buffer(trbid, cable, asic, data):
     if trbid not in spi_mem:
         spi_mem[trbid] = {}
     if cable not in spi_mem[trbid]:
@@ -318,17 +346,17 @@ def spi_write(trbid, cable, asic, data):
     if asic not in spi_mem[trbid][cable]:
         spi_mem[trbid][cable][asic] = []
 
-    if spi_queue:
-        if isinstance(data, list):
-            spi_mem[trbid][cable][asic] += data
-        else:
-            spi_mem[trbid][cable][asic] += [data]
-
+    if isinstance(data, list):
+        spi_mem[trbid][cable][asic] += data
     else:
-        if isinstance(data, list):
-            my_data_list = spi_mem[trbid][cable][asic] + data
-        else:
-            my_data_list = spi_mem[trbid][cable][asic] + [data]
+        spi_mem[trbid][cable][asic] += [data]
+
+
+def spi_write(trbid, cable, asic, data):
+    spi_fill_buffer(trbid, cable, asic, data)
+
+    if not spi_queue:
+        my_data_list = spi_mem[trbid][cable][asic]
 
         spi_mem[trbid][cable][asic].clear()  # empty queue
 
@@ -340,6 +368,27 @@ def spi_write(trbid, cable, asic, data):
             safe_command_w(trbid, 0xd400, data)
             # write 1 to length register to trigger sending
             safe_command_w(trbid, 0xd411, 0x0001)
+
+
+def spi_write_chunk(trbid, cable, asic, data):
+    spi_fill_buffer(trbid, cable, asic, data)
+
+    if not spi_queue:
+        my_data_list = spi_mem[trbid][cable][asic].copy()
+
+        spi_mem[trbid][cable][asic].clear()  # empty queue
+
+        spi_prepare(trbid, cable, asic)
+        for d in miscellaneous.chunks(my_data_list, 16):
+            i = 0
+            for val in d:
+                # writing one data word, append zero to the data word, the chip
+                # will get some more SCK clock cycles
+                safe_command_w(trbid, 0xd400 + i, val)
+                i = i + 1
+
+            # write  length register to trigger sending
+            safe_command_w(trbid, 0xd411, len(d))
 
 
 def spi_read(trbid, cable, asic, data):
