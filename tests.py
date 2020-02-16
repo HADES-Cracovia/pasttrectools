@@ -3,14 +3,16 @@
 import json
 import os
 import unittest
-
 import baseline
+
 from pasttrec import *
 
 import tempfile
 
+
 class TestPasstreRegs(unittest.TestCase):
     pass
+
 
 class TestTdc(unittest.TestCase):
 
@@ -29,7 +31,7 @@ class TestTdc(unittest.TestCase):
     c2 = PasttrecCard('C003', p12, p13)
 
     t0 = TdcConnection(0x6400, c0, None, c1)
-    t1 = TdcConnection(0x6401, None, c2, None )
+    t1 = TdcConnection(0x6401, None, c2, None)
 
     def test_creation(self):
         self.assertEqual("0x6400", self.t0.id)
@@ -72,6 +74,7 @@ class TestTdc(unittest.TestCase):
         self.assertEqual(res, dc)
 
         os.remove(tf.name)
+
 
 if __name__ == '__main__':
     unittest.main()

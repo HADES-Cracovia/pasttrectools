@@ -9,8 +9,8 @@
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
 #
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
 #
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -52,8 +52,12 @@ class Baselines:
 
     def add_trb(self, trb):
         if trb not in self.baselines:
-            w, h, a, c = def_max_bl_registers, def_pastrec_channel_range, len(PasttrecDefaults.c_asic), len(PasttrecDefaults.c_cable)
-            self.baselines[trb] = [[[[0 for x in range(w)] for y in range(h)] for _a in range(a)] for _c in range(c)]
+            w = def_max_bl_registers
+            h = def_pastrec_channel_range,
+            a = len(PasttrecDefaults.c_asic),
+            c = len(PasttrecDefaults.c_cable)
+            self.baselines[trb] = [[[[0 for x in range(w)] for y in range(h)]
+                                    for _a in range(a)] for _c in range(c)]
 
 
 class Scalers:
@@ -137,6 +141,7 @@ def parse_r_scalers(res):
 
     return r
 
+
 def calc_channel(cable, asic, channel):
     return channel + def_pastrec_channel_range * asic + \
         def_pastrec_channel_range * len(PasttrecDefaults.c_asic)*cable
@@ -147,6 +152,6 @@ def calc_address(channel):
                        / (def_pastrec_channel_range*len(def_pastrec_asic)))
     asic = math.floor((channel
                        - cable*def_pastrec_channel_range*len(def_pastrec_asic))
-                       / def_pastrec_channel_range)
+                      / def_pastrec_channel_range)
     c = channel % def_pastrec_channel_range
     return cable, asic, c

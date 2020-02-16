@@ -34,6 +34,7 @@ from pasttrec import *
 def_time = 0.0
 def_quick = False
 
+
 def scan_communication(address):
 
     print("   TDC  Cable  Asic  >--------------------------------------------"
