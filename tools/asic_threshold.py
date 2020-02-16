@@ -59,7 +59,7 @@ if __name__ == "__main__":
 
     communication.g_verbose = args.verbose
 
-    if def_verbose > 0:
+    if communication.g_verbose > 0:
         print(args)
 
     if args.threshold > def_pastrec_thresh_range[1] \

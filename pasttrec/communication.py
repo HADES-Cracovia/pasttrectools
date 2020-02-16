@@ -273,7 +273,7 @@ def shell_command_r(trbid, reg):
 
 
 def shell_command_rm(trbid, reg, length):
-    cmd = ['trbcmd', 'rm', trbid, hex(reg), length, '0']
+    cmd = ['trbcmd', 'rm', trbid, hex(reg), str(length), '0']
     rc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     print_verbose(rc)
     return rc.stdout.decode()
