@@ -156,12 +156,10 @@ def reset_asic(address, verbose=False):
         a = address
 
     for addr, cable, asic in a:
-        d = PasttrecRegs.reset_asic(cable, asic)
-
         print(
-            Fore.YELLOW + "Reseting {:s} cable {:d} asic {:d} with data {:s}"
-                .format(addr, cable, asic, hex(d)) + Style.RESET_ALL)
-        write_data(addr, cable, asic, d)
+            Fore.YELLOW + "Reseting {:s} cable {:d} asic {:d}"
+                .format(addr, cable, asic) + Style.RESET_ALL)
+        spi_reset(addr, cable, asic)
 
 
 def asics_to_defaults(address, def_pasttrec):
@@ -378,3 +376,18 @@ def spi_prepare(trbid, cable, asic):
     # override: disable all SDO and SCK lines
     # trbcmd w $trbid 0xd415 0xFFFF
     # trbcmd w $trbid 0xd416 0xFFFF
+
+def spi_reset(trbid, cable, asic):
+    # bring all CS (reset lines) in the default state (1) - upper four nibbles:
+    # invert CS, lower four nibbles: disable CS
+    safe_command_w(trbid, 0xd417, 0x0000FFFF)
+    # and bring down selected bit
+    safe_command_w(trbid, 0xd417, 0xFFFFFFFF & (0x10000 << cable))
+
+    # generate 25 clock cycles
+    for c in range(25):
+        safe_command_w(trbid, 0xd416, 0xFFFF0000 & (0x10000 << cable))
+        safe_command_w(trbid, 0xd416, 0x00000000)
+
+    # restore default CS
+    safe_command_w(trbid, 0xd417, 0x0000FFFF)
