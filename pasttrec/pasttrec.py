@@ -238,8 +238,8 @@ class Baselines:
     def add_trb(self, trb):
         if trb not in self.baselines:
             w = def_max_bl_registers
-            h = def_pastrec_channel_range,
-            a = len(PasttrecDefaults.c_asic),
+            h = def_pastrec_channel_range
+            a = len(PasttrecDefaults.c_asic)
             c = len(PasttrecDefaults.c_cable)
             self.baselines[trb] = [[[[0 for x in range(w)] for y in range(h)]
                                     for _a in range(a)] for _c in range(c)]
