@@ -32,14 +32,20 @@ from colorama import Fore, Style
 from pasttrec import *
 
 def_time = 0.0
-
+def_quick = False
 
 def scan_communication(address):
 
     print("   TDC  Cable  Asic  >--------------------------------------------"
           "--------------<")
 
-    reg_test_vals = [1, 4, 7, 10, 13]
+    if def_quick is True:
+        reg_range = [3]
+        reg_test_vals = [0x5a]
+    else:
+        reg_range = range(12)
+        reg_test_vals = [1, 4, 7, 10, 13]
+
     test_ok = True
     for addr, cable, asic in address:
         print(Fore.YELLOW + "{:s}  {:5d} {:5d}  "
@@ -47,7 +53,7 @@ def scan_communication(address):
 
         asic_test_ok = True
 
-        for reg in range(12):
+        for reg in reg_range:
             reg_test_ok = True
 
             for t in reg_test_vals:
@@ -80,8 +86,9 @@ def scan_communication(address):
 
     if test_ok:
         print("All test done and OK")
+        return True
 
-    return None
+    return False
 
 
 if __name__ == "__main__":
@@ -94,6 +101,8 @@ if __name__ == "__main__":
                         ' addres[:card-0-1-2[:asic-0-1]]',
                         type=str, nargs="+")
 
+    parser.add_argument('-q', '--quick', help='quick test',
+                        action='store_true')
     parser.add_argument('-t', '--time',
                         help='sleep time', type=float, default=def_time)
     parser.add_argument('-v', '--verbose',
@@ -103,11 +112,13 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     communication.g_verbose = args.verbose
-    def_time = args.time
-
     if communication.g_verbose > 0:
         print(args)
+
+    def_time = args.time
+    def_quick = args.quick
 
     tup = communication.decode_address(args.trbids)
     a = args.trbids
     r = scan_communication(tup)
+    sys.exit(r)
