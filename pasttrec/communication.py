@@ -364,8 +364,7 @@ def spi_write(trbid, cable, asic, data):
     spi_fill_buffer(trbid, cable, asic, data)
 
     if not spi_queue:
-        my_data_list = spi_mem[trbid][cable][asic]
-
+        my_data_list = spi_mem[trbid][cable][asic].copy()
         spi_mem[trbid][cable][asic].clear()  # empty queue
 
         spi_prepare(trbid, cable, asic)
@@ -383,10 +382,10 @@ def spi_write_chunk(trbid, cable, asic, data):
 
     if not spi_queue:
         my_data_list = spi_mem[trbid][cable][asic].copy()
-
         spi_mem[trbid][cable][asic].clear()  # empty queue
 
         spi_prepare(trbid, cable, asic)
+
         for d in miscellaneous.chunks(my_data_list, 16):
             i = 0
             for val in d:
