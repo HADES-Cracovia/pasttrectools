@@ -157,7 +157,15 @@ def reset_asic(address, verbose=False):
     else:
         a = address
 
+    _addr = None
+    _cable = None
     for addr, cable, asic in a:
+        if addr == _addr and cable == _cable:
+            continue
+
+        _addr = addr
+        _cable = cable
+
         print(
             Fore.YELLOW + "Reseting {:s} cable {:d}"
                 .format(addr, cable) + Style.RESET_ALL)
