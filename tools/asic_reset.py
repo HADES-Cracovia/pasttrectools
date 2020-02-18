@@ -44,7 +44,7 @@ if __name__ == "__main__":
                         type=str, nargs="+")
 
     parser.add_argument('-t', '--time', help='sleep time',
-                        type=int, default=def_time)
+                        type=float, default=def_time)
     parser.add_argument('-v', '--verbose', help='verbose level: 0, 1, 2, 3',
                         type=int, choices=[0, 1, 2, 3], default=0)
 

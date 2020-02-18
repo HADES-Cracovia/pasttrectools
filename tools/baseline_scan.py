@@ -147,7 +147,7 @@ if __name__ == "__main__":
                         ' addres[:card-0-1-2[:asic-0-1]]', type=str, nargs="+")
 
     parser.add_argument('-t', '--time', help='sleep time',
-                        type=int, default=def_time)
+                        type=float, default=def_time)
     parser.add_argument('-o', '--output', help='output file',
                         type=str, default='result.json')
     parser.add_argument('-s', '--scan', help='scan type: singel-low/high:'
