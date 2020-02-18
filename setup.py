@@ -41,6 +41,7 @@ else:
             'tools/communication_test.py',
             'tools/asic_read.py',
             'tools/asic_reset.py',
+            'tools/asic_set_reg.py',
             'tools/asic_threshold.py',
             'tools/pasttrec_write_and_verify.py',
             ],
