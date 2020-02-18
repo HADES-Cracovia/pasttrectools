@@ -51,6 +51,7 @@ if __name__ == "__main__":
                        help='trbcmd dump file, bl regs only', type=str)
     group.add_argument('-D', '--Dump',
                        help='trbcmd dump file, all regs', type=str)
+    parser.add_argument('-e', '--exec', help='execute', action='store_true')
 
     parser.add_argument('-v', '--verbose', help='verbose level: 0, 1, 2, 3',
                         type=int, choices=[0, 1, 2, 3], default=0)
@@ -77,11 +78,9 @@ if __name__ == "__main__":
     dump_file = None
     if args.dump:
         dump_file = open(args.dump, 'w')
-        communication.cmd_to_file = dump_file
 
     if args.Dump:
         dump_file = open(args.Dump, 'w')
-        communication.cmd_to_file = dump_file
 
     out_file = None
     if args.output:
@@ -166,9 +165,17 @@ if __name__ == "__main__":
 
                 if args.dump:
                     regs = p.dump_config()[4:]
+                    communication.cmd_to_file = dump_file
                     communication.write_chunk(k, c, a, regs)
+                    communication.cmd_to_file = None
 
                 if args.Dump:
+                    regs = p.dump_config()
+                    communication.cmd_to_file = dump_file
+                    communication.write_chunk(k, c, a, regs)
+                    communication.cmd_to_file = None
+
+                if args.exec:
                     regs = p.dump_config()
                     communication.write_chunk(k, c, a, regs)
 
