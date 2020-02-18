@@ -253,6 +253,18 @@ def safe_command_w(trbid, reg, data):
         return shell_command_w(_trbid, reg, data)
 
 
+def safe_command_wm(trbid, reg, data, mode):
+    if isinstance(trbid, int):
+        _trbid = hex(trbid)
+    else:
+        _trbid = trbid
+
+    if trbnet_available and cmd_to_file is not None:
+        return trbnet_command_wm(_trbid, reg, data, mode)
+    else:
+        return shell_command_wm(_trbid, reg, data, mode)
+
+
 def safe_command_r(trbid, reg):
     if isinstance(trbid, int):
         _trbid = hex(trbid)
@@ -288,6 +300,22 @@ def shell_command_w(trbid, reg, data):
         return True
 
     rc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    print_verbose(rc)
+    return rc.stdout.decode()
+
+
+def shell_command_wm(trbid, reg, data, mode):
+    if cmd_to_file is not None:
+        cmd = ['trbcmd', 'wm', trbid, hex(reg), str(mode), '- << EOF']
+        cmd_to_file.write(' '.join(cmd) + '\n')
+        for d in data:
+            cmd_to_file.write(hex(d) + '\n')
+        cmd_to_file.write('EOF\n')
+        return True
+
+    cmd = ['trbcmd', 'wm', trbid, hex(reg), str(mode), '-']
+    _data = "\n".join([hex(x) for x in data])
+    rc = subprocess.run(cmd, input=_data.encode('utf-8'), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     print_verbose(rc)
     return rc.stdout.decode()
 
@@ -388,11 +416,12 @@ def spi_write_chunk(trbid, cable, asic, data):
 
         for d in miscellaneous.chunks(my_data_list, 16):
             i = 0
-            for val in d:
+            safe_command_wm(trbid, 0xd400, my_data_list, 0)
+            #for val in d:
                 # writing one data word, append zero to the data word, the chip
                 # will get some more SCK clock cycles
-                safe_command_w(trbid, 0xd400 + i, val)
-                i = i + 1
+                #safe_command_w(trbid, 0xd400 + i, val)
+                #i = i + 1
 
             # write  length register to trigger sending
             safe_command_w(trbid, 0xd411, len(d))
