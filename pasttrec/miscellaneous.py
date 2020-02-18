@@ -44,6 +44,7 @@ def_pastrec_channels_all = def_pastrec_channel_range * \
 
 
 class Baselines:
+    """Holds baseline info for given card"""
     baselines = None
     config = None
 
@@ -102,27 +103,27 @@ class Thresholds:
 
 
 def parse_rm_scalers(res):
-    sm = 0  # state machine: 0 - init, 1 - data
     s = Scalers()
-    a = 0   # address
+    a = None   # address
     c = 0   # channel
     lines = res.splitlines()
     for l in lines:
-        ll = l.split()
-        n = len(ll)
+        parts = l.split()
+        n = len(parts)
 
-        if n == 2:
-            if sm == 1:
-                c = int(ll[0], 16) - def_scalers_reg
-                if c > def_pastrec_channels_all:
-                    continue
-                s.scalers[a][c] = int(ll[1], 16)
-            else:
-                continue
         if n == 3:
-            a = hex(int(ll[1], 16))
+            a = hex(int(parts[1], 16))
             s.add_trb(a)
             sm = 1
+
+        if n == 2:
+            if a is not None:
+                c = int(parts[0], 16) - def_scalers_reg
+                if c > def_pastrec_channels_all:
+                    continue
+                s.scalers[a][c] = int(parts[1], 16)
+            else:
+                continue
 
     return s
 
@@ -131,12 +132,12 @@ def parse_r_scalers(res):
     r = {}
     lines = res.splitlines()
     for l in lines:
-        ll = l.split()
-        n = len(ll)
+        parts = l.split()
+        n = len(parts)
 
         if n == 2:
-            a = int(ll[0], 16)
-            n = int(ll[1], 16)
+            a = int(parts[0], 16)
+            n = int(parts[1], 16)
             r[hex(a)] = n
 
     return r

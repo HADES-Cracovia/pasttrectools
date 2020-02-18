@@ -165,7 +165,7 @@ if __name__ == "__main__":
                 card.set_asic(a, copy.deepcopy(p))
 
                 if args.dump:
-                    regs = p.dump_config()[4:0]
+                    regs = p.dump_config()[4:]
                     communication.write_chunk(k, c, a, regs)
 
                 if args.Dump:
