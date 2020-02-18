@@ -34,11 +34,11 @@ from pasttrec import *
 def_time = 1
 
 def_broadcast_addr = 0xfe4c
-def_max_bl_registers = 32
+def_max_bl_register_steps = 32
 def_pastrec_thresh_range = [0x00, 0x7f]
 def_pastrec_channel_range = 8
 def_pastrec_bl_base = 0x00000
-def_pastrec_bl_range = [0x00, def_max_bl_registers]
+def_pastrec_bl_range = [0x00, def_max_bl_register_steps]
 
 
 def scan_baseline_single(address):
@@ -77,7 +77,8 @@ def scan_baseline_single(address):
                 bbb.add_trb(addr)
                 bbb.baselines[addr][cable][asic][c][blv] = vv
 
-                communication.write_reg(addr, cable, asic, 4+c, 0x00)
+                # See comment in scan_baseline_multi()
+                # communication.write_reg(addr, cable, asic, 4+c, 0x00)
 
         print("  done")
 
@@ -103,7 +104,7 @@ def scan_baseline_multi(address):
             for c in list(range(def_pastrec_channel_range)):
                 blv_data.append(PasttrecDefaults.c_bl_reg[c] | blv)
 
-            communication.write_data(addr, cable, asic, blv_data)
+            communication.write_chunk(addr, cable, asic, blv_data)
 
         v1 = read_rm_scalers(def_broadcast_addr)
         sleep(def_time)
@@ -128,7 +129,9 @@ def scan_baseline_multi(address):
                 bbb.add_trb(addr)
                 bbb.baselines[addr][cable][asic][c][blv] = vv
 
-            communication.write_data(addr, cable, asic, blv_data)
+            # This line kills baseline scan for the reg #16 (last of 2nd asic
+            # but dunno why. Why writing zero kills it?
+            # communication.write_chunk(addr, cable, asic, blv_data)
 
     print("  done")
 
