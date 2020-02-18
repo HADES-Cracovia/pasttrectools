@@ -174,14 +174,14 @@ def reset_asic(address, verbose=False):
 
 def asics_to_defaults(address, def_pasttrec):
     """Set asics to defaults from config."""
+    d = def_pasttrec.dump_config()
     for addr, cable, asic in address:
-        d = def_pasttrec.dump_config(cable, asic)
         write_data(addr, cable, asic, d)
 
 
 def asic_to_defaults(address, cable, asic, def_pasttrec):
     """Set asics to defaults from config."""
-    write_data(addres, cable, asic, d)
+    write_data(address, cable, asic, d)
 
 
 def read_rm_scalers(address):
