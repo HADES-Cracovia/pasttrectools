@@ -122,7 +122,7 @@ if __name__ == "__main__":
                         type=lambda x: int(x, 0), nargs='+')
 
     parser.add_argument('-t', '--time', help='sleep time',
-                        type=int, default=def_time)
+                        type=float, default=def_time)
     parser.add_argument('-o', '--output', help='output file',
                         type=str, default='result.json')
     parser.add_argument('-v', '--verbose', help='verbose level: 0, 1, 2, 3',
