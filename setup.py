@@ -44,6 +44,7 @@ else:
             'tools/asic_set_reg.py',
             'tools/asic_threshold.py',
             'tools/pasttrec_write_and_verify.py',
+            'tools/scalers_scan.py',
             ],
         install_requires=[
             'colorama',
