@@ -121,7 +121,10 @@ def parse_rm_scalers(res):
                 c = int(parts[0], 16) - def_scalers_reg
                 if c > def_pastrec_channels_all:
                     continue
-                s.scalers[a][c] = int(parts[1], 16)
+                val = int(parts[1], 16)
+                if val >= 0x80000000:
+                    val -= 0x80000000
+                s.scalers[a][c] = val
             else:
                 continue
 
