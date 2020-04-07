@@ -141,6 +141,8 @@ def parse_r_scalers(res):
         if n == 2:
             a = int(parts[0], 16)
             n = int(parts[1], 16)
+            if n >= 0x80000000:
+                n -= 0x80000000
             r[hex(a)] = n
 
     return r
