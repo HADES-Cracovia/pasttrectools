@@ -185,7 +185,10 @@ def parse_rm_scalers(res):
                 c = int(ll[0], 16) - def_scalers_reg
                 if c > def_pastrec_channels_all:
                     continue
-                s.scalers[a][c] = int(ll[1], 16)
+                val = int(ll[1], 16)
+                if ll >= 0x80000000:
+                    ll -= 0x80000000
+                s.scalers[a][c] = ll
             else:
                 continue
         if n == 3:
@@ -211,6 +214,8 @@ def parse_r_scalers(res):
         if n == 2:
             a = int(ll[0], 16)
             n = int(ll[1], 16)
+            if n >= 0x80000000:
+                n -= 0x80000000
             r[hex(a)] = n
 
     return r
