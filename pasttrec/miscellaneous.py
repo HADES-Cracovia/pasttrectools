@@ -33,13 +33,12 @@ from pasttrec import *
 # Custom settings
 
 # Baselines
-def_max_bl_registers = 32
+pasttrec_bl_reg_num = 32
 
 # Scalers
 def_scalers_reg = 0xc001
 
-def_pastrec_channel_range = 8
-def_pastrec_channels_all = def_pastrec_channel_range * \
+def_pastrec_channels_all = PasttrecDefaults.channels_num * \
     len(PasttrecDefaults.c_asic) * len(PasttrecDefaults.c_cable)
 
 
@@ -53,8 +52,8 @@ class Baselines:
 
     def add_trb(self, trb):
         if trb not in self.baselines:
-            w = def_max_bl_registers
-            h = def_pastrec_channel_range
+            w = pasttrec_bl_reg_num
+            h = PasttrecDefaults.channels_num
             a = len(PasttrecDefaults.c_asic)
             c = len(PasttrecDefaults.c_cable)
             self.baselines[trb] = [[[[0 for x in range(w)] for y in range(h)]
@@ -94,7 +93,7 @@ class Thresholds:
     def add_trb(self, trb):
         if trb not in self.thresholds:
             w = 128
-            h = def_pastrec_channel_range
+            h = PasttrecDefaults.channels_num
             a = len(PasttrecDefaults.c_asic)
             c = len(PasttrecDefaults.c_cable)
             self.thresholds[trb] = [
@@ -148,19 +147,26 @@ def parse_r_scalers(res):
     return r
 
 
-def calc_channel(cable, asic, channel):
-    return channel + def_pastrec_channel_range * asic + \
-        def_pastrec_channel_range * len(PasttrecDefaults.c_asic)*cable
+def calc_tdc_channel(cable, asic, channel, with_ref_time=False):
+    """Calculate address of cable and asic channel in tdc (0,48) or with
+    reference channel offset (1, 49).
+    """
+    return channel + PasttrecDefaults.channels_num * asic \
+        + PasttrecDefaults.channels_num * len(PasttrecDefaults.c_asic)*cable \
+        + (1 if with_ref_time is True else 0)
 
 
-def calc_address(channel):
-    cable = math.floor(channel
-                       / (def_pastrec_channel_range*len(def_pastrec_asic)))
-    asic = math.floor((channel
-                       - cable*def_pastrec_channel_range*len(def_pastrec_asic))
-                      / def_pastrec_channel_range)
-    c = channel % def_pastrec_channel_range
-    return cable, asic, c
+#def calc_address_from_tdc(channel, with_ref_time=False):
+    #"""Do reverse address calculation."""
+    #if with_ref_time:
+        #channel = channel-1
+    #cable = math.floor(
+        #channel / (PasttrecDefaults.channels_num*len(def_pastrec_asic)))
+    #asic = math.floor(
+        #(channel - cable*PasttrecDefaults.channels_num*len(def_pastrec_asic))
+        #/ PasttrecDefaults.channels_num)
+    #c = channel % PasttrecDefaults.channels_num
+    #return cable, asic, c
 
 
 def chunks(lst, n):

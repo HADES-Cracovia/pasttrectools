@@ -14,6 +14,9 @@ class PasttrecDefaults:
     c_base_w = 0x0050000
     c_base_r = 0x0051000
 
+    channels_num = 8
+    bl_register_size = 32
+
 
 class PasttrecRegs(PasttrecDefaults):
     bg_int = 1
@@ -181,21 +184,6 @@ def dump(tdcs):
     return d
 
 
-def dump_script(tdcs):
-    d = []
-    if isinstance(tdcs, list):
-        for t in tdcs:
-            k, v = t.export_script()
-            for _v in v:
-                d.append("trbcmd w {:s} 0xa000 {:s}".format(k, hex(_v)))
-    elif isinstance(tdcs, TdcConnection):
-        k, v = tdcs.export_script()
-        for _v in v:
-            d.append("trbcmd w {:s} 0xa000 {:s}".format(k, hex(_v)))
-
-    return d
-
-
 def load(d, test_version=True):
     if test_version:
         if 'version' in d:
@@ -223,10 +211,6 @@ def load(d, test_version=True):
     return True, connections
 
 
-def_max_bl_registers = 32
-def_pastrec_channel_range = 8
-
-
 class Baselines:
     baselines = None
     config = None
@@ -236,8 +220,8 @@ class Baselines:
 
     def add_trb(self, trb):
         if trb not in self.baselines:
-            w = def_max_bl_registers
-            h = def_pastrec_channel_range
+            w = PasttrecDefaults.bl_register_size
+            h = PasttrecDefaults.channels_num
             a = len(PasttrecDefaults.c_asic)
             c = len(PasttrecDefaults.c_cable)
             self.baselines[trb] = [[[[0 for x in range(w)] for y in range(h)]

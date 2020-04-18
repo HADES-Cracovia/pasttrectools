@@ -27,7 +27,6 @@ import argparse
 from time import sleep
 import json
 import math
-from colorama import Fore, Style
 
 from pasttrec import *
 
@@ -36,7 +35,6 @@ def_time = 1
 def_broadcast_addr = 0xfe4c
 def_max_bl_register_steps = 32
 def_pastrec_thresh_range = [0x00, 0x7f]
-def_pastrec_channel_range = 8
 def_pastrec_bl_base = 0x00000
 def_pastrec_bl_range = [0x00, def_max_bl_register_steps]
 
@@ -44,10 +42,10 @@ def_pastrec_bl_range = [0x00, def_max_bl_register_steps]
 def scan_baseline_single(address):
     bbb = Baselines()
 
-    print("  address   channel   bl 0                              31")
-    print("                         |------------------------------|")
+    print("  address   channel   bl 0" + " " * 32 + "31")
+    print("                         |" + "-" * 32 + "|")
     # loop over channels
-    for c in list(range(def_pastrec_channel_range)):
+    for c in list(range(PasttrecDefaults.channels_num)):
         print("  {:s}    {:d}            "
               .format(hex(def_broadcast_addr), c), end='', flush=True)
 
@@ -68,7 +66,7 @@ def scan_baseline_single(address):
 
             # get addressess
             for addr, cable, asic in address:
-                chan = calc_channel(cable, asic, c)
+                chan = calc_tdc_channel(cable, asic, c)
 
                 vv = bb.scalers[addr][chan]
                 if vv < 0:
@@ -88,8 +86,8 @@ def scan_baseline_single(address):
 def scan_baseline_multi(address):
     bbb = Baselines()
 
-    print("  address   channel   bl 0                                31")
-    print("                         |--------------------------------|")
+    print("  address   channel   bl 0" + " " * 32 + "31")
+    print("                         |" + "-" * 32 + "|")
     print("  {:s}    {:s}           "
           .format(hex(def_broadcast_addr), 'all'), end='', flush=True)
 
@@ -101,7 +99,7 @@ def scan_baseline_multi(address):
         for addr, cable, asic in address:
             blv_data = []
             # loop over channels
-            for c in list(range(def_pastrec_channel_range)):
+            for c in list(range(PasttrecDefaults.channels_num)):
                 blv_data.append(PasttrecDefaults.c_bl_reg[c] | blv)
 
             communication.write_chunk(addr, cable, asic, blv_data)
@@ -117,10 +115,10 @@ def scan_baseline_multi(address):
         # loop over channels
         for addr, cable, asic in address:
             blv_data = []
-            for c in list(range(def_pastrec_channel_range)):
+            for c in list(range(PasttrecDefaults.channels_num)):
                 blv_data.append(PasttrecDefaults.c_bl_reg[c])
 
-                chan = calc_channel(cable, asic, c)
+                chan = calc_tdc_channel(cable, asic, c)
 
                 vv = bb.scalers[addr][chan]
                 if vv < 0:
@@ -157,6 +155,9 @@ if __name__ == "__main__":
                         default='multi')
     parser.add_argument('-v', '--verbose', help='verbose level: 0, 1, 2, 3',
                         type=int, choices=[0, 1, 2, 3], default=0)
+
+    parser.add_argument('--defaults', dest='defaults', action='store_true',
+                        help='Override settings with defaults from cmd line')
 
     parser.add_argument('-Bg', '--source',
                         help='baseline set: internally or externally',
@@ -214,7 +215,8 @@ if __name__ == "__main__":
 
     tup = communication.decode_address(args.trbids)
 
-    communication.asics_to_defaults(tup, p)
+    if (args.defaults):
+        communication.asics_to_defaults(tup, p)
 
     if def_scan_type == 'multi':
         r = scan_baseline_multi(tup)
@@ -223,7 +225,8 @@ if __name__ == "__main__":
 
     r.config = p.__dict__
 
-    communication.asics_to_defaults(tup, p)
+    if (args.defaults):
+        communication.asics_to_defaults(tup, p)
 
     with open(args.output, 'w') as fp:
         json.dump(r.__dict__, fp, indent=2)
