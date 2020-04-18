@@ -31,37 +31,15 @@ import math
 from pasttrec import *
 
 def_time = 1
-def_threshold_max = 0
 
-def_max_bl_registers = 32
-
-# registers and values
-# trbnet
 def_broadcast_addr = 0xfe4c
-def_scalers_reg = 0xc001
-def_scalers_len = 0x21
-
 def_pastrec_thresh_range = [0x00, 0x7f]
-
-def_pastrec_channel_range = 8
-def_pastrec_channels_all = def_pastrec_channel_range * \
-    len(PasttrecDefaults.c_asic) * len(PasttrecDefaults.c_cable)
-
-def_pastrec_bl_base = 0x00000
-def_pastrec_bl_range = [0x00, def_max_bl_registers]
-
-def_scan_type = None
-
 
 def scan_threshold(address):
     ttt = Thresholds()
 
-    print("  address   channel   th 0                                    "
-          "                                                              "
-          "                              127")
-    print("                         |------------------------------------"
-          "--------------------------------------------------------------"
-          "------------------------------|")
+    print("  address   channel   th 0" + " "*def_threshold_max + str(def_threshold_max))
+    print("                         |" + "-"*def_threshold_max + "|")
     print("  {:s}    {:s}           "
           .format(hex(def_broadcast_addr), 'all'), end='', flush=True)
 
@@ -69,20 +47,9 @@ def scan_threshold(address):
     for vth in range(def_pastrec_thresh_range[0], def_threshold_max):
         print("#", end='', flush=True)
 
-        # looop over Cable
-        for cable in list(range(len(PasttrecDefaults.c_cable))):
-            _c = PasttrecDefaults.c_cable[cable]
-
-            # loop over ASIC
-            for asic in list(range(len(PasttrecDefaults.c_asic))):
-                _a = PasttrecDefaults.c_asic[asic]
-
-                b = PasttrecDefaults.c_base_w | _c | _a
-                v = b | PasttrecDefaults.c_config_reg[3] | vth
-
-                # loop over TDC
-                for addr in address:
-                    send_command_w(addr, PasttrecDefaults.c_trbnet_reg, v)
+        # loop over TDC
+        for addr, cable, asic in address:
+            communication.write_reg(addr, cable, asic, 3, vth)
 
         sleep(0.1)
         v1 = read_rm_scalers(def_broadcast_addr)
@@ -92,21 +59,16 @@ def scan_threshold(address):
         a2 = parse_rm_scalers(v2)
         bb = a2.diff(a1)
 
-        for cable in list(range(len(PasttrecDefaults.c_cable))):
-            _c = PasttrecDefaults.c_cable[cable]
-            for asic in list(range(len(PasttrecDefaults.c_asic))):
-                _a = PasttrecDefaults.c_asic[asic]
-                for c in list(range(def_pastrec_channel_range)):
-                    chan = calc_channel(cable, asic, c)
+        for addr, cable, asic in address:
+            for c in list(range(PasttrecDefaults.channels_num)):
+                chan = calc_tdc_channel(cable, asic, c)
 
-                    for addr in address:
-                        haddr = hex(addr)
-                        ttt.add_trb(haddr)
+                vv = bb.scalers[addr][chan]
+                if vv < 0:
+                    vv += 0x80000000
 
-                        vv = bb.scalers[haddr][chan]
-                        if vv < 0:
-                            vv += 0x80000000
-                        ttt.thresholds[haddr][cable][asic][c][vth] = vv
+                ttt.add_trb(addr)
+                ttt.thresholds[addr][cable][asic][c][vth] = vv
 
     print("  done")
 
@@ -118,8 +80,8 @@ if __name__ == "__main__":
         description='Scan threshold of the PASTTREC chips',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument('trbids', help='list of TRBids to scan',
-                        type=lambda x: int(x, 0), nargs='+')
+    parser.add_argument('trbids', help='list of TRBids to scan in form'
+                        ' addres[:card-0-1-2[:asic-0-1]]', type=str, nargs="+")
 
     parser.add_argument('-t', '--time', help='sleep time',
                         type=float, default=def_time)
@@ -129,6 +91,9 @@ if __name__ == "__main__":
                         type=int, choices=[0, 1, 2, 3], default=0)
     parser.add_argument('-l', '--limit', help='threshold scan limit',
                         type=int, choices=range(128), default=127)
+
+    parser.add_argument('--defaults', dest='defaults', action='store_true',
+                        help='Override settings with defaults from cmd line')
 
     parser.add_argument('-Bg', '--source',
                         help='baseline set: internally or externally',
@@ -167,27 +132,16 @@ if __name__ == "__main__":
                      tc2c=args.timecancelationC2, tc2r=args.timecancelationR2,
                      vth=0, bl=[0]*8)
 
-    # loop here
-    ex = True
-    # ex = False
-    if ex:
-        a = args.trbids
+    tup = communication.decode_address(args.trbids)
 
-        # reset_asic(a, p)
+    if (args.defaults):
+        communication.asics_to_defaults(tup, p)
 
-        r = scan_threshold(a)
+    r = scan_threshold(tup)
+    r.config = p.__dict__
 
-        r.config = p.__dict__
+    if (args.defaults):
+        communication.asics_to_defaults(tup, p)
 
-        # reset_asic(a, p)
-
-        with open(args.output, 'w') as fp:
-            json.dump(r.__dict__, fp, indent=2)
-
-    else:
-        p = PasttrecRegs(bg_int=args.source, gain=args.gain,
-                         peaking=args.peaking, tc1c=args.timecancelationC1,
-                         tc1r=args.timecancelationR1,
-                         tc2c=args.timecancelationC2,
-                         tc2r=args.timecancelationR2, vth=0)
-        print(p.__dict__, p.dump_config_hex(0, 0))
+    with open(args.output, 'w') as fp:
+        json.dump(r.__dict__, fp, indent=2)

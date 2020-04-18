@@ -48,8 +48,7 @@ else:
 # chip communication
 
 def_scalers_reg = 0xc001
-def_pastrec_channel_range = 8
-def_pastrec_channels_all = def_pastrec_channel_range * \
+def_pastrec_channels_all = PasttrecDefaults.channels_num * \
     len(PasttrecDefaults.c_asic) * len(PasttrecDefaults.c_cable)
 
 cmd_to_file = None  # if set to file, redirect output to this file
@@ -118,28 +117,6 @@ def decode_address(string):
         for s in string:
             tup += decode_address_entry(s)
         return tup
-
-
-def calc_tdc_channel(cable, asic, channel, with_ref_time=False):
-    """Calculate address of cable and asic channel in tdc (0,48) or with
-    reference channel offset (1, 49).
-    """
-    return channel + def_pastrec_channel_range * asic \
-        + def_pastrec_channel_range * len(PasttrecDefaults.c_asic)*cable \
-        + (1 if with_ref_time is True else 0)
-
-
-def calc_address_from_tdc(channel, with_ref_time=False):
-    """Do reverse address calculation."""
-    if with_ref_time:
-        channel = channel-1
-    cable = math.floor(
-        channel / (def_pastrec_channel_range*len(def_pastrec_asic)))
-    asic = math.floor(
-        (channel - cable*def_pastrec_channel_range*len(def_pastrec_asic))
-        / def_pastrec_channel_range)
-    c = channel % def_pastrec_channel_range
-    return cable, asic, c
 
 
 def print_verbose(rc):
