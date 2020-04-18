@@ -88,7 +88,7 @@ def scan_baseline_multi(address):
 
     print("  address   channel   bl 0" + " " * 32 + "31")
     print("                         |" + "-" * 32 + "|")
-    print("  {:s}    {:s}           "
+    print("  {:s}    {:s}            "
           .format(hex(def_broadcast_addr), 'all'), end='', flush=True)
 
     # loop over bl register value

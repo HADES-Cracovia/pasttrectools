@@ -69,9 +69,12 @@ def read_asic(address):
                 if reg == 4:
                     print(Fore.GREEN, end='', flush=True)
 
-                print("  {:#0{}x}".format(_t, 4), end='', flush=True)
+                if communication.g_verbose > 0:
+                    print("  {:#0{}x}".format(_t, 4))
+                else:
+                    print("  {:#0{}x}".format(_t, 4), end='', flush=True)
 
-        print(Style.RESET_ALL)
+            print(Style.RESET_ALL)
 
     return None
 
