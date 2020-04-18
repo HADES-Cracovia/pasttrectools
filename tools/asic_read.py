@@ -37,12 +37,16 @@ def_time = 0.01
 def read_asic(address):
 
     print("   TDC  Cable  Asic   Reg# " + Fore.YELLOW, end='', flush=True)
-    for reg in range(12):
-        print("    {:2d}".format(reg), end='', flush=True)
+
+    if communication.g_verbose == 0:
+        for reg in range(12):
+            print("    {:2d}".format(reg), end='', flush=True)
+
     print(Style.RESET_ALL)
     for addr, cable, asic in address:
-        print(Fore.YELLOW + "{:s}  {:5d}  {:4d}        "
-              .format(addr, cable, asic) + Style.RESET_ALL, end='', flush=True)
+        if communication.g_verbose == 0:
+            print(Fore.YELLOW + "{:s}  {:5d}  {:4d}        "
+                  .format(addr, cable, asic) + Style.RESET_ALL, end='', flush=True)
 
         asic_test_ok = True
 
@@ -62,19 +66,24 @@ def read_asic(address):
                       .format(hex(reg)) + Style.RESET_ALL, end='')
                 print("  Received {:s}".format(hex(_t)))
             else:
-                if reg == 0:
+                if communication.g_verbose > 0:
+                    print(Fore.YELLOW + "{:s}  {:5d}  {:4d}        "
+                          .format(addr, cable, asic) + Style.RESET_ALL, end='', flush=True)
+
+                if reg < 3:
                     print(Fore.MAGENTA, end='', flush=True)
-                if reg == 3:
+                elif reg == 3:
                     print(Fore.CYAN, end='', flush=True)
-                if reg == 4:
+                else:
                     print(Fore.GREEN, end='', flush=True)
 
                 if communication.g_verbose > 0:
-                    print("  {:#0{}x}".format(_t, 4))
+                    print("Register: {0:#0{1}x}    Value: {2:#0{3}x}".format(reg, 2, _t, 4))
                 else:
                     print("  {:#0{}x}".format(_t, 4), end='', flush=True)
 
-            print(Style.RESET_ALL)
+            print(Style.RESET_ALL, end='', flush=True)
+        print(Style.RESET_ALL)
 
     return None
 
