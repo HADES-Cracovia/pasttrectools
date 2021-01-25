@@ -61,28 +61,28 @@ def show_scalers(stdscr):
 
     ntdsc = len(ss.scalers)
 
-    field_width = 10
+    field_width = 7
     height, width = stdscr.getmaxyx()
-    maxnx = min(ntdsc, (width-field_width)/field_width)
-    maxny = min(48, height-1)
+    maxnx = min(48, (width-field_width)/field_width)
+    maxny = min(ntdsc, height-1)
 
     stdscr.clear()
     stdscr.addstr(0, 0, "R={:.2f} s".format(def_time), curses.A_DIM)
 
-    for chan in range(int(maxny)):
-        stdscr.addstr(chan+1, 0, "Chan {:#3d}  ".format(chan), curses.A_STANDOUT)
+    for chan in range(int(maxnx)):
+        stdscr.addstr(0, field_width + chan*field_width, " CH {:#2d} ".format(chan), curses.A_STANDOUT)
 
     cnt = 0
     for tdc in sorted(ss.scalers):
-        if cnt > int(maxnx)-1:
+        if cnt > int(maxny)-1:
             break
-        stdscr.addstr(0, field_width + cnt*field_width,
-                      "{:>{}s}".format(tdc[:field_width], field_width),
+        stdscr.addstr(cnt+1, 0,
+                      "{:>{}s}  ".format(tdc[:field_width], field_width-2),
                       curses.A_STANDOUT)
-        for n in range(int(maxny)):
-            stdscr.addstr(1+n, field_width + cnt*field_width,
-                          "{:>#{}d}".format(ss.scalers[tdc][n], field_width),
-                          curses.A_BOLD)
+        for n in range(int(maxnx)):
+            stdscr.addstr(cnt+1, field_width + n*field_width,
+                          "{:>#{}d}".format(ss.scalers[tdc][n], field_width), curses.A_BOLD)
+
         cnt = cnt + 1
 
 
