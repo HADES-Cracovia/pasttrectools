@@ -45,6 +45,7 @@ if __name__ == "__main__":
     parser.add_argument('json_file', help='list of arguments', type=str)
 
     parser.add_argument('-o', '--output', help='output file', type=str)
+    parser.add_argument('-O', '--old', help='old output format', action='store_true')
 
     group = parser.add_mutually_exclusive_group()
     group.add_argument('-d', '--dump',
@@ -165,19 +166,30 @@ if __name__ == "__main__":
 
                 if args.dump:
                     regs = p.dump_config()[4:]
-                    communication.cmd_to_file = dump_file
-                    communication.write_chunk(k, c, a, regs)
-                    communication.cmd_to_file = None
+                    if args.old:
+                        communication.cmd_to_file = dump_file
+                        communication.write_chunk(k, c, a, regs)
+                        communication.cmd_to_file = None
+                    else:
+                        output_formats.cmd_to_file = dump_file
+                        output_formats.export_chunk(k, c, a, regs)
 
                 if args.Dump:
                     regs = p.dump_config()
-                    communication.cmd_to_file = dump_file
-                    communication.write_chunk(k, c, a, regs)
-                    communication.cmd_to_file = None
+                    if args.old:
+                        communication.cmd_to_file = dump_file
+                        communication.write_chunk(k, c, a, regs)
+                        communication.cmd_to_file = None
+                    else:
+                        output_formats.cmd_to_file = dump_file
+                        output_formats.export_chunk(k, c, a, regs)
 
                 if args.exec:
                     regs = p.dump_config()
-                    communication.write_chunk(k, c, a, regs)
+                    if args.old:
+                        communication.write_chunk(k, c, a, regs)
+                    else:
+                        pass
 
             t.set_card(c, card)
 
