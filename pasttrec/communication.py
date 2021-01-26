@@ -391,7 +391,7 @@ def spi_write_chunk(trbid, cable, asic, data):
 
         spi_prepare(trbid, cable, asic)
 
-        for d in miscellaneous.chunks(my_data_list, 16):
+        for d in misc.chunks(my_data_list, 16):
             i = 0
             safe_command_wm(trbid, 0xd400, my_data_list, 0)
             #for val in d:
