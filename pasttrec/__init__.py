@@ -1,4 +1,4 @@
 from .pasttrec import *
-from .miscellaneous import *
+from .misc import *
 from .communication import *
 from .output_formats import *

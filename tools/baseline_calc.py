@@ -185,11 +185,7 @@ if __name__ == "__main__":
                         output_formats.export_chunk(k, c, a, regs)
 
                 if args.exec:
-                    regs = p.dump_config()
-                    if args.old:
-                        communication.write_chunk(k, c, a, regs)
-                    else:
-                        pass
+                    communication.write_chunk(k, c, a, regs)
 
             t.set_card(c, card)
 

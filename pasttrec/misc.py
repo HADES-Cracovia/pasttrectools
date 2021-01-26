@@ -172,3 +172,16 @@ def calc_tdc_channel(cable, asic, channel, with_ref_time=False):
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
     return [lst[i:i + n] for i in range(0, len(lst), n)]
+
+"""from https://python-forum.io/Thread-decimal-or-hexadecimal-digits-to-int"""
+def convertToInt(num_string):
+    determine_base ={'0x':16,'0b':2,'0o':8} # dict to detrmine base
+
+    # returns base from dict defaults to None(for base 10)
+    base = determine_base.get(num_string[:2].lower(),None)
+
+    if base != None:
+        return int(num_string[2:],base)
+    else:
+        return int(num_string)
+

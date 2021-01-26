@@ -39,6 +39,7 @@ else:
             'tools/threshold_scan.py',
             'tools/dump_threshold_scan.py',
             'tools/communication_test.py',
+            'tools/asic_push.py',
             'tools/asic_read.py',
             'tools/asic_reset.py',
             'tools/asic_set_reg.py',
