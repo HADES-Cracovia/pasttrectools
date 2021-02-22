@@ -123,7 +123,7 @@ if __name__ == "__main__":
                     b = v[c][a][ch]
                     s = 0
                     w = 0
-                    for i in range(32):
+                    for i in range(1,32):
                         s = s + (i+1) * b[i]
                         w += b[i]
                     if w == 0:
