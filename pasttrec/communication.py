@@ -28,6 +28,7 @@ import subprocess
 from time import sleep
 import json
 import math
+import time
 from colorama import Fore, Style
 
 from pasttrec import *
@@ -54,7 +55,7 @@ def_pastrec_channels_all = PasttrecDefaults.channels_num * \
 cmd_to_file = None  # if set to file, redirect output to this file
 
 
-def decode_address_entry(string):
+def decode_address_entry(string, sort=False):
     """Converts address into [ trbnet, cable, cable, asic ] tuples
     input string:
     AAAAAA[:B[:C]]
@@ -104,18 +105,22 @@ def decode_address_entry(string):
         print("Incorrect address in string: ", string)
         return []
 
-    tup = [[x] + [y] + [z] for x in [address, ] for y in cables for z in asics]
+    if sort:
+        tup = [[x] + [y] + [z] for x in [address, ] for y in cables for z in asics]
+    else:
+        tup = [[x] + [y] + [z] for x in [address, ] for z in asics for y in cables]
+
     return tup
 
 
-def decode_address(string):
+def decode_address(string, sort=False):
     """Use this for a single string or list of strings."""
     if type(string) is str:
-        return decode_address_entry(string)
+        return decode_address_entry(string, sort)
     else:
         tup = []
         for s in string:
-            tup += decode_address_entry(s)
+            tup += decode_address_entry(s, sort)
         return tup
 
 
@@ -130,7 +135,7 @@ def print_verbose(rc):
 def reset_asic(address, verbose=False):
     """Send reset signal to asic, resets all registers to defaults."""
     if type(address) is not list:
-        a = decode_address(address)
+        a = decode_address(address, True)
     else:
         a = address
 
