@@ -9,8 +9,8 @@
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
 #
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
 #
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -20,49 +20,55 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import os,sys,glob
+import os
+import sys
+import glob
 import argparse
 import subprocess
 from time import sleep
 import json
 import math
+import time
 from colorama import Fore, Style
 
 from pasttrec import *
 
-def_asics = '0x6400'
-def_time = 1
-def_verbose = 0
+try:
+    from trbnet import TrbNet
+except ImportError:
+    trbnet_available = False
+    trbnet = None
+    print("INFO: Trbnet library not found.")
+else:
+    trbnet_available = True
+    lib = '/trbnettools/trbnetd/libtrbnet.so'
+    host = os.getenv("DAQOPSERVER")
+    trbnet = TrbNet(libtrbnet=lib, daqopserver=host)
+    print("INFO: Trbnet library found at {:s}", host)
 
-def_max_bl_registers = 32
+# chip communication
 
-### registers and values
-# trbnet
-def_broadcast_addr = 0xfe4f
 def_scalers_reg = 0xc001
-def_scalers_len = 0x21
-
-def_pastrec_thresh_range = [ 0x00, 0x7f ]
-
-def_pastrec_channel_range = 8
-def_pastrec_channels_all = def_pastrec_channel_range * \
+def_pastrec_channels_all = PasttrecDefaults.channels_num * \
     len(PasttrecDefaults.c_asic) * len(PasttrecDefaults.c_cable)
 
-def_pastrec_bl_base = 0x00000
-def_pastrec_bl_range = [ 0x00, def_max_bl_registers ]
+cmd_to_file = None  # if set to file, redirect output to this file
 
-# convert address into [ trbnet, cable, card, asic ] tuples
-# input string:
-# AAAAAA[:B[:C]]
-#   AAAAAA - trbnet address, can be in form 0xAAAA or AAAA
-#   B - card: 1, 2, 3, or empty ("", all cables), or two or three cards comma separated
-#   C - asic: 1 or 2 or empty ("", all asics)
-#  any higher section of the address can be skipped
-# examples:
-#  0x6400 - all cables, cards and asics
-#  0x6400::1:2 - all cables, card 1, asic 2
 
-def decode_address_entry(string):
+def decode_address_entry(string, sort=False):
+    """Converts address into [ trbnet, cable, cable, asic ] tuples
+    input string:
+    AAAAAA[:B[:C]]
+      AAAAAA - trbnet address, can be in form 0xAAAA or AAAA
+      B - cable: 1, 2, 3, or empty ("", all cables), or two or three cables
+          comma separated
+      C - asic: 1 or 2 or empty ("", all asics)
+     any higher section of the address can be skipped
+    examples:
+     0x6400 - all cables and asics
+     0x6400::2 - all cables, asic 2
+     """
+
     sections = string.split(":")
     sec_len = len(sections)
 
@@ -75,17 +81,17 @@ def decode_address_entry(string):
     asics = []
     if sec_len == 3 and len(sections[2]) > 0:
         _asics = sections[2].split(",")
-        asics = [ int(a)-1 for a in _asics if int(a) in range(1,3) ]
+        asics = [int(a)-1 for a in _asics if int(a) in range(1, 3)]
     else:
-        asics = [ 0, 1 ]
+        asics = [0, 1]
 
     # asics
-    cards = []
+    cables = []
     if sec_len >= 2 and len(sections[1]) > 0:
-        _cards = sections[1].split(",")
-        cards = [ int(c)-1 for c in _cards if int(c) in range(1,4) ]
+        _cables = sections[1].split(",")
+        cables = [int(c)-1 for c in _cables if int(c) in range(1, 4)]
     else:
-        cards = [ 0, 1, 2 ]
+        cables = [0, 1, 2]
 
     # check address
     address = sections[0]
@@ -99,123 +105,380 @@ def decode_address_entry(string):
         print("Incorrect address in string: ", string)
         return []
 
-    tup = [ [x] + [y] + [z] for x in [address,] for y in cards for z in asics ]
+    if sort:
+        tup = [[x] + [y] + [z] for x in [address, ] for y in cables for z in asics]
+    else:
+        tup = [[x] + [y] + [z] for x in [address, ] for z in asics for y in cables]
+
     return tup
 
-# use this for a single string or list of strings
-def decode_address(string):
+
+def decode_address(string, sort=False):
+    """Use this for a single string or list of strings."""
     if type(string) is str:
-        return decode_address_entry(string)
+        return decode_address_entry(string, sort)
     else:
         tup = []
         for s in string:
-            tup += decode_address_entry(s)
+            tup += decode_address_entry(s, sort)
         return tup
 
-
-# calculate address of cable and asic channel in tdc (0,48) or with reference channel offset (1, 49)
-def calc_tdc_channel(cable, asic, channel, with_ref_time=False):
-    return channel + def_pastrec_channel_range * asic + \
-        def_pastrec_channel_range * len(PasttrecDefaults.c_asic)*cable + (1 if with_ref_time is True else 0)
-
-# do reverse calculation
-def calc_address_from_tdc(channel, with_ref_time=False):
-    if with_ref_time:
-        channel = channel-1
-    cable = math.floor(channel / (def_pastrec_channel_range*len(def_pastrec_asic)))
-    asic = math.floor((channel - cable*def_pastrec_channel_range*len(def_pastrec_asic)) / def_pastrec_channel_range)
-    c = channel % def_pastrec_channel_range
-    return cable, asic, c
 
 def print_verbose(rc):
     cmd = ' '.join(rc.args)
     rtc = rc.returncode
 
-    if def_verbose == 1:
+    if g_verbose >= 1:
         print("[{:d}]  {:s}".format(rtc, cmd))
 
-def reset_asic(address, verbose = False):
+
+def reset_asic(address, verbose=False):
+    """Send reset signal to asic, resets all registers to defaults."""
     if type(address) is not list:
-        a = decode_address(address)
+        a = decode_address(address, True)
     else:
         a = address
 
+    _addr = None
+    _cable = None
     for addr, cable, asic in a:
-        d = PasttrecRegs.reset_config(cable, asic)
+        if addr == _addr and cable == _cable:
+            continue
 
-        l = [ 'trbcmd', 'w', addr, hex(PasttrecDefaults.c_trbnet_reg), hex(d)]
-        print(Fore.YELLOW + "Reseting {:s} cable {:d} asic {:d} with data {:s}".format(addr, cable, asic, hex(d)) + Style.RESET_ALL)
-        rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        if verbose:
-            print_verbose(rc)
+        _addr = addr
+        _cable = cable
 
-def asic_to_defaults(address, def_pasttrec):
-    for a in address:
-        for cable in list(range(len(PasttrecDefaults.c_cable))):
-            _c = PasttrecDefaults.c_cable[cable]
+        print(
+            Fore.YELLOW + "Reseting {:s} cable {:d}"
+                .format(addr, cable) + Style.RESET_ALL)
+        spi_reset(addr, cable)
 
-            for asic in list(range(len(PasttrecDefaults.c_asic))):
-                _a = PasttrecDefaults.c_asic[asic]
 
-                d = def_pasttrec.dump_config_hex(cable, asic)
+def asics_to_defaults(address, def_pasttrec):
+    """Set asics to defaults from config."""
+    d = def_pasttrec.dump_config()
+    for addr, cable, asic in address:
+        write_data(addr, cable, asic, d)
 
-                for _d in d:
-                    l = [ 'trbcmd', 'w', hex(a), hex(PasttrecDefaults.c_trbnet_reg), _d ]
-                    rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                    print_verbose(rc)
+
+def asic_to_defaults(address, cable, asic, def_pasttrec):
+    """Set asics to defaults from config."""
+    write_data(address, cable, asic, d)
+
 
 def read_rm_scalers(address):
-    l = [ 'trbcmd', 'rm', hex(address), hex(def_scalers_reg), hex(def_pastrec_channels_all), '0' ]
-    rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    print_verbose(rc)
-    return rc.stdout.decode()
+    return safe_command_rm(address, def_scalers_reg, def_pastrec_channels_all)
 
-def parse_rm_scalers(res):
-    sm = 0 # state machine: 0 - init, 1 - data
-    s = Scalers()
-    a = 0   # address
-    c = 0   # channel
-    lines = res.splitlines()
-    for l in lines:
-        ll = l.split()
-        n = len(ll)
-
-        if n == 2:
-            if sm == 1:
-                c = int(ll[0], 16) - def_scalers_reg
-                if c > def_pastrec_channels_all:
-                    continue
-                val = int(ll[1], 16)
-                if ll >= 0x80000000:
-                    ll -= 0x80000000
-                s.scalers[a][c] = ll
-            else:
-                continue
-        if n == 3:
-            a = hex(int(ll[1], 16))
-            s.add_trb(a)
-            sm = 1
-
-    return s
 
 def read_r_scalers(address, channel):
-    l = [ 'trbcmd', 'r', hex(address), hex(def_scalers_reg + channel) ]
-    rc = subprocess.run(l, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    return safe_command_r(address, def_scalers_reg + channel)
+
+
+""" These functions write, read or rad memory for given cable and asic.
+    They all call safe_command_ functions. """
+
+
+def write_reg(trbid, cable, asic, reg, val):
+    _c = PasttrecDefaults.c_cable[cable]
+    _a = PasttrecDefaults.c_asic[asic]
+    _b = PasttrecDefaults.c_base_w | _c | _a
+    v = _b | (reg << 8) | val
+    spi_write(trbid, cable, asic, v)
+
+
+def read_reg(trbid, cable, asic, reg):
+    _c = PasttrecDefaults.c_cable[cable]
+    _a = PasttrecDefaults.c_asic[asic]
+    _b = PasttrecDefaults.c_base_r | _c | _a
+    v = _b | (reg << 8)
+    spi_write(trbid, cable, asic, v << 1)
+    return spi_read(trbid, cable, asic, v)
+
+
+def write_data(trbid, cable, asic, data):
+    _c = PasttrecDefaults.c_cable[cable]
+    _a = PasttrecDefaults.c_asic[asic]
+    _b = PasttrecDefaults.c_base_w | _c | _a
+
+    if isinstance(data, list):
+        v = [_b | x for x in data]
+    else:
+        v = _b | data
+    spi_write(trbid, cable, asic, v)
+
+
+def write_chunk(trbid, cable, asic, data):
+    _c = PasttrecDefaults.c_cable[cable]
+    _a = PasttrecDefaults.c_asic[asic]
+    _b = PasttrecDefaults.c_base_w | _c | _a
+
+    if isinstance(data, list):
+        v = [_b | x for x in data]
+    else:
+        v = _b | data
+    spi_write_chunk(trbid, cable, asic, v)
+
+
+""" Safe commands are etsting for trbnet librray and choose between
+    the librray or the shell. """
+
+
+def safe_command_w(trbid, reg, data):
+    if isinstance(trbid, int):
+        _trbid = hex(trbid)
+    else:
+        _trbid = trbid
+
+    if trbnet_available and cmd_to_file is not None:
+        return trbnet_command_w(_trbid, reg, data)
+    else:
+        return shell_command_w(_trbid, reg, data)
+
+
+def safe_command_wm(trbid, reg, data, mode):
+    if isinstance(trbid, int):
+        _trbid = hex(trbid)
+    else:
+        _trbid = trbid
+
+    if trbnet_available and cmd_to_file is not None:
+        return trbnet_command_wm(_trbid, reg, data, mode)
+    else:
+        return shell_command_wm(_trbid, reg, data, mode)
+
+
+def safe_command_r(trbid, reg):
+    if isinstance(trbid, int):
+        _trbid = hex(trbid)
+    else:
+        _trbid = trbid
+
+    if trbnet_available and cmd_to_file is not None:
+        return trbnet_command_r(_trbid, reg)
+    else:
+        return shell_command_r(_trbid, reg)
+
+
+def safe_command_rm(trbid, reg, length):
+    if isinstance(trbid, int):
+        _trbid = hex(trbid)
+    else:
+        _trbid = trbid
+
+    if trbnet_available and cmd_to_file is not None:
+        return trbnet_command_rm(_trbid, reg, length)
+    else:
+        return shell_command_rm(_trbid, reg, length)
+
+
+""" These functions are shell functions. """
+
+
+def shell_command_w(trbid, reg, data):
+    cmd = ['trbcmd', 'w', trbid, hex(reg), hex(data)]
+
+    if cmd_to_file is not None:
+        cmd_to_file.write(' '.join(cmd) + '\n')
+        return True
+
+    rc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     print_verbose(rc)
     return rc.stdout.decode()
 
-def parse_r_scalers(res):
-    r = {}
-    lines = res.splitlines()
-    for l in lines:
-        ll = l.split()
-        n = len(ll)
 
-        if n == 2:
-            a = int(ll[0], 16)
-            n = int(ll[1], 16)
-            if n >= 0x80000000:
-                n -= 0x80000000
-            r[hex(a)] = n
+def shell_command_wm(trbid, reg, data, mode):
+    if cmd_to_file is not None:
+        cmd = ['trbcmd', 'wm', trbid, hex(reg), str(mode), '- << EOF']
+        cmd_to_file.write(' '.join(cmd) + '\n')
+        for d in data:
+            cmd_to_file.write(hex(d) + '\n')
+        cmd_to_file.write('EOF\n')
+        return True
 
-    return r
+    cmd = ['trbcmd', 'wm', trbid, hex(reg), str(mode), '-']
+    _data = "\n".join([hex(x) for x in data])
+    rc = subprocess.run(cmd, input=_data.encode('utf-8'), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    print_verbose(rc)
+    return rc.stdout.decode()
+
+
+def shell_command_r(trbid, reg):
+    cmd = ['trbcmd', 'r', trbid, hex(reg)]
+
+    if cmd_to_file is not None:
+        cmd_to_file.write(' '.join(cmd) + '\n')
+        return True
+
+    rc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    print_verbose(rc)
+    return rc.stdout.decode()
+
+
+def shell_command_rm(trbid, reg, length):
+    cmd = ['trbcmd', 'rm', trbid, hex(reg), str(length), '0']
+
+    if cmd_to_file is not None:
+        cmd_to_file.write(' '.join(cmd) + '\n')
+        return True
+
+    rc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    print_verbose(rc)
+    return rc.stdout.decode()
+
+
+""" These functions are trbnetlibrary functions. """
+
+
+def trbnet_command_w(trbid, reg, data):
+    rc = trbnet.trb_register_write(trbid, reg, data)
+    print_verbose(rc)
+    return rc.stdout.decode()
+
+
+def trbnet_command_r(trbid, reg):
+    rc = trbnet.trb_register_read(trbid, reg)
+    print_verbose(rc)
+    return rc.stdout.decode()
+
+
+def trbnet_command_rm(trbid, reg, length):
+    rc = trbnet.trb_register_read_mem(trbid, reg, length)
+    print_verbose(rc)
+    return rc.stdout.decode()
+
+
+""" SPI protocol function. """
+
+spi_queue = 0
+spi_mem = {}
+
+# use these to check whether the short break is need
+
+last_trb = None
+last_asic = None
+same_cable_delay = 0.
+
+""" Based on GSI code from M. Wiebusch """
+
+
+def spi_fill_buffer(trbid, cable, asic, data):
+    global spi_mem
+
+    if trbid not in spi_mem:
+        spi_mem[trbid] = {}
+    if cable not in spi_mem[trbid]:
+        spi_mem[trbid][cable] = {}
+    if asic not in spi_mem[trbid][cable]:
+        spi_mem[trbid][cable][asic] = []
+
+    if isinstance(data, list):
+        spi_mem[trbid][cable][asic] += data
+    else:
+        spi_mem[trbid][cable][asic] += [data]
+
+
+def spi_write(trbid, cable, asic, data):
+    global last_trb
+    global last_asic
+    global same_cable_delay
+
+    if last_asic != asic and last_trb and last_trb == trbid:
+        time.sleep(same_cable_delay)
+        #print("pause")
+    last_trb = trbid
+    last_asic = asic
+    #print(trbid, cable, asic)
+
+    spi_fill_buffer(trbid, cable, asic, data)
+
+    if not spi_queue:
+        my_data_list = spi_mem[trbid][cable][asic].copy()
+        spi_mem[trbid][cable][asic].clear()  # empty queue
+
+        spi_prepare(trbid, cable, asic)
+
+        for data in my_data_list:
+            # writing one data word, append zero to the data word, the chip
+            # will get some more SCK clock cycles
+            safe_command_w(trbid, 0xd400, data)
+            # write 1 to length register to trigger sending
+            safe_command_w(trbid, 0xd411, 0x0001)
+
+
+def spi_write_chunk(trbid, cable, asic, data):
+    global last_trb
+    global last_asic
+    global same_cable_delay
+
+    spi_fill_buffer(trbid, cable, asic, data)
+
+    if not spi_queue:
+        my_data_list = spi_mem[trbid][cable][asic].copy()
+        spi_mem[trbid][cable][asic].clear()  # empty queue
+
+        if last_asic != asic and last_trb and last_trb == trbid:
+            time.sleep(same_cable_delay)
+
+        last_trbid = trbid
+        last_asic = asic
+
+#        print(trbid, cable, asic)
+        spi_prepare(trbid, cable, asic)
+
+        for d in misc.chunks(my_data_list, 16):
+            i = 0
+            safe_command_wm(trbid, 0xd400, my_data_list, 0)
+            #for val in d:
+                # writing one data word, append zero to the data word, the chip
+                # will get some more SCK clock cycles
+                #safe_command_w(trbid, 0xd400 + i, val)
+                #i = i + 1
+
+            # write  length register to trigger sending
+            safe_command_w(trbid, 0xd411, len(d))
+
+
+def spi_read(trbid, cable, asic, data):
+    return safe_command_r(trbid, 0xd412)
+
+
+def spi_prepare(trbid, cable, asic):
+    # bring all CS (reset lines) in the default state (1) - upper four nibbles:
+    # invert CS, lower four nibbles: disable CS
+    safe_command_w(trbid, 0xd417, 0x0000FFFF)
+
+    # (chip-)select output $CONN for i/o multiplexer reasons, remember CS lines
+    # are disabled
+    safe_command_w(trbid, 0xd410, 0xFFFF & (1 << cable))
+
+    # override: (chip-) select all ports!!
+    # trbcmd w $trbid 0xd410 0xFFFF
+
+    # override: (chip-) select nothing !!
+    # trbcmd w $trbid 0xd410 0x0000
+
+    # disable all SDO outputs but output $CONN
+    safe_command_w(trbid, 0xd415, 0xFFFF & ~(1 << cable))
+
+    # disable all SCK outputs but output $CONN
+    safe_command_w(trbid, 0xd416, 0xFFFF & ~(1 << cable))
+
+    # override: disable all SDO and SCK lines
+    # trbcmd w $trbid 0xd415 0xFFFF
+    # trbcmd w $trbid 0xd416 0xFFFF
+
+
+def spi_reset(trbid, cable):
+    # bring all CS (reset lines) in the default state (1) - upper four nibbles:
+    # invert CS, lower four nibbles: disable CS
+    safe_command_w(trbid, 0xd417, 0x0000FFFF)
+    # and bring down selected bit
+    safe_command_w(trbid, 0xd417, 0xFFFFFFFF & (0x10000 << cable))
+
+    # generate 25 clock cycles
+    for c in range(25):
+        safe_command_w(trbid, 0xd416, 0xFFFF0000 & (0x10000 << cable))
+        safe_command_w(trbid, 0xd416, 0x00000000)
+
+    # restore default CS
+    safe_command_w(trbid, 0xd417, 0x0000FFFF)

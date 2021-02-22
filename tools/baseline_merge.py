@@ -9,8 +9,8 @@
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
 #
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
 #
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -20,29 +20,34 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import os,sys,glob
+import os
+import sys
+import glob
 import argparse
-import subprocess
 from time import sleep
 import json
 import math
 
 from pasttrec import *
 
-if __name__=="__main__":
-    parser=argparse.ArgumentParser(description='Scan baseline of PASTTREC chips',
-                                    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument('files', help='list of TRBids to scan in form addres[:card-0-1-2[:asic-0-1]]', type=str, nargs="+")
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description='Merge baseline scans of PASTTREC chips',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument('-o', '--output', help='output file', type=str, default='merged.json')
-    parser.add_argument('-v', '--verbose', help='verbose level: 0, 1, 2, 3', type=int, choices=[ 0, 1, 2, 3 ], default=0)
+    parser.add_argument('files', help='files to merge', type=str, nargs="+")
 
-    args=parser.parse_args()
+    parser.add_argument('-o', '--output',
+                        help='output file', type=str, default='merged.json')
+    parser.add_argument('-v', '--verbose', help='verbose level: 0, 1, 2, 3',
+                        type=int, choices=[0, 1, 2, 3], default=0)
 
-    def_verbose = args.verbose
+    args = parser.parse_args()
 
-    if def_verbose > 0:
+    communication.g_verbose = args.verbose
+
+    if communication.g_verbose > 0:
         print(args)
 
     if args.output:

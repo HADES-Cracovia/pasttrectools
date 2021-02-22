@@ -3,12 +3,14 @@
 from setuptools import setup
 import re
 
+
 def vercmp(version1, version2):
     def normalize(v):
         return [int(x) for x in re.sub(r'(\.0+)*$','', v).split(".")]
     a = normalize(version1)
     b = normalize(version2)
     return ((a>b) - (a<b))
+
 
 try:
     import pkg_resources
@@ -22,24 +24,28 @@ if vercmp(dist.version, "40.0.0") >= 0:
 else:
     setup(
         name='pasttrectools',
-        version='0.2',
+        version='0.3',
         description='Tools for scanning and configuring pasttrec ASICs',
         url='https://github.com/HADES-Cracovia/pasttrectools',
         author='Rafal Lalik',
         author_email='rafal.lalik@uj.edu.pl',
         license='MIT',
         packages=['pasttrec'],
-        scripts = [
-            'baseline/baseline_scan.py',
-            'baseline/calc_baselines.py',
-            'baseline/draw_baseline_scan.py',
-            'baseline/threshold_scan.py',
-            'baseline/dump_threshold_scan.py',
-            'baseline/communication_test.py',
-            'baseline/reset_asic.py',
-            'baseline/pasttrec_write_and_verify.py',
-            'baseline/baseline_merge.py',
-            'baseline/pasttrec_threshold.py',
+        scripts=[
+            'tools/baseline_calc.py',
+            'tools/baseline_merge.py',
+            'tools/baseline_scan.py',
+            'tools/draw_baseline_scan.py',
+            'tools/threshold_scan.py',
+            'tools/dump_threshold_scan.py',
+            'tools/communication_test.py',
+            'tools/asic_push.py',
+            'tools/asic_read.py',
+            'tools/asic_reset.py',
+            'tools/asic_set_reg.py',
+            'tools/asic_threshold.py',
+            'tools/pasttrec_write_and_verify.py',
+            'tools/scalers_scan.py',
             ],
         install_requires=[
             'colorama',

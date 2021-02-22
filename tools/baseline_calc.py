@@ -9,8 +9,8 @@
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
 #
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
 #
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -28,6 +28,7 @@ import sys
 
 from pasttrec import *
 
+
 def bl_list_with_marker(l, pos):
     s = ""
     for i in range(len(l)):
@@ -37,27 +38,39 @@ def bl_list_with_marker(l, pos):
             s += "{:d}, ".format(l[i])
     return s
 
-if __name__=="__main__":
-    parser=argparse.ArgumentParser(description='Calculates baselines from scan results')
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description='Calculates baselines from scan results')
     parser.add_argument('json_file', help='list of arguments', type=str)
 
     parser.add_argument('-o', '--output', help='output file', type=str)
+    parser.add_argument('-O', '--old', help='old output format', action='store_true')
 
     group = parser.add_mutually_exclusive_group()
-    group.add_argument('-d', '--dump', help='trbcmd dump file, bl regs only', type=str)
-    group.add_argument('-D', '--Dump', help='trbcmd dump file, all regs', type=str)
+    group.add_argument('-d', '--dump',
+                       help='trbcmd dump file, bl regs only', type=str)
+    group.add_argument('-D', '--Dump',
+                       help='trbcmd dump file, all regs', type=str)
+    parser.add_argument('-e', '--exec', help='execute', action='store_true')
 
-    parser.add_argument('-v', '--verbose', help='verbose level: 0, 1, 2, 3', type=int, choices=[ 0, 1, 2, 3 ], default=0)
+    parser.add_argument('-v', '--verbose', help='verbose level: 0, 1, 2, 3',
+                        type=int, choices=[0, 1, 2, 3], default=0)
 
-    parser.add_argument('-blo', '--offset', help='offset to baselines (ask for each chip if not given)', type=lambda x: int(x,0))
+    parser.add_argument('-blo', '--offset', help='offset to baselines (ask for'
+                        ' each chip if not given)', type=lambda x: int(x, 0))
 
-    parser.add_argument('-Vth', '--threshold', help='threshold: 0-127 (overwrites value from input file)', type=lambda x: int(x,0))
-    parser.add_argument('-g', '--gain', help='gain: 0-3 (overwrites value from input file)', type=lambda x: int(x,0))
+    parser.add_argument('-Vth', '--threshold', help='threshold: 0-127'
+                        ' (overwrites value from input file)',
+                        type=lambda x: int(x, 0))
+    parser.add_argument('-g', '--gain', help='gain: 0-3 (overwrites value'
+                        ' from input file)', type=lambda x: int(x, 0))
 
+    args = parser.parse_args()
 
-    args=parser.parse_args()
-
-    print(args)
+    communication.g_verbose = args.verbose
+    if communication.g_verbose > 0:
+        print(args)
 
     with open(args.json_file) as json_data:
         d = json.load(json_data)
@@ -77,11 +90,10 @@ if __name__=="__main__":
     bls = d['baselines']
     cfg = d['config']
 
-
     tlist = []
     p = PasttrecRegs()
 
-    for k,v in cfg.items():
+    for k, v in cfg.items():
         setattr(p, k, v)
 
     if args.threshold is not None:
@@ -92,25 +104,26 @@ if __name__=="__main__":
 
     print(cfg)
 
-    x = list(range(0,32))
+    x = list(range(0, 32))
 
     idx = 1
-    for k,v in bls.items():
+    for k, v in bls.items():
 
         t = TdcConnection(k)
 
-        for c in [0,1,2]:
+        for c in [0, 1, 2]:
             card = PasttrecCard("noname")
 
-            for a in [0,1]:
-                print(Fore.YELLOW + "Scanning {:s}  CARD: {:d}  ASIC: {:d}".format(k, c, a) + Style.RESET_ALL)
+            for a in [0, 1]:
+                print(Fore.YELLOW + "Scanning {:s}  CARD: {:d}  ASIC: {:d}"
+                      .format(k, c, a) + Style.RESET_ALL)
                 bl = [0] * 8
 
                 for ch in list(range(8)):
                     b = v[c][a][ch]
                     s = 0
                     w = 0
-                    for i in range(32):
+                    for i in range(1,32):
                         s = s + (i+1) * b[i]
                         w += b[i]
                     if w == 0:
@@ -118,13 +131,14 @@ if __name__=="__main__":
                     else:
                         b = s/w - 1
                     bl[ch] = int(round(b))
-                    print(ch,
-                          " bl:", Fore.GREEN, "{:2d}".format(bl[ch]), Style.RESET_ALL,
+                    print(ch, " bl:", Fore.GREEN, "{:2d}"
+                          .format(bl[ch]), Style.RESET_ALL,
                           "(0x{:s})".format(hex(bl[ch])[2:].zfill(2)),
-                          Fore.RED, "{:>+3d} mV".format(-31 + 2 * bl[ch]), Style.RESET_ALL,
+                          Fore.RED, "{:>+3d} mV".format(-31 + 2 * bl[ch]),
+                          Style.RESET_ALL,
                           " [ ", bl_list_with_marker(v[c][a][ch], bl[ch]), "]")
 
-                if args.offset == None:
+                if args.offset is None:
                     while True:
                         bbb = input("Offset for base lines (default: 0): ")
                         if bbb == "":
@@ -151,40 +165,31 @@ if __name__=="__main__":
                 card.set_asic(a, copy.deepcopy(p))
 
                 if args.dump:
-                    regs = p.dump_bl_hex(c, a)
-                    for r in regs:
-                        dump_file.write("trbcmd w {:s} {:s} {:s}\n".format(k, hex(PasttrecRegs.c_trbnet_reg), r))
-
-                        if args.verbose >= 1:
-                            print("trbcmd w {:s} {:s} {:s}".format(k, hex(PasttrecRegs.c_trbnet_reg), r))
+                    regs = p.dump_config()[4:]
+                    if args.old:
+                        communication.cmd_to_file = dump_file
+                        communication.write_chunk(k, c, a, regs)
+                        communication.cmd_to_file = None
+                    else:
+                        output_formats.cmd_to_file = dump_file
+                        output_formats.export_chunk(k, c, a, regs)
 
                 if args.Dump:
-                    regs = p.dump_config_hex(c, a)
-                    for r in regs:
-                        dump_file.write("trbcmd w {:s} {:s} {:s}\n".format(k, hex(PasttrecRegs.c_trbnet_reg), r))
+                    regs = p.dump_config()
+                    if args.old:
+                        communication.cmd_to_file = dump_file
+                        communication.write_chunk(k, c, a, regs)
+                        communication.cmd_to_file = None
+                    else:
+                        output_formats.cmd_to_file = dump_file
+                        output_formats.export_chunk(k, c, a, regs)
 
-                        if args.verbose >= 1:
-                            print("trbcmd w {:s} {:s} {:s}".format(k, hex(PasttrecRegs.c_trbnet_reg), r))
+                if args.exec:
+                    communication.write_chunk(k, c, a, regs)
 
             t.set_card(c, card)
 
         tlist.append(t)
-
-        # *** printing
-
-        #print(Fore.YELLOW + "{:s}".format(k) + Style.RESET_ALL)
-
-        #for c in [0,1,2]:
-            #for a in [0,1]:
-                #print(Fore.YELLOW + "  CARD: {:d} ASIC: {:d}".format(k, c, a))
-        #print("-----------------------------------------------------------------------------------------------------------------------")
-        #print(Style.RESET_ALL)
-
-        #for ch in list(range(8)):
-            #for c in [0,1,2]:
-                #for a in [0,1]:
-
-        # *** end printing
 
     if dump_file:
         dump_file.close()

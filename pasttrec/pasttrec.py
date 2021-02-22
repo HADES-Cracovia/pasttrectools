@@ -1,17 +1,22 @@
 LIBVERSION = "1.0"
 
+g_verbose = 0
+
 class PasttrecDefaults:
-    c_cable = [ 0x00 << 19, 0x01 << 19, 0x02 << 19 ]
-    c_asic = [ 0x2000, 0x4000 ]
+    c_cable = [0x00 << 19, 0x00 << 19, 0x00 << 19]
+    c_asic = [0x2000, 0x4000]
 
 #                Bg_int,K,Tp      TC1      TC2      Vth
-    c_config_reg = [ 0x00000, 0x00100, 0x00200, 0x00300 ]
-    c_bl_reg = [ 0x00400, 0x00500, 0x00600, 0x00700,
-                0x00800, 0x00900, 0x00a00, 0x00b00 ]
+    c_config_reg = [0x00000, 0x00100, 0x00200, 0x00300]
+    c_bl_reg = [0x00400, 0x00500, 0x00600, 0x00700,
+                0x00800, 0x00900, 0x00a00, 0x00b00]
 
-    c_trbnet_reg = 0xa000
     c_base_w = 0x0050000
     c_base_r = 0x0051000
+
+    channels_num = 8
+    bl_register_size = 32
+
 
 class PasttrecRegs(PasttrecDefaults):
     bg_int = 1
@@ -24,18 +29,18 @@ class PasttrecRegs(PasttrecDefaults):
     vth = 0
     bl = [0] * 8
 
-    def __init__(self, bg_int = 1, gain = 0, peaking = 0,
-                 tc1c = 0, tc1r = 0, tc2c = 0, tc2r = 0,
-                 vth = 0, bl = [0] * 8):
-        self.bg_int   = bg_int
-        self.gain     = gain
-        self.peaking  = peaking
-        self.tc1c     = tc1c
-        self.tc1r     = tc1r
-        self.tc2c     = tc2c
-        self.tc2r     = tc2r
-        self.vth      = vth
-        self.bl       = [ i for i in bl]
+    def __init__(self, bg_int=1, gain=0, peaking=0,
+                 tc1c=0, tc1r=0, tc2c=0, tc2r=0,
+                 vth=0, bl=[0]*8):
+        self.bg_int = bg_int
+        self.gain = gain
+        self.peaking = peaking
+        self.tc1c = tc1c
+        self.tc1r = tc1r
+        self.tc2c = tc2c
+        self.tc2r = tc2r
+        self.vth = vth
+        self.bl = [i for i in bl]
 
     @staticmethod
     def load_asic_from_dict(d, test_version=None):
@@ -46,32 +51,27 @@ class PasttrecRegs(PasttrecDefaults):
             setattr(p, k, v)
         return p
 
-    @staticmethod
-    def reset_config(cable, asic):
-        offset = 0x200000 | PasttrecDefaults.c_base_w | PasttrecDefaults.c_cable[cable] | PasttrecDefaults.c_asic[asic]
-        return offset
-
-    def dump_config(self, cable, asic):
+    def dump_config(self):
         r_all = [0] * 12
-        offset = self.c_base_w | self.c_cable[cable] | self.c_asic[asic]
         t = (self.bg_int << 4) | (self.gain << 2) | self.peaking
-        r_all[0] = offset | self.c_config_reg[0] | t
+        r_all[0] = self.c_config_reg[0] | t
         t = (self.tc1c << 3) | self.tc1r
-        r_all[1] = offset | self.c_config_reg[1] | t
+        r_all[1] = self.c_config_reg[1] | t
         t = (self.tc2c << 3) | self.tc2r
-        r_all[2] = offset | self.c_config_reg[2] | t
-        r_all[3] = offset | self.c_config_reg[3] | self.vth
+        r_all[2] = self.c_config_reg[2] | t
+        r_all[3] = self.c_config_reg[3] | self.vth
 
         for i in range(8):
-            r_all[4+i] = offset | self.c_bl_reg[i] | self.bl[i]
+            r_all[4+i] = self.c_bl_reg[i] | self.bl[i]
 
         return r_all
 
-    def dump_config_hex(self, cable, asic):
-        return [ hex(i) for i in self.dump_config(cable, asic) ]
+    def dump_config_hex(self):
+        return [hex(i) for i in self.dump_config()]
 
-    def dump_bl_hex(self, cable, asic):
-        return [ hex(i) for i in self.dump_config(cable, asic)[4:] ]
+    def dump_bl_hex(self):
+        return [hex(i) for i in self.dump_config()[4:]]
+
 
 class PasttrecCard():
     name = None
@@ -90,9 +90,10 @@ class PasttrecCard():
             self.asic2 = asic
 
     def export(self):
-        return { 'name' : self.name,
-                'asic1' : self.asic1.__dict__ if self.asic1 is not None else None,
-                'asic2' : self.asic2.__dict__ if self.asic2 is not None else None
+        return {
+            'name': self.name,
+            'asic1': self.asic1.__dict__ if self.asic1 is not None else None,
+            'asic2': self.asic2.__dict__ if self.asic2 is not None else None
         }
 
     def export_script(self, cable):
@@ -117,6 +118,7 @@ class PasttrecCard():
 
         return True, pc
 
+
 class TdcConnection():
     id = 0
     cable1 = None
@@ -138,20 +140,26 @@ class TdcConnection():
             self.cable3 = card
 
     def export(self):
-        c1 = self.cable1.export() if isinstance(self.cable1, PasttrecCard) else None
-        c2 = self.cable2.export() if isinstance(self.cable2, PasttrecCard) else None
-        c3 = self.cable3.export() if isinstance(self.cable3, PasttrecCard) else None
+        c1 = self.cable1.export() if isinstance(self.cable1, PasttrecCard) \
+            else None
+        c2 = self.cable2.export() if isinstance(self.cable2, PasttrecCard) \
+            else None
+        c3 = self.cable3.export() if isinstance(self.cable3, PasttrecCard) \
+            else None
 
         return self.id, {
-            'cable1' : c1,
-            'cable2' : c2,
-            'cable3' : c3
+            'cable1': c1,
+            'cable2': c2,
+            'cable3': c3
         }
 
     def export_script(self):
-        c1 = self.cable1.export_script(0) if isinstance(self.cable1, PasttrecCard) else None
-        c2 = self.cable2.export_script(1) if isinstance(self.cable2, PasttrecCard) else None
-        c3 = self.cable3.export_script(2) if isinstance(self.cable3, PasttrecCard) else None
+        c1 = self.cable1.export_script(0) \
+            if isinstance(self.cable1, PasttrecCard) else None
+        c2 = self.cable2.export_script(1) \
+            if isinstance(self.cable2, PasttrecCard) else None
+        c3 = self.cable3.export_script(2) \
+            if isinstance(self.cable3, PasttrecCard) else None
 
         c = []
         if c1:
@@ -162,8 +170,9 @@ class TdcConnection():
             c.extend(c3)
         return self.id, c
 
+
 def dump(tdcs):
-    d = { 'version' : LIBVERSION }
+    d = {'version': LIBVERSION}
     if isinstance(tdcs, list):
         for t in tdcs:
             k, v = t.export()
@@ -174,19 +183,6 @@ def dump(tdcs):
 
     return d
 
-def dump_script(tdcs):
-    d = []
-    if isinstance(tdcs, list):
-        for t in tdcs:
-            k, v = t.export_script()
-            for _v in v:
-                d.append("trbcmd w {:s} 0xa000 {:s}".format(k, hex(_v)))
-    elif isinstance(tdcs, TdcConnection):
-        k, v = tdcs.export_script()
-        for _v in v:
-            d.append("trbcmd w {:s} 0xa000 {:s}".format(k, hex(_v)))
-
-    return d
 
 def load(d, test_version=True):
     if test_version:
@@ -198,7 +194,8 @@ def load(d, test_version=True):
 
     connections = []
     for k, v in d.items():
-        if k == 'version': continue
+        if k == 'version':
+            continue
 
         id = int(k, 16)
         r1, _c1 = PasttrecCard.load_card_from_dict(v['cable1'])
@@ -213,8 +210,6 @@ def load(d, test_version=True):
 
     return True, connections
 
-def_max_bl_registers = 32
-def_pastrec_channel_range = 8
 
 class Baselines:
     baselines = None
@@ -225,5 +220,9 @@ class Baselines:
 
     def add_trb(self, trb):
         if trb not in self.baselines:
-            w, h, a, c = def_max_bl_registers, def_pastrec_channel_range, len(PasttrecDefaults.c_asic), len(PasttrecDefaults.c_cable)
-            self.baselines[trb] = [[[[0 for x in range(w)] for y in range(h)] for _a in range(a)] for _c in range(c)]
+            w = PasttrecDefaults.bl_register_size
+            h = PasttrecDefaults.channels_num
+            a = len(PasttrecDefaults.c_asic)
+            c = len(PasttrecDefaults.c_cable)
+            self.baselines[trb] = [[[[0 for x in range(w)] for y in range(h)]
+                                    for _a in range(a)] for _c in range(c)]
