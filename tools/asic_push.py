@@ -73,25 +73,32 @@ if __name__ == "__main__":
             data.close()
 
         for l in lines:
+            # Pawel Kulessa enumerates cables 1..3 and asics 1..2, unlike RL 0..2 and 0..1, so sub 1 for PK files
+            pk_corr = 0
             parts = l.split()
 
-            nl = [misc.convertToInt(x) for x in parts]
+            nl = [misc.convertToInt(x) for x in parts[0:15]]
+            if nl[0] >= 0x6400 and nl[0] <= 0x64ff:
+               trbid = hex(nl[0])
+            else:
+                trbid = "0x" + str(nl[0])
+                pk_corr = 1
 
-            for i,val in enumerate(nl[3:]):
+            for i,val in enumerate(nl[3:15]):
                 nl[3+i] = nl[3+i] | i<<8
 
             if args.dump:
                 communication.cmd_to_file = dump_file
-                communication.write_chunk(hex(nl[0]), nl[1], nl[2], nl[3:])
+                communication.write_chunk(trbid, nl[1]-pk_corr, nl[2]-pk_corr, nl[3:15])
                 communication.cmd_to_file = None
 
             if args.Dump:
                 communication.cmd_to_file = dump_file
-                communication.write_chunk(hex(nl[0]), nl[1], nl[2], nl[3:])
+                communication.write_chunk(trbid, nl[1]-pk_corr, nl[2]-pk_corr, nl[3:15])
                 communication.cmd_to_file = None
 
             if args.exec or args.dump is None and args.Dump is None:
-                communication.write_chunk(hex(nl[0]), nl[1], nl[2], nl[3:])
+                communication.write_chunk(trbid, nl[1]-pk_corr, nl[2]-pk_corr, nl[3:15])
 
     if dump_file:
         dump_file.close()
