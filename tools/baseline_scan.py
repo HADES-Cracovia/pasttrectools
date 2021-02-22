@@ -46,7 +46,7 @@ def scan_baseline_single(address):
     print("                         |" + "-" * 32 + "|")
     # loop over channels
     for c in list(range(PasttrecDefaults.channels_num)):
-        print("  {:s}    {:d}            "
+        print("  {:s}    {:d}           "
               .format(hex(def_broadcast_addr), c), end='', flush=True)
 
         # loop over bl register value
@@ -88,7 +88,7 @@ def scan_baseline_multi(address):
 
     print("  address   channel   bl 0" + " " * 32 + "31")
     print("                         |" + "-" * 32 + "|")
-    print("  {:s}    {:s}            "
+    print("  {:s}    {:s}           "
           .format(hex(def_broadcast_addr), 'all'), end='', flush=True)
 
     # loop over bl register value
