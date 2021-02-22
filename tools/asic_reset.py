@@ -56,5 +56,5 @@ if __name__ == "__main__":
     if communication.g_verbose > 0:
         print(args)
 
-    tup = communication.decode_address(args.trbids)
+    tup = communication.decode_address(args.trbids, True)
     communication.reset_asic(tup)
