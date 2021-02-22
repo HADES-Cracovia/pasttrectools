@@ -349,14 +349,21 @@ def trbnet_command_rm(trbid, reg, length):
 
 """ SPI protocol function. """
 
-
 spi_queue = 0
 spi_mem = {}
+
+# use these to check whether the short break is need
+
+last_trb = None
+last_asic = None
+same_cable_delay = 0.
 
 """ Based on GSI code from M. Wiebusch """
 
 
 def spi_fill_buffer(trbid, cable, asic, data):
+    global spi_mem
+
     if trbid not in spi_mem:
         spi_mem[trbid] = {}
     if cable not in spi_mem[trbid]:
@@ -371,6 +378,17 @@ def spi_fill_buffer(trbid, cable, asic, data):
 
 
 def spi_write(trbid, cable, asic, data):
+    global last_trb
+    global last_asic
+    global same_cable_delay
+
+    if last_asic != asic and last_trb and last_trb == trbid:
+        time.sleep(same_cable_delay)
+        #print("pause")
+    last_trb = trbid
+    last_asic = asic
+    #print(trbid, cable, asic)
+
     spi_fill_buffer(trbid, cable, asic, data)
 
     if not spi_queue:
@@ -388,12 +406,23 @@ def spi_write(trbid, cable, asic, data):
 
 
 def spi_write_chunk(trbid, cable, asic, data):
+    global last_trb
+    global last_asic
+    global same_cable_delay
+
     spi_fill_buffer(trbid, cable, asic, data)
 
     if not spi_queue:
         my_data_list = spi_mem[trbid][cable][asic].copy()
         spi_mem[trbid][cable][asic].clear()  # empty queue
 
+        if last_asic != asic and last_trb and last_trb == trbid:
+            time.sleep(same_cable_delay)
+
+        last_trbid = trbid
+        last_asic = asic
+
+#        print(trbid, cable, asic)
         spi_prepare(trbid, cable, asic)
 
         for d in misc.chunks(my_data_list, 16):
