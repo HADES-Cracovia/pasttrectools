@@ -42,30 +42,15 @@ def bl_list_with_marker(l, pos):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='Calculates baselines from scan results')
-    parser.add_argument('json_file', help='list of arguments', type=str)
+    parser.add_argument('json_file1', help='first json file', type=str)
+    parser.add_argument('json_file2', help='second json file', type=str)
 
     parser.add_argument('-o', '--output', help='output file', type=str)
     parser.add_argument('-O', '--old', help='old output format', action='store_true')
-    parser.add_argument('--range', help='range based blo finder', action='store_true')
 
     group = parser.add_mutually_exclusive_group()
-    group.add_argument('-d', '--dump',
-                       help='trbcmd dump file, bl regs only', type=str)
-    group.add_argument('-D', '--Dump',
-                       help='trbcmd dump file, all regs', type=str)
-    parser.add_argument('-e', '--exec', help='execute', action='store_true')
-
     parser.add_argument('-v', '--verbose', help='verbose level: 0, 1, 2, 3',
                         type=int, choices=[0, 1, 2, 3], default=0)
-
-    parser.add_argument('-blo', '--offset', help='offset to baselines (ask for'
-                        ' each chip if not given)', type=lambda x: int(x, 0))
-
-    parser.add_argument('-Vth', '--threshold', help='threshold: 0-127'
-                        ' (overwrites value from input file)',
-                        type=lambda x: int(x, 0))
-    parser.add_argument('-g', '--gain', help='gain: 0-3 (overwrites value'
-                        ' from input file)', type=lambda x: int(x, 0))
 
     args = parser.parse_args()
 
@@ -73,37 +58,23 @@ if __name__ == "__main__":
     if communication.g_verbose > 0:
         print(args)
 
-    with open(args.json_file) as json_data:
-        d = json.load(json_data)
+    with open(args.json_file1) as json_data:
+        d1 = json.load(json_data)
         json_data.close()
 
-    dump_file = None
-    if args.dump:
-        dump_file = open(args.dump, 'w')
+    with open(args.json_file2) as json_data:
+        d2 = json.load(json_data)
+        json_data.close()
 
-    if args.Dump:
-        dump_file = open(args.Dump, 'w')
+    bls1 = d1['baselines']
+    cfg1 = d1['config']
 
-    out_file = None
-    if args.output:
-        out_file = open(args.output, 'w')
-
-    bls = d['baselines']
-    cfg = d['config']
+    bls2 = d2['baselines']
+    cfg2 = d2['config']
 
     tlist = []
-    p = PasttrecRegs()
 
-    for k, v in cfg.items():
-        setattr(p, k, v)
-
-    if args.threshold is not None:
-        p.vth = args.threshold
-
-    if args.gain is not None:
-        p.gain = args.gain
-
-    print(cfg)
+    print(cfg1, cfg2)
 
     x = list(range(0, 32))
 
@@ -124,19 +95,9 @@ if __name__ == "__main__":
                     b = v[c][a][ch]
                     s = 0
                     w = 0
-                    if args.range: # old way
-                        for i in range(1,32):
-                            s = s + (i+1) * b[i]
-                            w += b[i]
-                    else:
-                        cnt_max = max(b)
-                        # find duplicates
-                        indices = [index for index, item in enumerate(b) if item == cnt_max]
-                        if len(indices) == 1:
-                            s = indices[0] + 1
-                            w = 1
-                        else:
-                            w = 0
+                    for i in range(1,32):
+                        s = s + (i+1) * b[i]
+                        w += b[i]
                     if w == 0:
                         b = 0
                     else:
@@ -148,10 +109,6 @@ if __name__ == "__main__":
                           Fore.GREEN if w > 0 else Fore.RED, "{:>+3d} mV".format(-31 + 2 * bl[ch]),
                           Style.RESET_ALL,
                           " [ ", bl_list_with_marker(v[c][a][ch], bl[ch]), "]")
-#                    if w == 0:
-#                        print(Fore.RED, "All Zero - check it", Style.RESET_ALL)
-#                    else:
-#                        print(Fore.GREEN, " * OK *", Style.RESET_ALL)
 
                 if args.offset is None:
                     while True:
@@ -177,38 +134,4 @@ if __name__ == "__main__":
 
                     p.bl[ch] = _r
 
-                card.set_asic(a, copy.deepcopy(p))
-
-                if args.dump:
-                    regs = p.dump_config()[4:]
-                    if args.old:
-                        communication.cmd_to_file = dump_file
-                        communication.write_chunk(k, c, a, regs)
-                        communication.cmd_to_file = None
-                    else:
-                        output_formats.cmd_to_file = dump_file
-                        output_formats.export_chunk(k, c, a, regs)
-
-                if args.Dump:
-                    regs = p.dump_config()
-                    if args.old:
-                        communication.cmd_to_file = dump_file
-                        communication.write_chunk(k, c, a, regs)
-                        communication.cmd_to_file = None
-                    else:
-                        output_formats.cmd_to_file = dump_file
-                        output_formats.export_chunk(k, c, a, regs)
-
-                if args.exec:
-                    communication.write_chunk(k, c, a, regs)
-
-            t.set_card(c, card)
-
         tlist.append(t)
-
-    if dump_file:
-        dump_file.close()
-
-    if out_file:
-        out_file.write(json.dumps(dump(tlist), indent=2))
-        out_file.close()
