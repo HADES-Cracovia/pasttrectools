@@ -32,7 +32,7 @@ from pasttrec import *
 
 def_time = 1
 
-def_broadcast_addr = 0xfe4c
+def_broadcast_addr = 0x6500 #0xfe4c
 def_max_bl_register_steps = 32
 def_pastrec_thresh_range = [0x00, 0x7f]
 def_pastrec_bl_base = 0x00000
@@ -63,12 +63,16 @@ def scan_baseline_single(address):
             a1 = parse_rm_scalers(v1)
             a2 = parse_rm_scalers(v2)
             bb = a2.diff(a1)
+            
+            #print("scalers: ",v1," "," ",v2)
 
             # get addressess
             for addr, cable, asic in address:
                 chan = calc_tdc_channel(cable, asic, c)
+                #print("\ncheck0 :", addr," ",chan," ", cable," ", asic," ", c)
 
                 vv = bb.scalers[addr][chan]
+                #print("\ncheck1")
                 if vv < 0:
                     vv += 0x80000000
 
@@ -119,6 +123,7 @@ def scan_baseline_multi(address):
                 blv_data.append(PasttrecDefaults.c_bl_reg[c])
 
                 chan = calc_tdc_channel(cable, asic, c)
+                #print(chan, cable, asic, c)
 
                 vv = bb.scalers[addr][chan]
                 if vv < 0:

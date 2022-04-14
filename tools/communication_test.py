@@ -56,12 +56,21 @@ def scan_communication(address):
 
         for reg in reg_range:
             reg_test_ok = True
+            #sleep(10)
 
             for t in reg_test_vals:
                 print(".", end='', flush=True)
+                
                 communication.write_reg(addr, cable, asic, reg, t)
                 sleep(def_time)
+              #  print("\n")
+               # sleep(5)
+                
                 rc = communication.read_reg(addr, cable, asic, reg)
+               # print("\n\n")
+               # print("\n\n")
+               # sleep(5)
+                
                 try:
                     res = int(rc.split()[1], 16)
                     _t = res & 0xff

@@ -36,11 +36,13 @@ try:
     from trbnet import TrbNet
 except ImportError:
     trbnet_available = False
+    #trbnet_available = True
     trbnet = None
     print("INFO: Trbnet library not found.")
 else:
     trbnet_available = True
-    lib = '/trbnettools/trbnetd/libtrbnet.so'
+    #lib = '/trbnettools/trbnetd/libtrbnet.so'
+    lib = '/home/panda/trb/trbnettools/libtrbnet/libtrbnet.so'
     host = os.getenv("DAQOPSERVER")
     trbnet = TrbNet(libtrbnet=lib, daqopserver=host)
     print("INFO: Trbnet library found at {:s}", host)
