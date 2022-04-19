@@ -32,7 +32,7 @@ from pasttrec import *
 
 def_time = 1
 
-def_broadcast_addr = 0x6500 #0xfe4c
+def_broadcast_addr = 0xfe4c #6500
 def_max_bl_register_steps = 32
 def_pastrec_thresh_range = [0x00, 0x7f]
 def_pastrec_bl_base = 0x00000

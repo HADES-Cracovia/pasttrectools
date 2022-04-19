@@ -63,12 +63,9 @@ def scan_communication(address):
                 
                 communication.write_reg(addr, cable, asic, reg, t)
                 sleep(def_time)
-              #  print("\n")
                # sleep(5)
                 
                 rc = communication.read_reg(addr, cable, asic, reg)
-               # print("\n\n")
-               # print("\n\n")
                # sleep(5)
                 
                 try:

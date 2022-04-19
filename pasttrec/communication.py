@@ -445,7 +445,8 @@ def spi_reset(trbid, cable):
 
     # generate 25 clock cycles
     for c in range(25):
-        safe_command_w(trbid, 0xd416, 0xFFFF0000 & (0x10000 << cable))
+        #safe_command_w(trbid, 0xd416, 0xFFFF0000 & (0x10000 << cable))
+        safe_command_w(trbid, 0xd416, 0xFFFF0000 & (0xF0000))
         safe_command_w(trbid, 0xd416, 0x00000000)
 
     # restore default CS
