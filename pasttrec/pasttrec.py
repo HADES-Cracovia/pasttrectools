@@ -3,7 +3,7 @@ LIBVERSION = "1.0"
 g_verbose = 0
 
 class PasttrecDefaults:
-    c_cable = [0x00 << 19, 0x00 << 19, 0x00 << 19]
+    c_cable = [0x00 << 19, 0x00 << 19, 0x00 << 19, 0x00 << 19]
     c_asic = [0x2000, 0x4000]
 
 #                Bg_int,K,Tp      TC1      TC2      Vth
@@ -124,12 +124,14 @@ class TdcConnection():
     cable1 = None
     cable2 = None
     cable3 = None
+    cable4 = None
 
-    def __init__(self, id, cable1=None, cable2=None, cable3=None):
+    def __init__(self, id, cable1=None, cable2=None, cable3=None, cable4=None):
         self.id = hex(id) if isinstance(id, int) else id
         self.cable1 = cable1
         self.cable2 = cable2
         self.cable3 = cable3
+        self.cable4 = cable4
 
     def set_card(self, pos, card):
         if pos == 0:
@@ -138,6 +140,8 @@ class TdcConnection():
             self.cable2 = card
         elif pos == 2:
             self.cable3 = card
+        elif pos == 3:
+            self.cable4 = card
 
     def export(self):
         c1 = self.cable1.export() if isinstance(self.cable1, PasttrecCard) \
@@ -146,10 +150,13 @@ class TdcConnection():
             else None
         c3 = self.cable3.export() if isinstance(self.cable3, PasttrecCard) \
             else None
+        c4 = self.cable4.export() if isinstance(self.cable4, PasttrecCard) \
+            else None
 
         return self.id, {
             'cable1': c1,
             'cable2': c2,
+            'cable3': c3,
             'cable3': c3
         }
 
@@ -160,6 +167,8 @@ class TdcConnection():
             if isinstance(self.cable2, PasttrecCard) else None
         c3 = self.cable3.export_script(2) \
             if isinstance(self.cable3, PasttrecCard) else None
+        c4 = self.cable4.export_script(2) \
+            if isinstance(self.cable4, PasttrecCard) else None
 
         c = []
         if c1:
@@ -168,6 +177,8 @@ class TdcConnection():
             c.extend(c2)
         if c3:
             c.extend(c3)
+        if c4:
+            c.extend(c4)
         return self.id, c
 
 
@@ -201,12 +212,14 @@ def load(d, test_version=True):
         r1, _c1 = PasttrecCard.load_card_from_dict(v['cable1'])
         r2, _c2 = PasttrecCard.load_card_from_dict(v['cable2'])
         r3, _c3 = PasttrecCard.load_card_from_dict(v['cable3'])
+        r4, _c4 = PasttrecCard.load_card_from_dict(v['cable4'])
 
         c1 = _c1 if r1 else None
         c2 = _c2 if r2 else None
         c3 = _c3 if r3 else None
+        c4 = _c4 if r3 else None
 
-        connections.append(TdcConnection(id, cable1=c1, cable2=c2, cable3=c3))
+        connections.append(TdcConnection(id, cable1=c1, cable2=c2, cable3=c3, cable4=c4))
 
     return True, connections
 

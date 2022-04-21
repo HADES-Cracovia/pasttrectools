@@ -90,9 +90,9 @@ def decode_address_entry(string):
     cables = []
     if sec_len >= 2 and len(sections[1]) > 0:
         _cables = sections[1].split(",")
-        cables = [int(c)-1 for c in _cables if int(c) in range(1, 4)]
+        cables = [int(c)-1 for c in _cables if int(c) in range(1, 5)]
     else:
-        cables = [0, 1, 2]
+        cables = [0, 1, 2, 3]
 
     # check address
     address = sections[0]
@@ -107,6 +107,7 @@ def decode_address_entry(string):
         return []
 
     tup = [[x] + [y] + [z] for x in [address, ] for y in cables for z in asics]
+    #print(tup)
     return tup
 
 
@@ -149,6 +150,45 @@ def reset_asic(address, verbose=False):
             Fore.YELLOW + "Reseting {:s} cable {:d}"
                 .format(addr, cable) + Style.RESET_ALL)
         spi_reset(addr, cable)
+        
+def read_temp(address, verbose=False):
+    if type(address) is not list:
+        a = decode_address(address)
+    else:
+        a = address
+
+    _addr = None
+    _cable = None
+    for addr, cable, asic in a:
+        if addr == _addr and cable == _cable:
+            continue
+
+        _addr = addr
+        _cable = cable
+        out = wire_temp(addr, cable)
+        print(Fore.YELLOW + "Temperature in {:s} cable {:d} is\t:\t".format(addr, cable) + Style.RESET_ALL+ Fore.GREEN + "{:s}".format(out) + Style.RESET_ALL)
+        
+        #print(out)
+        
+def read_id(address, verbose=False):
+    if type(address) is not list:
+        a = decode_address(address)
+    else:
+        a = address
+
+    _addr = None
+    _cable = None
+    for addr, cable, asic in a:
+        if addr == _addr and cable == _cable:
+            continue
+
+        _addr = addr
+        _cable = cable
+        
+        out= wire_id(addr, cable)
+        print(Fore.YELLOW + "Chip ID in {:s} cable {:d} is\t\t:\t".format(addr, cable) + Style.RESET_ALL + Fore.GREEN + "{:s}".format(out) + Style.RESET_ALL)
+        
+        #print(out)
 
 
 def asics_to_defaults(address, def_pasttrec):
@@ -451,3 +491,51 @@ def spi_reset(trbid, cable):
 
     # restore default CS
     safe_command_w(trbid, 0xd417, 0x0000FFFF)
+     
+
+def wire_temp(trbid, cable): #non mux| dedicated 1wire component for each connector/cable
+    for c in range(4):
+        safe_command_w(trbid, 0xd416, 0xFFFF0000 & (0xF0000))
+        safe_command_w(trbid, 0xd416, 0x00000000)
+    
+    safe_command_w(trbid, 0x23, (0x0001 << cable+1 | 0x0001))
+    sleep(2)
+    rc = safe_command_r(trbid, 0x8)     
+    res = int(rc.split()[1], 16)
+    out = hex(res & 0xffff0000)[0:5]
+    safe_command_w(trbid, 0x23, 0x0)
+
+    #safe_command_w(trbid, 0x23, (0x1 << cable+1)) #muxed 1wire component for connectors/cables
+    #sleep(2)
+    #rc = safe_command_r(trbid, 0x8)
+    #res = int(rc.split()[1], 16)
+    #out = hex(res & 0xffff0000)[0:5]
+    #safe_command_w(trbid, 0x23, 0x0)
+    return out
+    
+    
+def wire_id(trbid, cable): #non mux| dedicated 1wire component for each connector/cable
+    for c in range(4):
+        safe_command_w(trbid, 0xd416, 0xFFFF0000 & (0xF0000))
+        safe_command_w(trbid, 0xd416, 0x00000000)
+    
+    safe_command_w(trbid, 0x23, (0x0001 << cable+1 | 0x0001))
+    sleep(2)
+    rc0 = safe_command_r(trbid, 0xa)
+    rc1 = safe_command_r(trbid, 0xb)
+    res0 = int(rc0.split()[1], 16)
+    res1 = int(rc1.split()[1], 16)
+    out = hex( (res1<<32) | res0 )
+    safe_command_w(trbid, 0x23, 0x0)
+    
+    #safe_command_w(trbid, 0x23, (0x1 << cable+1)) #muxed 1wire component for connectors/cables
+    #sleep(2)
+    #rc0 = safe_command_r(trbid, 0xa)
+    #rc1 = safe_command_r(trbid, 0xb)
+    #res0 = int(rc0.split()[1], 16)
+    #res1 = int(rc1.split()[1], 16)
+    #out = hex( (res1<<32) | res0 )
+    #safe_command_w(trbid, 0x23, 0x0)
+    
+    
+    return out
