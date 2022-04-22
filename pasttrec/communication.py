@@ -166,7 +166,7 @@ def read_temp(address, verbose=False):
         _addr = addr
         _cable = cable
         out = wire_temp(addr, cable)
-        print(Fore.YELLOW + "Temperature in {:s} cable {:d} is\t:\t".format(addr, cable) + Style.RESET_ALL+ Fore.GREEN + "{:s}".format(out) + Style.RESET_ALL)
+        print(Fore.YELLOW + "Temperature in {:s} cable {:d} is\t:\t".format(addr, cable) + Style.RESET_ALL+ Fore.GREEN + "{:.3f} \xb0C".format(out) + Style.RESET_ALL)
         
         #print(out)
         
@@ -510,8 +510,10 @@ def wire_temp(trbid, cable): #non mux| dedicated 1wire component for each connec
     rc = safe_command_r(trbid, 0x8)
     res = int(rc.split()[1], 16)
     out = hex(res & 0xffff0000)[0:5]
+    out_t = int(out, 16)*0.0625
+    #print(out_int, out_int*0.0625)
     safe_command_w(trbid, 0x23, 0x0)
-    return out
+    return out_t
     
     
 def wire_id(trbid, cable): #non mux| dedicated 1wire component for each connector/cable
@@ -534,7 +536,7 @@ def wire_id(trbid, cable): #non mux| dedicated 1wire component for each connecto
     rc1 = safe_command_r(trbid, 0xb)
     res0 = int(rc0.split()[1], 16)
     res1 = int(rc1.split()[1], 16)
-    out = hex( (res1<<32) | res0 )
+    out = hex( (res1<<32) | res0 )[2:64]
     safe_command_w(trbid, 0x23, 0x0)
     
     

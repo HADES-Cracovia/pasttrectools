@@ -37,7 +37,6 @@ def_time = 0.01
 def read_asic(address):
 
     print("   TDC  Cable  Asic   Reg# " + Fore.YELLOW, end='', flush=True)
-    print(address)
 
     if communication.g_verbose == 0:
         for reg in range(12):
