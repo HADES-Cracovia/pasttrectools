@@ -498,19 +498,19 @@ def wire_temp(trbid, cable): #non mux| dedicated 1wire component for each connec
         safe_command_w(trbid, 0xd416, 0xFFFF0000 & (0xF0000))
         safe_command_w(trbid, 0xd416, 0x00000000)
     
-    safe_command_w(trbid, 0x23, (0x0001 << cable+1 | 0x0001))
-    sleep(2)
-    rc = safe_command_r(trbid, 0x8)     
-    res = int(rc.split()[1], 16)
-    out = hex(res & 0xffff0000)[0:5]
-    safe_command_w(trbid, 0x23, 0x0)
-
-    #safe_command_w(trbid, 0x23, (0x1 << cable+1)) #muxed 1wire component for connectors/cables
+    #safe_command_w(trbid, 0x23, (0x0001 << cable+1 | 0x0001))
     #sleep(2)
-    #rc = safe_command_r(trbid, 0x8)
+    #rc = safe_command_r(trbid, 0x8)     
     #res = int(rc.split()[1], 16)
     #out = hex(res & 0xffff0000)[0:5]
     #safe_command_w(trbid, 0x23, 0x0)
+
+    safe_command_w(trbid, 0x23, (0x1 << cable+1)) #muxed 1wire component for connectors/cables
+    sleep(2)
+    rc = safe_command_r(trbid, 0x8)
+    res = int(rc.split()[1], 16)
+    out = hex(res & 0xffff0000)[0:5]
+    safe_command_w(trbid, 0x23, 0x0)
     return out
     
     
@@ -519,16 +519,7 @@ def wire_id(trbid, cable): #non mux| dedicated 1wire component for each connecto
         safe_command_w(trbid, 0xd416, 0xFFFF0000 & (0xF0000))
         safe_command_w(trbid, 0xd416, 0x00000000)
     
-    safe_command_w(trbid, 0x23, (0x0001 << cable+1 | 0x0001))
-    sleep(2)
-    rc0 = safe_command_r(trbid, 0xa)
-    rc1 = safe_command_r(trbid, 0xb)
-    res0 = int(rc0.split()[1], 16)
-    res1 = int(rc1.split()[1], 16)
-    out = hex( (res1<<32) | res0 )
-    safe_command_w(trbid, 0x23, 0x0)
-    
-    #safe_command_w(trbid, 0x23, (0x1 << cable+1)) #muxed 1wire component for connectors/cables
+    #safe_command_w(trbid, 0x23, (0x0001 << cable+1 | 0x0001))
     #sleep(2)
     #rc0 = safe_command_r(trbid, 0xa)
     #rc1 = safe_command_r(trbid, 0xb)
@@ -536,6 +527,15 @@ def wire_id(trbid, cable): #non mux| dedicated 1wire component for each connecto
     #res1 = int(rc1.split()[1], 16)
     #out = hex( (res1<<32) | res0 )
     #safe_command_w(trbid, 0x23, 0x0)
+    
+    safe_command_w(trbid, 0x23, (0x1 << cable+1)) #muxed 1wire component for connectors/cables
+    sleep(2)
+    rc0 = safe_command_r(trbid, 0xa)
+    rc1 = safe_command_r(trbid, 0xb)
+    res0 = int(rc0.split()[1], 16)
+    res1 = int(rc1.split()[1], 16)
+    out = hex( (res1<<32) | res0 )
+    safe_command_w(trbid, 0x23, 0x0)
     
     
     return out
