@@ -68,11 +68,17 @@ else:
 
 # chip communication
 
-def_scalers_reg = 0xc001
-def_pastrec_channels_all = PasttrecDefaults.channels_num * \
-    len(PasttrecDefaults.c_asic) * len(PasttrecDefaults.c_cable)
 
-cmd_to_file = None  # if set to file, redirect output to this file
+def detect_frontend(address):
+    if type(address) == str:
+        address = int(address, 16)
+
+    rc = safe_command_r(address, 0x42)
+    try:
+        return pasttrec.FrontendTypeMapping[rc & 0xffff0000]
+    except KeyError:
+        print("Unknown FrontendTypeMapping key, frontend not known for hardware type {:s} in {:s}".format(hex(rc), hex(address)))
+        return None
 
 
 def decode_address_entry(string, sort=False):
@@ -96,23 +102,6 @@ def decode_address_entry(string, sort=False):
         print("Error in string ", string)
         return []
 
-    # do everything backwards
-    # asics
-    asics = []
-    if sec_len == 3 and len(sections[2]) > 0:
-        _asics = sections[2].split(",")
-        asics = [int(a)-1 for a in _asics if int(a) in range(1, 3)]
-    else:
-        asics = [0, 1]
-
-    # asics
-    cables = []
-    if sec_len >= 2 and len(sections[1]) > 0:
-        _cables = sections[1].split(",")
-        cables = [int(c)-1 for c in _cables if int(c) in range(1, 4)]
-    else:
-        cables = [0, 1, 2]
-
     # check address
     address = sections[0]
     if len(address) == 6:
@@ -125,10 +114,29 @@ def decode_address_entry(string, sort=False):
         print("Incorrect address in string: ", string)
         return []
 
-    if sort:
-        tup = [[x] + [y] + [z] for x in [address, ] for y in cables for z in asics]
+    feetype = detect_frontend(address)
+
+    # do everything backwards
+    # asics
+    asics = []
+    if sec_len == 3 and len(sections[2]) > 0:
+        _asics = sections[2].split(",")
+        asics = [int(a)-1 for a in _asics if int(a) in range(1, FrontendConfigs[feetype].asics)]
     else:
-        tup = [[x] + [y] + [z] for x in [address, ] for z in asics for y in cables]
+        asics = list(range(FrontendConfigs[feetype].asics))
+
+    # asics
+    cables = []
+    if sec_len >= 2 and len(sections[1]) > 0:
+        _cables = sections[1].split(",")
+        cables = [int(c)-1 for c in _cables if int(c) in range(1, FrontendConfigs[feetype].cables)]
+    else:
+        cables = list(range(FrontendConfigs[feetype].cables))
+
+    #if sort:
+    tup = [[int(address, 16)] + [y] + [z] for y in cables for z in asics]
+    #else:
+        #tup = [[int(address, 16)] + [y] + [z] for z in asics for y in cables]
 
     return tup
 
@@ -170,7 +178,7 @@ def reset_asic(address, verbose=False):
 
         print(
             Fore.YELLOW + "Reseting {:s} cable {:d}"
-                .format(addr, cable) + Style.RESET_ALL)
+                .format(hex(addr), cable) + Style.RESET_ALL)
         spi_reset(addr, cable)
 
 
@@ -199,26 +207,23 @@ def read_r_scalers(address, channel):
 
 
 def write_reg(trbid, cable, asic, reg, val):
-    _c = PasttrecDefaults.c_cable[cable]
     _a = PasttrecDefaults.c_asic[asic]
-    _b = PasttrecDefaults.c_base_w | _c | _a
+    _b = PasttrecDefaults.c_base_w | _a
     v = _b | (reg << 8) | val
     spi_write(trbid, cable, asic, v)
 
 
 def read_reg(trbid, cable, asic, reg):
-    _c = PasttrecDefaults.c_cable[cable]
     _a = PasttrecDefaults.c_asic[asic]
-    _b = PasttrecDefaults.c_base_r | _c | _a
+    _b = PasttrecDefaults.c_base_r | _a
     v = _b | (reg << 8)
     spi_write(trbid, cable, asic, v << 1)
     return spi_read(trbid, cable, asic, v)
 
 
 def write_data(trbid, cable, asic, data):
-    _c = PasttrecDefaults.c_cable[cable]
     _a = PasttrecDefaults.c_asic[asic]
-    _b = PasttrecDefaults.c_base_w | _c | _a
+    _b = PasttrecDefaults.c_base_w | _a
 
     if isinstance(data, list):
         v = [_b | x for x in data]
@@ -228,9 +233,8 @@ def write_data(trbid, cable, asic, data):
 
 
 def write_chunk(trbid, cable, asic, data):
-    _c = PasttrecDefaults.c_cable[cable]
     _a = PasttrecDefaults.c_asic[asic]
-    _b = PasttrecDefaults.c_base_w | _c | _a
+    _b = PasttrecDefaults.c_base_w | _a
 
     if isinstance(data, list):
         v = [_b | x for x in data]

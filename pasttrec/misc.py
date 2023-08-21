@@ -35,13 +35,6 @@ from pasttrec import *
 # Baselines
 pasttrec_bl_reg_num = 32
 
-# Scalers
-def_scalers_reg = 0xc001
-
-def_pastrec_channels_all = PasttrecDefaults.channels_num * \
-    len(PasttrecDefaults.c_asic) * len(PasttrecDefaults.c_cable)
-
-
 class Baselines:
     """Holds baseline info for given card"""
     baselines = None
@@ -55,7 +48,7 @@ class Baselines:
             w = pasttrec_bl_reg_num
             h = PasttrecDefaults.channels_num
             a = len(PasttrecDefaults.c_asic)
-            c = len(PasttrecDefaults.c_cable)
+            c = PasttrecDefaults.n_cables
             self.baselines[trb] = [[[[0 for x in range(w)] for y in range(h)]
                                     for _a in range(a)] for _c in range(c)]
 
@@ -95,7 +88,7 @@ class Thresholds:
             w = 128
             h = PasttrecDefaults.channels_num
             a = len(PasttrecDefaults.c_asic)
-            c = len(PasttrecDefaults.c_cable)
+            c = PasttrecDefaults.n_cables
             self.thresholds[trb] = [
                 [[[0 for x in range(w)] for y in range(h)]
                     for _a in range(a)] for _c in range(c)]
@@ -184,4 +177,3 @@ def convertToInt(num_string):
         return int(num_string[2:],base)
     else:
         return int(num_string)
-

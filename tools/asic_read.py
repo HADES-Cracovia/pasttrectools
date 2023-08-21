@@ -44,6 +44,10 @@ def read_asic(address):
 
     print(Style.RESET_ALL)
     for addr, cable, asic in address:
+        feetype = communication.detect_frontend(addr)
+        if feetype is None:
+            continue
+
         if communication.g_verbose == 0:
             print(Fore.YELLOW + "{:s}  {:5d}  {:4d}        "
                   .format(hex(addr), cable, asic) + Style.RESET_ALL, end='', flush=True)

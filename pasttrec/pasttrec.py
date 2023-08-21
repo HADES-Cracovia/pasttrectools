@@ -1,9 +1,31 @@
+from enum import Enum
+
 LIBVERSION = "1.0"
 
 g_verbose = 0
 
+""" use it to doscriminate different frontend types"""
+FrontendType = Enum('FrontendType', ['TRB3', 'TRB5'])
+
+FrontendTypeMapping = {
+    0xa5000000: FrontendType.TRB5
+}
+
+class FrontendConfiguration:
+    cables = 0
+    asics = 0
+
+    def __init__(self, cables, asics):
+        self.cables = cables
+        self.asics = asics
+
+FrontendConfigs = {
+    FrontendType.TRB3: FrontendConfiguration(3, 2),
+    FrontendType.TRB5: FrontendConfiguration(4, 2)
+}
+
 class PasttrecDefaults:
-    c_cable = [0x00 << 19, 0x00 << 19, 0x00 << 19]
+    n_cables = 4
     c_asic = [0x2000, 0x4000]
 
 #                Bg_int,K,Tp      TC1      TC2      Vth
