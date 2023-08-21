@@ -22,21 +22,9 @@
 
 import argparse
 from colorama import Fore, Style
-import copy
 import json
-import sys
 
-from pasttrec import *
-
-
-def bl_list_with_marker(l, pos):
-    s = ""
-    for i in range(len(l)):
-        if i == pos:
-            s += Fore.YELLOW + "{:d}".format(l[i]) + Style.RESET_ALL + ", "
-        else:
-            s += "{:d}, ".format(l[i])
-    return s
+from pasttrec import hardware, communication, misc
 
 
 if __name__ == "__main__":
@@ -79,12 +67,12 @@ if __name__ == "__main__":
     x = list(range(0, 32))
 
     idx = 1
-    for k, v in bls.items():
+    for k, v in bls.items():  # FIXME bls missing - bug?
 
-        t = TdcConnection(k)
+        t = hardware.TdcConnection(k)
 
         for c in [0, 1, 2]:
-            card = PasttrecCard("noname")
+            card = hardware.PasttrecCard("noname")
 
             for a in [0, 1]:
                 print(Fore.YELLOW + "Scanning {:s}  CARD: {:d}  ASIC: {:d}"
@@ -95,7 +83,7 @@ if __name__ == "__main__":
                     b = v[c][a][ch]
                     s = 0
                     w = 0
-                    for i in range(1,32):
+                    for i in range(1, 32):
                         s = s + (i+1) * b[i]
                         w += b[i]
                     if w == 0:
@@ -108,7 +96,7 @@ if __name__ == "__main__":
                           "(0x{:s})".format(hex(bl[ch])[2:].zfill(2)),
                           Fore.GREEN if w > 0 else Fore.RED, "{:>+3d} mV".format(-31 + 2 * bl[ch]),
                           Style.RESET_ALL,
-                          " [ ", bl_list_with_marker(v[c][a][ch], bl[ch]), "]")
+                          " [ ", misc.bl_list_with_marker(v[c][a][ch], bl[ch]), "]")
 
                 if args.offset is None:
                     while True:
@@ -132,6 +120,6 @@ if __name__ == "__main__":
                     _r = max(_r, 0)
                     _r = min(_r, 127)
 
-                    p.bl[ch] = _r
+                    p.bl[ch] = _r  # FIXME seems to be bug
 
         tlist.append(t)

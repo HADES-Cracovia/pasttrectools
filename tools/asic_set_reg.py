@@ -20,15 +20,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import os
-import sys
-import glob
 import argparse
-from time import sleep
-import json
-import math
+import sys
 
-from pasttrec import *
+from pasttrec import communication
 
 def_pastrec_thresh_range = [0x00, 0x7f]
 

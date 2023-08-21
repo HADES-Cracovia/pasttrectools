@@ -24,6 +24,7 @@
 
 from pasttrec import g_verbose
 
+
 def print_verbose(rc):
     """ Print verbose return info from trbnet communication """
 
@@ -40,8 +41,8 @@ def command_w(trbnet, trbid, reg, data):
     return 0
 
 
-def command_wm(trbnet, trbid, reg, data, option = 1):
-    rc = trbnet.trb_register_write(trbid, reg, option, data)
+def command_wm(trbnet, trbid, reg, data, option=1):
+    rc = trbnet.trb_register_write_mem(trbid, reg, option, data)
     print_verbose(rc)
     return 0
 
@@ -52,7 +53,18 @@ def command_r(trbnet, trbid, reg):
     return rc[1]
 
 
-def command_rm(trbnet, trbid, reg, length):
-    rc = trbnet.trb_register_read_mem(trbid, reg, length)
+def command_rm(trbnet, trbid, reg, length, option=1):
+    """
+    Read memory block.
+    Function return of map where the key is the trb address and value is tuple of memory block
+    """
+    rc = trbnet.trb_register_read_mem(trbid, reg, option, length)
     print_verbose(rc)
-    return rc.stdout.decode()
+    i = 0
+    res = {}
+    while i < len(rc):
+        data = rc[i]
+        partial_len = (data & 0xffff0000) >> 16
+        res[data & 0xffff] = tuple(rc[i+1:i+1+partial_len])
+        i = i + 1 + partial_len
+    return res

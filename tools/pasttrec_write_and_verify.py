@@ -23,6 +23,8 @@
 import argparse
 import subprocess
 
+from pasttrec import communication
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='Write and verify data',

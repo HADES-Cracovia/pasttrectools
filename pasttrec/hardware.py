@@ -1,46 +1,24 @@
 from enum import Enum
 
-LIBVERSION = "1.0"
-
-g_verbose = 0
-
-""" use it to doscriminate different frontend types"""
-FrontendType = Enum('FrontendType', ['TRB3', 'TRB5'])
-
-FrontendTypeMapping = {
-    0xa5000000: FrontendType.TRB5
-}
-
-class FrontendConfiguration:
-    cables = 0
-    asics = 0
-
-    def __init__(self, cables, asics):
-        self.cables = cables
-        self.asics = asics
-
-FrontendConfigs = {
-    FrontendType.TRB3: FrontendConfiguration(3, 2),
-    FrontendType.TRB5: FrontendConfiguration(4, 2)
-}
-
-class PasttrecDefaults:
-    n_cables = 4
-    c_asic = [0x2000, 0x4000]
-
-#                Bg_int,K,Tp      TC1      TC2      Vth
-    c_config_reg = [0x00000, 0x00100, 0x00200, 0x00300]
-    c_bl_reg = [0x00400, 0x00500, 0x00600, 0x00700,
-                0x00800, 0x00900, 0x00a00, 0x00b00]
-
-    c_base_w = 0x0050000
-    c_base_r = 0x0051000
-
-    channels_num = 8
-    bl_register_size = 32
+from pasttrec import LIBVERSION
 
 
-class PasttrecRegs(PasttrecDefaults):
+class AsicRegisters(Enum):
+    CFG = 0
+    TC1 = 1
+    TC2 = 2
+    VTH = 3
+    BL0 = 4
+    BL1 = 5
+    BL2 = 6
+    BL3 = 7
+    BL4 = 8
+    BL5 = 9
+    BL6 = 10
+    BL7 = 11
+
+
+class AsicRegistersValue:
     bg_int = 1
     gain = 0
     peaking = 0
@@ -68,7 +46,7 @@ class PasttrecRegs(PasttrecDefaults):
     def load_asic_from_dict(d, test_version=None):
         if (test_version is not None) and (test_version != LIBVERSION):
             return False
-        p = PasttrecRegs()
+        p = AsicRegistersValue()
         for k, v in d.items():
             setattr(p, k, v)
         return p
@@ -76,15 +54,15 @@ class PasttrecRegs(PasttrecDefaults):
     def dump_config(self):
         r_all = [0] * 12
         t = (self.bg_int << 4) | (self.gain << 2) | self.peaking
-        r_all[0] = self.c_config_reg[0] | t
+        r_all[0] = TrbRegistersOffsets.c_config_reg[0] | t
         t = (self.tc1c << 3) | self.tc1r
-        r_all[1] = self.c_config_reg[1] | t
+        r_all[1] = TrbRegistersOffsets.c_config_reg[1] | t
         t = (self.tc2c << 3) | self.tc2r
-        r_all[2] = self.c_config_reg[2] | t
-        r_all[3] = self.c_config_reg[3] | self.vth
+        r_all[2] = TrbRegistersOffsets.c_config_reg[2] | t
+        r_all[3] = TrbRegistersOffsets.c_config_reg[3] | self.vth
 
         for i in range(8):
-            r_all[4+i] = self.c_bl_reg[i] | self.bl[i]
+            r_all[4+i] = TrbRegistersOffsets.c_bl_reg[i] | self.bl[i]
 
         return r_all
 
@@ -93,6 +71,59 @@ class PasttrecRegs(PasttrecDefaults):
 
     def dump_bl_hex(self):
         return [hex(i) for i in self.dump_config()[4:]]
+
+
+class TrbFrontendType(Enum):
+    """ Use it to discriminate between different frontend types. """
+
+    TRB3 = (3, 2, 0xfe4c)
+    TRB5SC = (4, 2, 0xfe81)
+
+    def __init__(self, cables, asics, broadcast):
+        self.cables = cables
+        self.asics = asics
+        self.broadcast = broadcast
+        self.channels = 8
+
+    @property
+    def n_cables(self):
+        return self.cables
+
+    @property
+    def n_asics(self):
+        return self.asics
+
+    @property
+    def n_channels(self):
+        return self.channels
+
+    @property
+    def n_scalers(self):
+        return self.asics * self.cables * self.channels
+
+
+TrbFrontendTypeMapping = {
+    0x91000000: TrbFrontendType.TRB3,
+    0xa5000000: TrbFrontendType.TRB5SC
+}
+
+
+class TrbRegisters(Enum):
+    SCALERS = 0xc001
+
+
+class TrbRegistersOffsets:
+    c_asic = [0x2000, 0x4000]
+
+    # reg desc.: g_int,K,Tp      TC1      TC2      Vth
+    c_config_reg = [0x00000, 0x00100, 0x00200, 0x00300]
+    c_bl_reg = [0x00400, 0x00500, 0x00600, 0x00700,
+                0x00800, 0x00900, 0x00a00, 0x00b00]
+
+    c_base_w = 0x0050000
+    c_base_r = 0x0051000
+
+    bl_register_size = 32
 
 
 class PasttrecCard():
@@ -135,8 +166,8 @@ class PasttrecCard():
             return False, None
 
         pc = PasttrecCard(d['name'],
-                          PasttrecRegs().load_asic_from_dict(d['asic1']),
-                          PasttrecRegs().load_asic_from_dict(d['asic2']))
+                          AsicRegistersValue().load_asic_from_dict(d['asic1']),
+                          AsicRegistersValue().load_asic_from_dict(d['asic2']))
 
         return True, pc
 
@@ -231,20 +262,3 @@ def load(d, test_version=True):
         connections.append(TdcConnection(id, cable1=c1, cable2=c2, cable3=c3))
 
     return True, connections
-
-
-class Baselines:
-    baselines = None
-    config = None
-
-    def __init__(self):
-        self.baselines = {}
-
-    def add_trb(self, trb):
-        if trb not in self.baselines:
-            w = PasttrecDefaults.bl_register_size
-            h = PasttrecDefaults.channels_num
-            a = len(PasttrecDefaults.c_asic)
-            c = len(PasttrecDefaults.c_cable)
-            self.baselines[trb] = [[[[0 for x in range(w)] for y in range(h)]
-                                    for _a in range(a)] for _c in range(c)]

@@ -20,17 +20,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import os
-import sys
-import glob
 import argparse
 from time import sleep
-import json
-import math
 import curses
-from colorama import Fore, Style
 
-from pasttrec import *
+from pasttrec import communication, misc
 
 def_time = 0
 def_diffs = False
@@ -51,8 +45,8 @@ def show_scalers(stdscr):
     global prev_scalers
     global def_diffs
 
-    v1 = read_rm_scalers(def_broadcast_addr)
-    a1 = parse_rm_scalers(v1)
+    v1 = communication.read_rm_scalers(def_broadcast_addr)
+    a1 = misc.parse_rm_scalers(v1)
     if prev_scalers is not None and def_diffs:
         ss = a1.diff(prev_scalers)
     else:
@@ -103,7 +97,8 @@ def scan_scalers(stdscr):
             elif c == ord('q'):
                 break  # Exit the while loop
             elif c == curses.KEY_HOME:
-                x = y = 0
+                pass
+                # x = y = 0
             sleep(def_time)
 
     else:
@@ -111,14 +106,13 @@ def scan_scalers(stdscr):
         stdscr.refresh()
 
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='Scan baseline of the PASTTREC chips',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    #parser.add_argument('trbids', help='list of TRBids to scan in form'
-                        #' addres[:card-0-1-2[:asic-0-1]]', type=str, nargs="+")
+    # parser.add_argument('trbids', help='list of TRBids to scan in form'
+    #                    ' addres[:card-0-1-2[:asic-0-1]]', type=str, nargs="+")
 
     parser.add_argument('-d', '--diffs', help='show differences',
                         action='store_true')

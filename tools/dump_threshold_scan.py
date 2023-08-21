@@ -22,7 +22,6 @@
 
 import argparse
 import json
-import sys
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Draw baseline scan results')
@@ -51,4 +50,4 @@ if __name__ == "__main__":
                         tt = v[c][a][ch][t]
                         print('{:d} '.format(tt), end='')
 
-            print(' '.format(t))
+            print(' ')

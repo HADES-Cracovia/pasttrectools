@@ -23,7 +23,6 @@
 import argparse
 import json
 import matplotlib.pyplot as plt
-import sys
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Draw baseline scan results')

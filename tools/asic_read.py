@@ -20,16 +20,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import os
-import sys
-import glob
 import argparse
-from time import sleep
-import json
-import math
 from colorama import Fore, Style
 
-from pasttrec import *
+from pasttrec import communication
+from pasttrec.misc import trbaddr
 
 def_time = 0.01
 
@@ -50,9 +45,7 @@ def read_asic(address):
 
         if communication.g_verbose == 0:
             print(Fore.YELLOW + "{:s}  {:5d}  {:4d}        "
-                  .format(hex(addr), cable, asic) + Style.RESET_ALL, end='', flush=True)
-
-        asic_test_ok = True
+                  .format(trbaddr(addr), cable, asic) + Style.RESET_ALL, end='', flush=True)
 
         for reg in range(12):
 
@@ -71,7 +64,7 @@ def read_asic(address):
             else:
                 if communication.g_verbose > 0:
                     print(Fore.YELLOW + "{:s}  {:5d}  {:4d}        "
-                          .format(hex(addr), cable, asic) + Style.RESET_ALL, end='', flush=True)
+                          .format(trbaddr(addr), cable, asic) + Style.RESET_ALL, end='', flush=True)
 
                 if reg < 3:
                     print(Fore.MAGENTA, end='', flush=True)

@@ -20,16 +20,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import os
 import sys
-import glob
 import argparse
 from time import sleep
-import json
-import math
 from colorama import Fore, Style
 
-from pasttrec import *
+from pasttrec import communication, g_verbose
+from pasttrec.misc import trbaddr
 
 def_time = 0.0
 def_quick = False
@@ -50,7 +47,7 @@ def scan_communication(address):
     test_ok = True
     for addr, cable, asic in address:
         print(Fore.YELLOW + "{:s}  {:5d} {:5d}  "
-              .format(addr, cable, asic) + Style.RESET_ALL, end='', flush=True)
+              .format(trbaddr(addr), cable, asic) + Style.RESET_ALL, end='', flush=True)
 
         asic_test_ok = True
 
@@ -63,8 +60,7 @@ def scan_communication(address):
                 sleep(def_time)
                 rc = communication.read_reg(addr, cable, asic, reg)
                 try:
-                    res = int(rc.split()[1], 16)
-                    _t = res & 0xff
+                    _t = rc & 0xff
                 except ValueError as ve:
                     print("Wrong result: ", rc.split()[1])
                     print(ve)
@@ -112,8 +108,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    communication.g_verbose = args.verbose
-    if communication.g_verbose > 0:
+    g_verbose = args.verbose
+    if g_verbose > 0:
         print(args)
 
     def_time = args.time

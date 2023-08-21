@@ -26,6 +26,7 @@ def command_w(cmd_to_file, trbid, reg, data):
     cmd_to_file.write(' '.join(cmd) + '\n')
     return True
 
+
 def command_wm(cmd_to_file, trbid, reg, data, mode):
     cmd = ['trbcmd', 'wm', trbid, hex(reg), str(mode), '-']
     cmd_to_file.write(' '.join(cmd) + '\n')
@@ -36,6 +37,7 @@ def command_r(cmd_to_file, trbid, reg):
     cmd = ['trbcmd', 'r', trbid, hex(reg)]
     cmd_to_file.write(' '.join(cmd) + '\n')
     return True
+
 
 def command_rm(cmd_to_file, trbid, reg, length):
     cmd = ['trbcmd', 'rm', trbid, hex(reg), str(length), '0']

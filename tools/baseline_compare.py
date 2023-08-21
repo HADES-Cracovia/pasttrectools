@@ -22,9 +22,7 @@
 
 import argparse
 from colorama import Fore, Style
-import copy
 import json
-import sys
 
 try:
     import numpy as np
@@ -36,17 +34,7 @@ except ModuleNotFoundError:
     gp = None
     found = False
 
-from pasttrec import *
-
-
-def bl_list_with_marker(l, pos):
-    s = ""
-    for i in range(len(l)):
-        if i == pos:
-            s += Fore.YELLOW + "{:d}".format(l[i]) + Style.RESET_ALL + ", "
-        else:
-            s += "{:d}, ".format(l[i])
-    return s
+from pasttrec import communication
 
 
 if __name__ == "__main__":
@@ -120,10 +108,8 @@ if __name__ == "__main__":
                     x = bldiff[ch]
                     if x == 0:
                         print(Fore.GREEN, x, " ", end="")
-                    
                     elif abs(x) == 1:
                         print(Fore.YELLOW, x, " ", end="")
-
                     else:
                         print(Fore.RED, x, " ", end="")
 
@@ -139,13 +125,11 @@ if __name__ == "__main__":
     print("STATS: ", stats)
 
     if found:
-        g1 = gp.gnuplotlib(title = 'Baseline difference statistics', terminal = 'dumb 100,40')
-        xx = np.arange(-31,32,1)
+        g1 = gp.gnuplotlib(title='Baseline difference statistics', terminal='dumb 100,40')
+        xx = np.arange(-31, 32, 1)
         yy = np.array([stats[x] if x in stats else 0 for x in xx])
 
-        g1.plot((xx, yy, {'with': 'impulses'}),
-                _with = 'lines',
-                unset = "grid")
+        g1.plot((xx, yy, {'with': 'impulses'}), _with='lines', unset='grid')
 
 #        z = np.arange(1000)
 #        g1.plot((np.array(dbl), dict(histogram = 'freq', binwidth=1)), unset='grid')

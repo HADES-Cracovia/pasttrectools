@@ -6,10 +6,10 @@ import re
 
 def vercmp(version1, version2):
     def normalize(v):
-        return [int(x) for x in re.sub(r'(\.0+)*$','', v).split(".")]
+        return [int(x) for x in re.sub(r'(\.0+)*$', '', v).split(".")]
     a = normalize(version1)
     b = normalize(version2)
-    return ((a>b) - (a<b))
+    return ((a > b) - (a < b))
 
 
 try:

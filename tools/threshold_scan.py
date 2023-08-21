@@ -20,55 +20,62 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import os
-import sys
-import glob
 import argparse
 from time import sleep
 import json
-import math
 
-from pasttrec import *
+from pasttrec import hardware, communication, misc
+from pasttrec.misc import parse_rm_scalers, calc_tdc_channel
 
 def_time = 1
 
-def_broadcast_addr = 0xfe4c
 def_pastrec_thresh_range = [0x00, 0x7f]
 
+
 def scan_threshold(address):
-    ttt = Thresholds()
+    ttt = misc.Thresholds()
 
     print("  address   channel   th 0" + " "*def_threshold_max + str(def_threshold_max))
     print("                         |" + "-"*def_threshold_max + "|")
     print("  {:s}    {:s}           "
-          .format(hex(def_broadcast_addr), 'all'), end='', flush=True)
+          .format(hex(0xffff), 'all'), end='', flush=True)
 
     # loop over bl register value
     for vth in range(def_pastrec_thresh_range[0], def_threshold_max):
         print("#", end='', flush=True)
 
+        # Store here pairs of bc address and number of channels in an endpoint
+        broadcasts_list = set()
+
         # loop over TDC
         for addr, cable, asic in address:
+            trbfetype = communication.detect_frontend(addr)
+            if trbfetype is None:
+                continue
+
+            broadcasts_list.add((trbfetype.broadcast, trbfetype.n_scalers))
+
             communication.write_reg(addr, cable, asic, 3, vth)
 
         sleep(0.1)
-        v1 = read_rm_scalers(def_broadcast_addr)
-        sleep(def_time)
-        v2 = read_rm_scalers(def_broadcast_addr)
-        a1 = parse_rm_scalers(v1)
-        a2 = parse_rm_scalers(v2)
-        bb = a2.diff(a1)
+        for bc_addr, n_scalers in broadcasts_list:
+            v1 = communication.read_rm_scalers(bc_addr, n_scalers)
+            sleep(def_time)
+            v2 = communication.read_rm_scalers(bc_addr, n_scalers)
+            a1 = parse_rm_scalers(trbfetype, v1)
+            a2 = parse_rm_scalers(trbfetype, v2)
+            bb = a2.diff(a1)
 
-        for addr, cable, asic in address:
-            for c in list(range(PasttrecDefaults.channels_num)):
-                chan = calc_tdc_channel(cable, asic, c)
+            for addr, cable, asic in address:
+                for c in list(range(trbfetype.n_channels)):
+                    chan = calc_tdc_channel(trbfetype, cable, asic, c)
 
-                vv = bb.scalers[addr][chan]
-                if vv < 0:
-                    vv += 0x80000000
+                    vv = bb.scalers[addr][chan]
+                    if vv < 0:
+                        vv += 0x80000000
 
-                ttt.add_trb(addr)
-                ttt.thresholds[addr][cable][asic][c][vth] = vv
+                    ttt.add_trb(addr, trbfetype)
+                    ttt.thresholds[addr][cable][asic][c][vth] = vv
 
     print("  done")
 
@@ -127,10 +134,10 @@ if __name__ == "__main__":
     if communication.g_verbose > 0:
         print(args)
 
-    p = PasttrecRegs(bg_int=args.source, gain=args.gain, peaking=args.peaking,
-                     tc1c=args.timecancelationC1, tc1r=args.timecancelationR1,
-                     tc2c=args.timecancelationC2, tc2r=args.timecancelationR2,
-                     vth=0, bl=[0]*8)
+    p = hardware.AsicRegistersValue(bg_int=args.source, gain=args.gain, peaking=args.peaking,
+                                    tc1c=args.timecancelationC1, tc1r=args.timecancelationR1,
+                                    tc2c=args.timecancelationC2, tc2r=args.timecancelationR2,
+                                    vth=0, bl=[0]*8)
 
     tup = communication.decode_address(args.trbids)
 

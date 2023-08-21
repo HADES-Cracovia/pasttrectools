@@ -21,22 +21,8 @@
 # SOFTWARE.
 
 import argparse
-from colorama import Fore, Style
-import copy
-import json
-import sys
 
-from pasttrec import *
-
-
-def bl_list_with_marker(l, pos):
-    s = ""
-    for i in range(len(l)):
-        if i == pos:
-            s += Fore.YELLOW + "{:d}".format(l[i]) + Style.RESET_ALL + ", "
-        else:
-            s += "{:d}, ".format(l[i])
-    return s
+from pasttrec import communication, misc
 
 
 if __name__ == "__main__":
@@ -72,20 +58,20 @@ if __name__ == "__main__":
             lines = data.readlines()
             data.close()
 
-        for l in lines:
+        for line in lines:
             # Pawel Kulessa enumerates cables 1..3 and asics 1..2, unlike RL 0..2 and 0..1, so sub 1 for PK files
             pk_corr = 0
-            parts = l.split()
+            parts = line.split()
 
             nl = [misc.convertToInt(x) for x in parts[0:15]]
             if nl[0] >= 0x6400 and nl[0] <= 0x64ff:
-               trbid = hex(nl[0])
+                trbid = hex(nl[0])
             else:
                 trbid = "0x" + str(nl[0])
                 pk_corr = 1
 
-            for i,val in enumerate(nl[3:15]):
-                nl[3+i] = nl[3+i] | i<<8
+            for i, val in enumerate(nl[3:15]):
+                nl[3+i] = nl[3+i] | i << 8
 
             if args.dump:
                 communication.cmd_to_file = dump_file

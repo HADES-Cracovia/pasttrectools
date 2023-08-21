@@ -21,17 +21,11 @@
 # SOFTWARE.
 
 import os
-import sys
-import glob
-import argparse
-import subprocess
-from time import sleep
-import json
-import math
 import time
 from colorama import Fore, Style
 
-from pasttrec import *
+from pasttrec import hardware, misc, g_verbose
+from pasttrec.misc import trbaddr
 
 try:
     from trbnet import TrbNet
@@ -75,9 +69,9 @@ def detect_frontend(address):
 
     rc = safe_command_r(address, 0x42)
     try:
-        return pasttrec.FrontendTypeMapping[rc & 0xffff0000]
+        return hardware.TrbFrontendTypeMapping[rc & 0xffff0000]
     except KeyError:
-        print("Unknown FrontendTypeMapping key, frontend not known for hardware type {:s} in {:s}".format(hex(rc), hex(address)))
+        print("FrontendTypeMapping not known for hardware type {:s} in {:s}".format(hex(rc), trbaddr(address)))
         return None
 
 
@@ -114,29 +108,26 @@ def decode_address_entry(string, sort=False):
         print("Incorrect address in string: ", string)
         return []
 
-    feetype = detect_frontend(address)
+    trbfetype = detect_frontend(address)
 
     # do everything backwards
     # asics
     asics = []
     if sec_len == 3 and len(sections[2]) > 0:
         _asics = sections[2].split(",")
-        asics = [int(a)-1 for a in _asics if int(a) in range(1, FrontendConfigs[feetype].asics)]
+        asics = [int(a)-1 for a in _asics if int(a) in range(1, trbfetype.asics)]
     else:
-        asics = list(range(FrontendConfigs[feetype].asics))
+        asics = list(range(trbfetype.asics))
 
     # asics
     cables = []
     if sec_len >= 2 and len(sections[1]) > 0:
         _cables = sections[1].split(",")
-        cables = [int(c)-1 for c in _cables if int(c) in range(1, FrontendConfigs[feetype].cables)]
+        cables = [int(c)-1 for c in _cables if int(c) in range(1, trbfetype.cables)]
     else:
-        cables = list(range(FrontendConfigs[feetype].cables))
+        cables = list(range(trbfetype.cables))
 
-    #if sort:
     tup = [[int(address, 16)] + [y] + [z] for y in cables for z in asics]
-    #else:
-        #tup = [[int(address, 16)] + [y] + [z] for z in asics for y in cables]
 
     return tup
 
@@ -178,7 +169,7 @@ def reset_asic(address, verbose=False):
 
         print(
             Fore.YELLOW + "Reseting {:s} cable {:d}"
-                .format(hex(addr), cable) + Style.RESET_ALL)
+                .format(trbaddr(addr), cable) + Style.RESET_ALL)
         spi_reset(addr, cable)
 
 
@@ -191,15 +182,15 @@ def asics_to_defaults(address, def_pasttrec):
 
 def asic_to_defaults(address, cable, asic, def_pasttrec):
     """Set asics to defaults from config."""
-    write_data(address, cable, asic, d)
+    write_data(address, cable, asic, def_pasttrec.dump_config())
 
 
-def read_rm_scalers(address):
-    return safe_command_rm(address, def_scalers_reg, def_pastrec_channels_all)
+def read_rm_scalers(trbid, n_scalers):
+    return safe_command_rm(trbid, hardware.TrbRegisters.SCALERS.value, n_scalers)
 
 
-def read_r_scalers(address, channel):
-    return safe_command_r(address, def_scalers_reg + channel)
+def read_r_scalers(trbid, channel):
+    return safe_command_r(trbid, hardware.TrbRegisters.SCALERS.value + channel)
 
 
 """ These functions write, read or rad memory for given cable and asic.
@@ -207,23 +198,23 @@ def read_r_scalers(address, channel):
 
 
 def write_reg(trbid, cable, asic, reg, val):
-    _a = PasttrecDefaults.c_asic[asic]
-    _b = PasttrecDefaults.c_base_w | _a
+    _a = hardware.TrbRegistersOffsets.c_asic[asic]
+    _b = hardware.TrbRegistersOffsets.c_base_w | _a
     v = _b | (reg << 8) | val
     spi_write(trbid, cable, asic, v)
 
 
 def read_reg(trbid, cable, asic, reg):
-    _a = PasttrecDefaults.c_asic[asic]
-    _b = PasttrecDefaults.c_base_r | _a
+    _a = hardware.TrbRegistersOffsets.c_asic[asic]
+    _b = hardware.TrbRegistersOffsets.c_base_r | _a
     v = _b | (reg << 8)
     spi_write(trbid, cable, asic, v << 1)
     return spi_read(trbid, cable, asic, v)
 
 
 def write_data(trbid, cable, asic, data):
-    _a = PasttrecDefaults.c_asic[asic]
-    _b = PasttrecDefaults.c_base_w | _a
+    _a = hardware.TrbRegistersOffsets.c_asic[asic]
+    _b = hardware.TrbRegistersOffsets.c_base_w | _a
 
     if isinstance(data, list):
         v = [_b | x for x in data]
@@ -233,8 +224,8 @@ def write_data(trbid, cable, asic, data):
 
 
 def write_chunk(trbid, cable, asic, data):
-    _a = PasttrecDefaults.c_asic[asic]
-    _b = PasttrecDefaults.c_base_w | _a
+    _a = hardware.TrbRegistersOffsets.c_asic[asic]
+    _b = hardware.TrbRegistersOffsets.c_base_w | _a
 
     if isinstance(data, list):
         v = [_b | x for x in data]
@@ -300,10 +291,9 @@ def spi_write(trbid, cable, asic, data):
 
     if last_asic != asic and last_trb and last_trb == trbid:
         time.sleep(same_cable_delay)
-        #print("pause")
+
     last_trb = trbid
     last_asic = asic
-    #print(trbid, cable, asic)
 
     spi_fill_buffer(trbid, cable, asic, data)
 
@@ -335,20 +325,20 @@ def spi_write_chunk(trbid, cable, asic, data):
         if last_asic != asic and last_trb and last_trb == trbid:
             time.sleep(same_cable_delay)
 
-        last_trbid = trbid
+        last_trb = trbid
         last_asic = asic
 
 #        print(trbid, cable, asic)
         spi_prepare(trbid, cable, asic)
 
         for d in misc.chunks(my_data_list, 16):
-            i = 0
+            # i = 0
             safe_command_wm(trbid, 0xd400, my_data_list, 0)
-            #for val in d:
-                # writing one data word, append zero to the data word, the chip
-                # will get some more SCK clock cycles
-                #safe_command_w(trbid, 0xd400 + i, val)
-                #i = i + 1
+            # for val in d:
+            #    # writing one data word, append zero to the data word, the chip
+            #    # will get some more SCK clock cycles
+            #    safe_command_w(trbid, 0xd400 + i, val)
+            #    i = i + 1
 
             # write  length register to trigger sending
             safe_command_w(trbid, 0xd411, len(d))

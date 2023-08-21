@@ -20,37 +20,36 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-#import os
-#import sys
-#import glob
-#import argparse
-#import subprocess
-#from time import sleep
-#import json
-#import math
-#import time
-#from colorama import Fore, Style
 
-#from pasttrec import *
+import subprocess
 
-#if isinstance(trbid, int):
-        #_trbid = hex(trbid)
-    #else:
-        #_trbid = trbid
+from pasttrec import g_verbose
+
+
+def print_verbose(rc):
+    """ Print verbose return info from trbnet communication """
+
+    if rc is None:
+        return
+
+    if g_verbose >= 1:
+        print("[{:s}]  {:d}".format(hex(rc[0]), rc[1]))
+
 
 def command_w(trbid, reg, data):
     cmd = ['trbcmd', 'w', trbid, hex(reg), hex(data)]
-
+    """
     if cmd_to_file is not None:
         cmd_to_file.write(' '.join(cmd) + '\n')
         return True
-
+    """
     rc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     print_verbose(rc)
     return rc.stdout.decode()
 
 
 def command_wm(trbid, reg, data, mode):
+    """
     if cmd_to_file is not None:
         cmd = ['trbcmd', 'wm', trbid, hex(reg), str(mode), '- << EOF']
         cmd_to_file.write(' '.join(cmd) + '\n')
@@ -58,7 +57,7 @@ def command_wm(trbid, reg, data, mode):
             cmd_to_file.write(hex(d) + '\n')
         cmd_to_file.write('EOF\n')
         return True
-
+    """
     cmd = ['trbcmd', 'wm', trbid, hex(reg), str(mode), '-']
     _data = "\n".join([hex(x) for x in data])
     rc = subprocess.run(cmd, input=_data.encode('utf-8'), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -68,11 +67,11 @@ def command_wm(trbid, reg, data, mode):
 
 def command_r(trbid, reg):
     cmd = ['trbcmd', 'r', trbid, hex(reg)]
-
+    """
     if cmd_to_file is not None:
         cmd_to_file.write(' '.join(cmd) + '\n')
         return True
-
+    """
     rc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     print_verbose(rc)
     return rc.stdout.decode()
@@ -80,11 +79,58 @@ def command_r(trbid, reg):
 
 def command_rm(trbid, reg, length):
     cmd = ['trbcmd', 'rm', trbid, hex(reg), str(length), '0']
-
+    """
     if cmd_to_file is not None:
         cmd_to_file.write(' '.join(cmd) + '\n')
         return True
-
+    """
     rc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     print_verbose(rc)
     return rc.stdout.decode()
+
+
+"""
+def parse_rm_scalers(res):
+    s = Scalers()
+    a = None   # address
+    c = 0   # channel
+    for line in lines:
+        parts = line.split()
+        n = len(parts)
+
+        if n == 3:
+            a = hex(int(parts[1], 16))
+            s.add_trb(a)
+            sm = 1
+
+        if n == 2:
+            if a is not None:
+                c = int(parts[0], 16) - def_scalers_reg
+                if c > def_pastrec_channels_all:
+                    continue
+                val = int(parts[1], 16)
+                if val >= 0x80000000:
+                    val -= 0x80000000
+                s.scalers[a][c] = val
+            else:
+                continue
+
+    return s
+
+
+def parse_r_scalers(res):
+    r = {}
+    lines = res.splitlines()
+    for line in lines:
+        parts = line.split()
+        n = len(parts)
+
+        if n == 2:
+            a = int(parts[0], 16)
+            n = int(parts[1], 16)
+            if n >= 0x80000000:
+                n -= 0x80000000
+            r[hex(a)] = n
+
+    return r
+"""

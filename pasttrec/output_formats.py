@@ -20,39 +20,26 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import os
-import sys
-import glob
-import argparse
-import subprocess
-from time import sleep
-import json
-import math
-from colorama import Fore, Style
-
-from pasttrec import *
-
 cmd_to_file = None  # if set to file, redirect output to this file
 bgs = '    '
 igs = '  '
 
-def export_chunk(trbid, cable, asic, data):
-    _c = PasttrecDefaults.c_cable[cable]
-    _a = PasttrecDefaults.c_asic[asic]
-    _b = PasttrecDefaults.c_base_w | _c | _a
 
+def export_chunk(trbid, cable, asic, data):
     if isinstance(data, list):
         v = [x & 0xff for x in data]
     else:
         v = data & 0xff
     dat_write_chunk(trbid, cable, asic, v)
 
-def dat_write_chunk(trbid, cable, asic, data, hexflags=[1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0] ):
+
+def dat_write_chunk(trbid, cable, asic, data, hexflags=[1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]):
     zdata = list(zip(data, hexflags))
-    fdata = [ trbid, str(cable), str(asic) ] + [ hex(x[0]) if x[1] else str(x[0]).rjust(2) for x in zdata ]
+    fdata = [trbid, str(cable), str(asic)] + [hex(x[0]) if x[1] else str(x[0]).rjust(2) for x in zdata]
 
     if cmd_to_file is not None:
-        cmd_to_file.write('  ' + igs.join(fdata[0:3]) + bgs + igs.join(fdata[3:6]) + bgs + fdata[6] + bgs + igs.join(fdata[7:]) + '\n')
+        cmd_to_file.write(
+            '  ' + igs.join(fdata[0:3]) + bgs + igs.join(fdata[3:6]) + bgs + fdata[6] + bgs + igs.join(fdata[7:]) + '\n'
+        )
     else:
         print('  ' + '  '.join(fdata) + '\n')
-

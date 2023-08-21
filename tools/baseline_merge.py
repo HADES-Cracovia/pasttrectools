@@ -21,14 +21,10 @@
 # SOFTWARE.
 
 import os
-import sys
-import glob
 import argparse
-from time import sleep
 import json
-import math
 
-from pasttrec import *
+from pasttrec import communication, misc
 
 
 if __name__ == "__main__":
@@ -53,7 +49,7 @@ if __name__ == "__main__":
     if args.output:
         out_file = open(args.output, 'w')
 
-    b = pasttrec.Baselines()
+    b = misc.Baselines()
 
     d = None
     for filename in args.files:
