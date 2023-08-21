@@ -46,7 +46,7 @@ def read_asic(address):
     for addr, cable, asic in address:
         if communication.g_verbose == 0:
             print(Fore.YELLOW + "{:s}  {:5d}  {:4d}        "
-                  .format(addr, cable, asic) + Style.RESET_ALL, end='', flush=True)
+                  .format(hex(addr), cable, asic) + Style.RESET_ALL, end='', flush=True)
 
         asic_test_ok = True
 
@@ -54,8 +54,7 @@ def read_asic(address):
 
             rc = communication.read_reg(addr, cable, asic, reg)
             try:
-                res = int(rc.split()[1], 16)
-                _t = res & 0xff
+                _t = rc & 0xff
             except ValueError as ve:
                 print("Wrong result: ", rc.split()[1])
                 print(ve)
@@ -68,7 +67,7 @@ def read_asic(address):
             else:
                 if communication.g_verbose > 0:
                     print(Fore.YELLOW + "{:s}  {:5d}  {:4d}        "
-                          .format(addr, cable, asic) + Style.RESET_ALL, end='', flush=True)
+                          .format(hex(addr), cable, asic) + Style.RESET_ALL, end='', flush=True)
 
                 if reg < 3:
                     print(Fore.MAGENTA, end='', flush=True)

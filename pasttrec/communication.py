@@ -44,7 +44,27 @@ else:
     lib = os.getenv("LIBTRBNET")
     host = os.getenv("DAQOPSERVER")
     trbnet = TrbNet(libtrbnet=lib, daqopserver=host)
-    print("INFO: Trbnet library found at {:s}", host)
+    print("INFO: Trbnet library found in {:s} at host {:s}".format(lib, host))
+
+cmd_to_file = None  # if set to file, redirect output to this file
+comm_driver = os.getenv("PASTTREC_COMM_DRIVER")
+
+if comm_driver is not None:
+    if comm_driver == "trbnet":
+        import pasttrec.trb_comm.libtrbnet as comm
+    elif comm_driver == "shell":
+        import pasttrec.trb_comm.shell as comm
+    elif comm_driver == "file":
+        import pasttrec.trb_comm.file as comm
+    else:
+        raise "PASTTREC_COMM_DRIVER is incorrect"
+else:
+    if trbnet_available:
+        import pasttrec.trb_comm.libtrbnet as comm
+    elif cmd_to_file:
+        import pasttrec.trb_comm.file as comm
+    else:
+        import pasttrec.trb_comm.shell as comm
 
 # chip communication
 
@@ -223,128 +243,20 @@ def write_chunk(trbid, cable, asic, data):
     the librray or the shell. """
 
 
-def safe_command_w(trbid, reg, data):
-    if isinstance(trbid, int):
-        _trbid = hex(trbid)
-    else:
-        _trbid = trbid
-
-    if trbnet_available and cmd_to_file is not None:
-        return trbnet_command_w(_trbid, reg, data)
-    else:
-        return shell_command_w(_trbid, reg, data)
+def safe_command_w(trbid: int, reg: int, data: int):
+    return comm.command_w(trbnet, trbid, reg, data)
 
 
-def safe_command_wm(trbid, reg, data, mode):
-    if isinstance(trbid, int):
-        _trbid = hex(trbid)
-    else:
-        _trbid = trbid
-
-    if trbnet_available and cmd_to_file is not None:
-        return trbnet_command_wm(_trbid, reg, data, mode)
-    else:
-        return shell_command_wm(_trbid, reg, data, mode)
+def safe_command_wm(trbid: int, reg: int, data: int, mode: int):
+    return comm.command_wm(trbnet, trbid, reg, data, mode)
 
 
-def safe_command_r(trbid, reg):
-    if isinstance(trbid, int):
-        _trbid = hex(trbid)
-    else:
-        _trbid = trbid
-
-    if trbnet_available and cmd_to_file is not None:
-        return trbnet_command_r(_trbid, reg)
-    else:
-        return shell_command_r(_trbid, reg)
+def safe_command_r(trbid: int, reg: int):
+    return comm.command_r(trbnet, trbid, reg)
 
 
-def safe_command_rm(trbid, reg, length):
-    if isinstance(trbid, int):
-        _trbid = hex(trbid)
-    else:
-        _trbid = trbid
-
-    if trbnet_available and cmd_to_file is not None:
-        return trbnet_command_rm(_trbid, reg, length)
-    else:
-        return shell_command_rm(_trbid, reg, length)
-
-
-""" These functions are shell functions. """
-
-
-def shell_command_w(trbid, reg, data):
-    cmd = ['trbcmd', 'w', trbid, hex(reg), hex(data)]
-
-    if cmd_to_file is not None:
-        cmd_to_file.write(' '.join(cmd) + '\n')
-        return True
-
-    rc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    print_verbose(rc)
-    return rc.stdout.decode()
-
-
-def shell_command_wm(trbid, reg, data, mode):
-    if cmd_to_file is not None:
-        cmd = ['trbcmd', 'wm', trbid, hex(reg), str(mode), '- << EOF']
-        cmd_to_file.write(' '.join(cmd) + '\n')
-        for d in data:
-            cmd_to_file.write(hex(d) + '\n')
-        cmd_to_file.write('EOF\n')
-        return True
-
-    cmd = ['trbcmd', 'wm', trbid, hex(reg), str(mode), '-']
-    _data = "\n".join([hex(x) for x in data])
-    rc = subprocess.run(cmd, input=_data.encode('utf-8'), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    print_verbose(rc)
-    return rc.stdout.decode()
-
-
-def shell_command_r(trbid, reg):
-    cmd = ['trbcmd', 'r', trbid, hex(reg)]
-
-    if cmd_to_file is not None:
-        cmd_to_file.write(' '.join(cmd) + '\n')
-        return True
-
-    rc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    print_verbose(rc)
-    return rc.stdout.decode()
-
-
-def shell_command_rm(trbid, reg, length):
-    cmd = ['trbcmd', 'rm', trbid, hex(reg), str(length), '0']
-
-    if cmd_to_file is not None:
-        cmd_to_file.write(' '.join(cmd) + '\n')
-        return True
-
-    rc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    print_verbose(rc)
-    return rc.stdout.decode()
-
-
-""" These functions are trbnetlibrary functions. """
-
-
-def trbnet_command_w(trbid, reg, data):
-    rc = trbnet.trb_register_write(trbid, reg, data)
-    print_verbose(rc)
-    return rc.stdout.decode()
-
-
-def trbnet_command_r(trbid, reg):
-    rc = trbnet.trb_register_read(trbid, reg)
-    print_verbose(rc)
-    return rc.stdout.decode()
-
-
-def trbnet_command_rm(trbid, reg, length):
-    rc = trbnet.trb_register_read_mem(trbid, reg, length)
-    print_verbose(rc)
-    return rc.stdout.decode()
+def safe_command_rm(trbid: int, reg: int, length: int):
+    return comm.command_rm(trbnet, trbid, reg, length)
 
 
 """ SPI protocol function. """

@@ -24,13 +24,13 @@ if vercmp(dist.version, "40.0.0") >= 0:
 else:
     setup(
         name='pasttrectools',
-        version='0.3.1',
+        version='0.4.0',
         description='Tools for scanning and configuring pasttrec ASICs',
         url='https://github.com/HADES-Cracovia/pasttrectools',
         author='Rafal Lalik',
         author_email='rafal.lalik@uj.edu.pl',
         license='MIT',
-        packages=['pasttrec'],
+        packages=['pasttrec', 'pasttrec.trb_comm'],
         scripts=[
             'tools/baseline_calc.py',
             'tools/baseline_merge.py',
