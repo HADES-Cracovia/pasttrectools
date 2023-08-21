@@ -41,7 +41,7 @@ except ImportError:
     print("INFO: Trbnet library not found.")
 else:
     trbnet_available = True
-    lib = '/trbnettools/trbnetd/libtrbnet.so'
+    lib = os.getenv("LIBTRBNET")
     host = os.getenv("DAQOPSERVER")
     trbnet = TrbNet(libtrbnet=lib, daqopserver=host)
     print("INFO: Trbnet library found at {:s}", host)
