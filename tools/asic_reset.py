@@ -29,17 +29,26 @@ def_time = 1
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description='Reset PASTTREC chips',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        description="Reset PASTTREC chips",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
 
-    parser.add_argument('trbids', help='list of TRBids to scan in form'
-                        ' addres[:card-0-1-2[:asic-0-1]]',
-                        type=str, nargs="+")
+    parser.add_argument(
+        "trbids",
+        help="list of TRBids to scan in form" " addres[:card-0-1-2[:asic-0-1]]",
+        type=str,
+        nargs="+",
+    )
 
-    parser.add_argument('-t', '--time', help='sleep time',
-                        type=float, default=def_time)
-    parser.add_argument('-v', '--verbose', help='verbose level: 0, 1, 2, 3',
-                        type=int, choices=[0, 1, 2, 3], default=0)
+    parser.add_argument("-t", "--time", help="sleep time", type=float, default=def_time)
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        help="verbose level: 0, 1, 2, 3",
+        type=int,
+        choices=[0, 1, 2, 3],
+        default=0,
+    )
 
     args = parser.parse_args()
 

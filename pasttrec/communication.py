@@ -32,13 +32,14 @@ try:
 except ImportError:
     trbnet_available = False
     trbnet = None
-    print("INFO: Trbnet library not found.")
+    print("ERROR: Trbnet library not found.")
 else:
     trbnet_available = True
     lib = os.getenv("LIBTRBNET")
     host = os.getenv("DAQOPSERVER")
     trbnet = TrbNet(libtrbnet=lib, daqopserver=host)
-    print("INFO: Trbnet library found in {:s} at host {:s}".format(lib, host))
+    if g_verbose:
+        print("INFO: Trbnet library found in {:s} at host {:s}".format(lib, host))
 
 cmd_to_file = None  # if set to file, redirect output to this file
 comm_driver = os.getenv("PASTTREC_COMM_DRIVER")
@@ -69,7 +70,7 @@ def detect_frontend(address):
 
     rc = safe_command_r(address, 0x42)
     try:
-        return hardware.TrbFrontendTypeMapping[rc & 0xffff0000]
+        return hardware.TrbFrontendTypeMapping[rc & 0xFFFF0000]
     except KeyError:
         print("FrontendTypeMapping not known for hardware type {:s} in {:s}".format(hex(rc), trbaddr(address)))
         return None
@@ -87,7 +88,7 @@ def decode_address_entry(string, sort=False):
     examples:
      0x6400 - all cables and asics
      0x6400::2 - all cables, asic 2
-     """
+    """
 
     sections = string.split(":")
     sec_len = len(sections)
@@ -115,7 +116,7 @@ def decode_address_entry(string, sort=False):
     asics = []
     if sec_len == 3 and len(sections[2]) > 0:
         _asics = sections[2].split(",")
-        asics = [int(a)-1 for a in _asics if int(a) in range(1, trbfetype.asics)]
+        asics = [int(a) - 1 for a in _asics if int(a) in range(1, trbfetype.asics)]
     else:
         asics = list(range(trbfetype.asics))
 
@@ -123,7 +124,7 @@ def decode_address_entry(string, sort=False):
     cables = []
     if sec_len >= 2 and len(sections[1]) > 0:
         _cables = sections[1].split(",")
-        cables = [int(c)-1 for c in _cables if int(c) in range(1, trbfetype.cables)]
+        cables = [int(c) - 1 for c in _cables if int(c) in range(1, trbfetype.cables)]
     else:
         cables = list(range(trbfetype.cables))
 
@@ -144,7 +145,7 @@ def decode_address(string, sort=False):
 
 
 def print_verbose(rc):
-    cmd = ' '.join(rc.args)
+    cmd = " ".join(rc.args)
     rtc = rc.returncode
 
     if g_verbose >= 1:
@@ -167,9 +168,7 @@ def reset_asic(address, verbose=False):
         _addr = addr
         _cable = cable
 
-        print(
-            Fore.YELLOW + "Reseting {:s} cable {:d}"
-                .format(trbaddr(addr), cable) + Style.RESET_ALL)
+        print(Fore.YELLOW + "Reseting {:s} cable {:d}".format(trbaddr(addr), cable) + Style.RESET_ALL)
         spi_reset(addr, cable)
 
 
@@ -263,7 +262,7 @@ spi_mem = {}
 
 last_trb = None
 last_asic = None
-same_cable_delay = 0.
+same_cable_delay = 0.0
 
 """ Based on GSI code from M. Wiebusch """
 
@@ -306,9 +305,9 @@ def spi_write(trbid, cable, asic, data):
         for data in my_data_list:
             # writing one data word, append zero to the data word, the chip
             # will get some more SCK clock cycles
-            safe_command_w(trbid, 0xd400, data)
+            safe_command_w(trbid, 0xD400, data)
             # write 1 to length register to trigger sending
-            safe_command_w(trbid, 0xd411, 0x0001)
+            safe_command_w(trbid, 0xD411, 0x0001)
 
 
 def spi_write_chunk(trbid, cable, asic, data):
@@ -328,12 +327,12 @@ def spi_write_chunk(trbid, cable, asic, data):
         last_trb = trbid
         last_asic = asic
 
-#        print(trbid, cable, asic)
+        # print(trbid, cable, asic)
         spi_prepare(trbid, cable, asic)
 
         for d in misc.chunks(my_data_list, 16):
             # i = 0
-            safe_command_wm(trbid, 0xd400, my_data_list, 0)
+            safe_command_wm(trbid, 0xD400, my_data_list, 0)
             # for val in d:
             #    # writing one data word, append zero to the data word, the chip
             #    # will get some more SCK clock cycles
@@ -341,21 +340,21 @@ def spi_write_chunk(trbid, cable, asic, data):
             #    i = i + 1
 
             # write  length register to trigger sending
-            safe_command_w(trbid, 0xd411, len(d))
+            safe_command_w(trbid, 0xD411, len(d))
 
 
 def spi_read(trbid, cable, asic, data):
-    return safe_command_r(trbid, 0xd412)
+    return safe_command_r(trbid, 0xD412)
 
 
 def spi_prepare(trbid, cable, asic):
     # bring all CS (reset lines) in the default state (1) - upper four nibbles:
     # invert CS, lower four nibbles: disable CS
-    safe_command_w(trbid, 0xd417, 0x0000FFFF)
+    safe_command_w(trbid, 0xD417, 0x0000FFFF)
 
     # (chip-)select output $CONN for i/o multiplexer reasons, remember CS lines
     # are disabled
-    safe_command_w(trbid, 0xd410, 0xFFFF & (1 << cable))
+    safe_command_w(trbid, 0xD410, 0xFFFF & (1 << cable))
 
     # override: (chip-) select all ports!!
     # trbcmd w $trbid 0xd410 0xFFFF
@@ -364,10 +363,10 @@ def spi_prepare(trbid, cable, asic):
     # trbcmd w $trbid 0xd410 0x0000
 
     # disable all SDO outputs but output $CONN
-    safe_command_w(trbid, 0xd415, 0xFFFF & ~(1 << cable))
+    safe_command_w(trbid, 0xD415, 0xFFFF & ~(1 << cable))
 
     # disable all SCK outputs but output $CONN
-    safe_command_w(trbid, 0xd416, 0xFFFF & ~(1 << cable))
+    safe_command_w(trbid, 0xD416, 0xFFFF & ~(1 << cable))
 
     # override: disable all SDO and SCK lines
     # trbcmd w $trbid 0xd415 0xFFFF
@@ -377,14 +376,14 @@ def spi_prepare(trbid, cable, asic):
 def spi_reset(trbid, cable):
     # bring all CS (reset lines) in the default state (1) - upper four nibbles:
     # invert CS, lower four nibbles: disable CS
-    safe_command_w(trbid, 0xd417, 0x0000FFFF)
+    safe_command_w(trbid, 0xD417, 0x0000FFFF)
     # and bring down selected bit
-    safe_command_w(trbid, 0xd417, 0xFFFFFFFF & (0x10000 << cable))
+    safe_command_w(trbid, 0xD417, 0xFFFFFFFF & (0x10000 << cable))
 
     # generate 25 clock cycles
     for c in range(25):
-        safe_command_w(trbid, 0xd416, 0xFFFF0000 & (0x10000 << cable))
-        safe_command_w(trbid, 0xd416, 0x00000000)
+        safe_command_w(trbid, 0xD416, 0xFFFF0000 & (0x10000 << cable))
+        safe_command_w(trbid, 0xD416, 0x00000000)
 
     # restore default CS
-    safe_command_w(trbid, 0xd417, 0x0000FFFF)
+    safe_command_w(trbid, 0xD417, 0x0000FFFF)

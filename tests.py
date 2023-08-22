@@ -25,9 +25,9 @@ class TestTdc(unittest.TestCase):
     p13 = hardware.AsicRegistersValue(vth=13)
     p14 = hardware.AsicRegistersValue(vth=14)
 
-    c0 = hardware.PasttrecCard('C001', p01, p02)
-    c1 = hardware.PasttrecCard('C002', p03, p11)
-    c2 = hardware.PasttrecCard('C003', p12, p13)
+    c0 = hardware.PasttrecCard("C001", p01, p02)
+    c1 = hardware.PasttrecCard("C002", p03, p11)
+    c2 = hardware.PasttrecCard("C003", p12, p13)
 
     t0 = hardware.TdcConnection(0x6400, c0, None, c1)
     t1 = hardware.TdcConnection(0x6401, None, c2, None)
@@ -45,13 +45,13 @@ class TestTdc(unittest.TestCase):
 
     def test_dump_and_load(self):
         res = hardware.dump(self.t0)
-        self.assertEqual(LIBVERSION, res['version'])
+        self.assertEqual(LIBVERSION, res["version"])
         self.assertEqual(len(res), 2)
 
         res = hardware.dump([self.t0, self.t1])
         self.assertEqual(len(res), 3)
 
-        tf = tempfile.NamedTemporaryFile(mode='w+', delete=False)
+        tf = tempfile.NamedTemporaryFile(mode="w+", delete=False)
 
         json.dump(res, tf, indent=2)
         tf.close()
@@ -75,5 +75,5 @@ class TestTdc(unittest.TestCase):
         os.remove(tf.name)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

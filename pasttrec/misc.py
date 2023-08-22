@@ -32,6 +32,7 @@ pasttrec_bl_reg_num = 32
 
 class Baselines:
     """Holds baseline info for given card"""
+
     baselines = None
     config = None
 
@@ -44,8 +45,7 @@ class Baselines:
             h = trbfetype.n_channels
             a = trbfetype.n_asics
             c = trbfetype.n_cables
-            self.baselines[trbid] = [[[[0 for x in range(w)] for y in range(h)]
-                                      for _a in range(a)] for _c in range(c)]
+            self.baselines[trbid] = [[[[0 for x in range(w)] for y in range(h)] for _a in range(a)] for _c in range(c)]
 
 
 class Thresholds:
@@ -61,9 +61,7 @@ class Thresholds:
             h = trbfetype.n_channels
             a = trbfetype.n_asics
             c = trbfetype.n_cables
-            self.thresholds[trbid] = [
-                [[[0 for x in range(w)] for y in range(h)]
-                    for _a in range(a)] for _c in range(c)]
+            self.thresholds[trbid] = [[[[0 for x in range(w)] for y in range(h)] for _a in range(a)] for _c in range(c)]
 
 
 class Scalers:
@@ -130,9 +128,12 @@ def calc_tdc_channel(trbfetype, cable, asic, channel, with_ref_time=False):
     """Calculate address of cable and asic channel in tdc (0,48) or with
     reference channel offset (1, 49).
     """
-    return channel + trbfetype.n_channels * asic \
-        + trbfetype.n_channels * trbfetype.n_asics*cable \
+    return (
+        channel
+        + trbfetype.n_channels * asic
+        + trbfetype.n_channels * trbfetype.n_asics * cable
         + (1 if with_ref_time is True else 0)
+    )
 
 
 # def calc_address_from_tdc(channel, with_ref_time=False):
@@ -150,14 +151,14 @@ def calc_tdc_channel(trbfetype, cable, asic, channel, with_ref_time=False):
 
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
-    return [lst[i:i + n] for i in range(0, len(lst), n)]
+    return [lst[i : i + n] for i in range(0, len(lst), n)]
 
 
 def convertToInt(num_string):
     """
     From https://python-forum.io/Thread-decimal-or-hexadecimal-digits-to-int
     """
-    determine_base = {'0x': 16, '0b': 2, '0o': 8}  # dict to detrmine base
+    determine_base = {"0x": 16, "0b": 2, "0o": 8}  # dict to detrmine base
 
     # returns base from dict defaults to None(for base 10)
     base = determine_base.get(num_string[:2].lower(), None)
@@ -175,12 +176,17 @@ def padded_hex(value, length):
 
     hex_result = hex(value)[2:]  # remove '0x' from beginning of str
     num_hex_chars = len(hex_result)
-    extra_zeros = '0' * (length - num_hex_chars)  # may not get used..
+    extra_zeros = "0" * (length - num_hex_chars)  # may not get used..
 
-    return ('0x' + hex_result if num_hex_chars == length else
-            '?' * length if num_hex_chars > length else
-            '0x' + extra_zeros + hex_result if num_hex_chars < length else
-            None)
+    return (
+        "0x" + hex_result
+        if num_hex_chars == length
+        else "?" * length
+        if num_hex_chars > length
+        else "0x" + extra_zeros + hex_result
+        if num_hex_chars < length
+        else None
+    )
 
 
 def trbaddr(addr):

@@ -34,20 +34,22 @@ def_quick = False
 
 def scan_communication(address):
 
-    print("   TDC  Cable  Asic  >--------------------------------------------"
-          "--------------<")
+    print("   TDC  Cable  Asic  >{:s}<".format("-" * 58))
 
     if def_quick is True:
         reg_range = [3]
-        reg_test_vals = [0x5a]
+        reg_test_vals = [0x5A]
     else:
         reg_range = range(12)
         reg_test_vals = [1, 4, 7, 10, 13]
 
     test_ok = True
     for addr, cable, asic in address:
-        print(Fore.YELLOW + "{:s}  {:5d} {:5d}  "
-              .format(trbaddr(addr), cable, asic) + Style.RESET_ALL, end='', flush=True)
+        print(
+            Fore.YELLOW + "{:s}  {:5d} {:5d}  ".format(trbaddr(addr), cable, asic) + Style.RESET_ALL,
+            end="",
+            flush=True,
+        )
 
         asic_test_ok = True
 
@@ -55,20 +57,22 @@ def scan_communication(address):
             reg_test_ok = True
 
             for t in reg_test_vals:
-                print(".", end='', flush=True)
+                print(".", end="", flush=True)
                 communication.write_reg(addr, cable, asic, reg, t)
                 sleep(def_time)
                 rc = communication.read_reg(addr, cable, asic, reg)
                 try:
-                    _t = rc & 0xff
+                    _t = rc & 0xFF
                 except ValueError as ve:
                     print("Wrong result: ", rc.split()[1])
                     print(ve)
-                    _t = 0xdeadbeef
+                    _t = 0xDEADBEEF
 
-                if _t != t or _t == 0xdeadbeef:
-                    print(Fore.RED + " Test failed for register {:d}"
-                          .format(reg) + Style.RESET_ALL, end='')
+                if _t != t or _t == 0xDEADBEEF:
+                    print(
+                        Fore.RED + " Test failed for register {:d}".format(reg) + Style.RESET_ALL,
+                        end="",
+                    )
                     print("  Sent {:d}, received {:d}".format(t, _t))
                     reg_test_ok = False
                     break
@@ -90,21 +94,27 @@ def scan_communication(address):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description='Scan communication of PASTTREC chips',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        description="Scan communication of PASTTREC chips",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
 
-    parser.add_argument('trbids',
-                        help='list of TRBids to scan in form'
-                        ' addres[:card-0-1-2[:asic-0-1]]',
-                        type=str, nargs="+")
+    parser.add_argument(
+        "trbids",
+        help="list of TRBids to scan in form" " addres[:card-0-1-2[:asic-0-1]]",
+        type=str,
+        nargs="+",
+    )
 
-    parser.add_argument('-q', '--quick', help='quick test',
-                        action='store_true')
-    parser.add_argument('-t', '--time',
-                        help='sleep time', type=float, default=def_time)
-    parser.add_argument('-v', '--verbose',
-                        help='verbose level: 0, 1, 2, 3',
-                        type=int, choices=[0, 1, 2, 3], default=0)
+    parser.add_argument("-q", "--quick", help="quick test", action="store_true")
+    parser.add_argument("-t", "--time", help="sleep time", type=float, default=def_time)
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        help="verbose level: 0, 1, 2, 3",
+        type=int,
+        choices=[0, 1, 2, 3],
+        default=0,
+    )
 
     args = parser.parse_args()
 

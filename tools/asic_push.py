@@ -26,19 +26,22 @@ from pasttrec import communication, misc
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description='Push or dump registers to asic/file')
-    parser.add_argument('dat_file', help='list of arguments', type=str, nargs='+')
+    parser = argparse.ArgumentParser(description="Push or dump registers to asic/file")
+    parser.add_argument("dat_file", help="list of arguments", type=str, nargs="+")
 
     group = parser.add_mutually_exclusive_group()
-    group.add_argument('-d', '--dump',
-                       help='trbcmd dump file, bl regs only', type=str)
-    group.add_argument('-D', '--Dump',
-                       help='trbcmd dump file, all regs', type=str)
-    parser.add_argument('-e', '--exec', help='execute', action='store_true')
+    group.add_argument("-d", "--dump", help="trbcmd dump file, bl regs only", type=str)
+    group.add_argument("-D", "--Dump", help="trbcmd dump file, all regs", type=str)
+    parser.add_argument("-e", "--exec", help="execute", action="store_true")
 
-    parser.add_argument('-v', '--verbose', help='verbose level: 0, 1, 2, 3',
-                        type=int, choices=[0, 1, 2, 3], default=0)
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        help="verbose level: 0, 1, 2, 3",
+        type=int,
+        choices=[0, 1, 2, 3],
+        default=0,
+    )
 
     args = parser.parse_args()
 
@@ -48,10 +51,10 @@ if __name__ == "__main__":
 
     dump_file = None
     if args.dump:
-        dump_file = open(args.dump, 'w')
+        dump_file = open(args.dump, "w")
 
     if args.Dump:
-        dump_file = open(args.Dump, 'w')
+        dump_file = open(args.Dump, "w")
 
     for f in args.dat_file:
         with open(f) as data:
@@ -64,27 +67,27 @@ if __name__ == "__main__":
             parts = line.split()
 
             nl = [misc.convertToInt(x) for x in parts[0:15]]
-            if nl[0] >= 0x6400 and nl[0] <= 0x64ff:
+            if nl[0] >= 0x6400 and nl[0] <= 0x64FF:
                 trbid = hex(nl[0])
             else:
                 trbid = "0x" + str(nl[0])
                 pk_corr = 1
 
             for i, val in enumerate(nl[3:15]):
-                nl[3+i] = nl[3+i] | i << 8
+                nl[3 + i] = nl[3 + i] | i << 8
 
             if args.dump:
                 communication.cmd_to_file = dump_file
-                communication.write_chunk(trbid, nl[1]-pk_corr, nl[2]-pk_corr, nl[3:15])
+                communication.write_chunk(trbid, nl[1] - pk_corr, nl[2] - pk_corr, nl[3:15])
                 communication.cmd_to_file = None
 
             if args.Dump:
                 communication.cmd_to_file = dump_file
-                communication.write_chunk(trbid, nl[1]-pk_corr, nl[2]-pk_corr, nl[3:15])
+                communication.write_chunk(trbid, nl[1] - pk_corr, nl[2] - pk_corr, nl[3:15])
                 communication.cmd_to_file = None
 
             if args.exec or args.dump is None and args.Dump is None:
-                communication.write_chunk(trbid, nl[1]-pk_corr, nl[2]-pk_corr, nl[3:15])
+                communication.write_chunk(trbid, nl[1] - pk_corr, nl[2] - pk_corr, nl[3:15])
 
     if dump_file:
         dump_file.close()

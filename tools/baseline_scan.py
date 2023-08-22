@@ -31,7 +31,7 @@ from pasttrec.misc import trbaddr
 def_time = 1
 
 def_max_bl_register_steps = 32
-def_pastrec_thresh_range = [0x00, 0x7f]
+def_pastrec_thresh_range = [0x00, 0x7F]
 def_pastrec_bl_base = 0x00000
 def_pastrec_bl_range = [0x00, def_max_bl_register_steps]
 
@@ -39,16 +39,15 @@ def_pastrec_bl_range = [0x00, def_max_bl_register_steps]
 def scan_baseline_single(address):
     bbb = misc.Baselines()
 
-    print("  address   channel   bl 0" + " " * 32 + "31")
-    print("                         |" + "-" * 32 + "|")
+    print(" trbid   channel   bl 0{:s}31".format(" " * 32))
+    print("                      |{:s}|".format("-" * 32))
     # loop over channels
     for c in list(range(hardware.PasttrecRegistersCodes.channels_num)):
-        print("  {:s}    {:d}           "
-              .format(trbaddr(0x0000), c), end='', flush=True)
+        print("{:s}    {:s}          ".format(trbaddr(0), c), end="", flush=True)
 
         # loop over bl register value
         for blv in range(def_pastrec_bl_range[0], def_pastrec_bl_range[1]):
-            print("#", end='', flush=True)
+            print("#", end="", flush=True)
 
             # Store here pairs of bc address and number of channels in an endpoint
             broadcasts_list = set()
@@ -60,7 +59,7 @@ def scan_baseline_single(address):
                     continue
 
                 broadcasts_list.append((trbfetype.n_scalers, trbfetype.broadcast))
-                communication.write_reg(addr, cable, asic, 4+c, blv)
+                communication.write_reg(addr, cable, asic, 4 + c, blv)
 
             for bc_addr, n_scalers in broadcasts_list:
                 v1 = communication.read_rm_scalers(bc_addr, n_scalers)
@@ -92,14 +91,13 @@ def scan_baseline_single(address):
 def scan_baseline_multi(address):
     bbb = misc.Baselines()
 
-    print("  address   channel   bl 0" + " " * 32 + "31")
-    print("                         |" + "-" * 32 + "|")
-    print("  {:s}    {:s}           "
-          .format(trbaddr(0), 'all'), end='', flush=True)   # FIXME set proper BC address?
+    print(" trbid   channel   bl 0{:s}31".format(" " * 32))
+    print("                      |{:s}|".format("-" * 32))
+    print("{:s}    {:s}          ".format(trbaddr(0), "all"), end="", flush=True)  # FIXME set proper BC address?
 
     # loop over bl register value
     for blv in range(def_pastrec_bl_range[0], def_pastrec_bl_range[1]):
-        print("#", end='', flush=True)
+        print("#", end="", flush=True)
 
         # Store here pairs of bc address and number of channels in an endpoint
         broadcasts_list = set()
@@ -154,52 +152,109 @@ def scan_baseline_multi(address):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description='Scan baseline of the PASTTREC chips',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        description="Scan baseline of the PASTTREC chips",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
 
-    parser.add_argument('trbids', help='list of TRBids to scan in form'
-                        ' addres[:card-0-1-2[:asic-0-1]]', type=str, nargs="+")
+    parser.add_argument(
+        "trbids",
+        help="list of TRBids to scan in form" " addres[:card-0-1-2[:asic-0-1]]",
+        type=str,
+        nargs="+",
+    )
 
-    parser.add_argument('-t', '--time', help='sleep time',
-                        type=float, default=def_time)
-    parser.add_argument('-o', '--output', help='output file',
-                        type=str, default='result.json')
-    parser.add_argument('-s', '--scan', help='scan type: singel-low/high:'
-                        ' one channel at a time, baseline set to low/high,'
-                        ' multi: all channels parallel',
-                        choices=['single-low', 'single-high', 'multi'],
-                        default='multi')
-    parser.add_argument('-v', '--verbose', help='verbose level: 0, 1, 2, 3',
-                        type=int, choices=[0, 1, 2, 3], default=0)
+    parser.add_argument("-t", "--time", help="sleep time", type=float, default=def_time)
+    parser.add_argument("-o", "--output", help="output file", type=str, default="result.json")
+    parser.add_argument(
+        "-s",
+        "--scan",
+        help="scan type: singel-low/high:"
+        " one channel at a time, baseline set to low/high,"
+        " multi: all channels parallel",
+        choices=["single-low", "single-high", "multi"],
+        default="multi",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        help="verbose level: 0, 1, 2, 3",
+        type=int,
+        choices=[0, 1, 2, 3],
+        default=0,
+    )
 
-    parser.add_argument('--defaults', dest='defaults', action='store_true',
-                        help='Override settings with defaults from cmd line')
+    parser.add_argument(
+        "--defaults",
+        dest="defaults",
+        action="store_true",
+        help="Override settings with defaults from cmd line",
+    )
 
-    parser.add_argument('-Bg', '--source',
-                        help='baseline set: internally or externally',
-                        type=int, choices=[1, 0], default=1)
-    parser.add_argument('-K', '--gain',
-                        help='amplification: 4, 2, 1 or 0.67 [mV/fC]',
-                        type=int, choices=[0, 1, 2, 3], default=0)
-    parser.add_argument('-Tp', '--peaking',
-                        help='peaking time: 35, 20, 15 or 10 [ns]',
-                        type=int, choices=[3, 2, 1, 0], default=3)
+    parser.add_argument(
+        "-Bg",
+        "--source",
+        help="baseline set: internally or externally",
+        type=int,
+        choices=[1, 0],
+        default=1,
+    )
+    parser.add_argument(
+        "-K",
+        "--gain",
+        help="amplification: 4, 2, 1 or 0.67 [mV/fC]",
+        type=int,
+        choices=[0, 1, 2, 3],
+        default=0,
+    )
+    parser.add_argument(
+        "-Tp",
+        "--peaking",
+        help="peaking time: 35, 20, 15 or 10 [ns]",
+        type=int,
+        choices=[3, 2, 1, 0],
+        default=3,
+    )
 
-    parser.add_argument('-TC1C', '--timecancelationC1',
-                        help='TC1 C: 35, 20, 15 or 10 [ns]',
-                        type=lambda x: int(x, 0), choices=range(8), default=3)
-    parser.add_argument('-TC1R', '--timecancelationR1',
-                        help='TC1 R: 35, 20, 15 or 10 [ns]',
-                        type=lambda x: int(x, 0), choices=range(8), default=2)
-    parser.add_argument('-TC2C', '--timecancelationC2',
-                        help='TC2 C: 35, 20, 15 or 10 [ns]',
-                        type=lambda x: int(x, 0), choices=range(8), default=6)
-    parser.add_argument('-TC2R', '--timecancelationR2',
-                        help='TC2 R: 35, 20, 15 or 10 [ns]',
-                        type=lambda x: int(x, 0), choices=range(8), default=5)
+    parser.add_argument(
+        "-TC1C",
+        "--timecancelationC1",
+        help="TC1 C: 35, 20, 15 or 10 [ns]",
+        type=lambda x: int(x, 0),
+        choices=range(8),
+        default=3,
+    )
+    parser.add_argument(
+        "-TC1R",
+        "--timecancelationR1",
+        help="TC1 R: 35, 20, 15 or 10 [ns]",
+        type=lambda x: int(x, 0),
+        choices=range(8),
+        default=2,
+    )
+    parser.add_argument(
+        "-TC2C",
+        "--timecancelationC2",
+        help="TC2 C: 35, 20, 15 or 10 [ns]",
+        type=lambda x: int(x, 0),
+        choices=range(8),
+        default=6,
+    )
+    parser.add_argument(
+        "-TC2R",
+        "--timecancelationR2",
+        help="TC2 R: 35, 20, 15 or 10 [ns]",
+        type=lambda x: int(x, 0),
+        choices=range(8),
+        default=5,
+    )
 
-    parser.add_argument('-Vth', '--threshold', help='threshold: 0-127',
-                        type=lambda x: int(x, 0), default=0)
+    parser.add_argument(
+        "-Vth",
+        "--threshold",
+        help="threshold: 0-127",
+        type=lambda x: int(x, 0),
+        default=0,
+    )
 
     args = parser.parse_args()
 
@@ -209,40 +264,45 @@ if __name__ == "__main__":
     if communication.g_verbose > 0:
         print(args)
 
-    if args.threshold > def_pastrec_thresh_range[1] or \
-       args.threshold < def_pastrec_thresh_range[0]:
-        print("\nOption error: Threshold value {:d} is to high,"
-              " allowed value is 0-127".format(args.threshold))
+    if args.threshold > def_pastrec_thresh_range[1] or args.threshold < def_pastrec_thresh_range[0]:
+        print("\nOption error: Threshold value {:d} is to high," " allowed value is 0-127".format(args.threshold))
         sys.exit(1)
 
     # scan type
     def_scan_type = args.scan
-    if def_scan_type == 'single-low':
+    if def_scan_type == "single-low":
         def_pastrec_bl_base = def_pastrec_bl_range[0]
-    elif def_scan_type == 'single-high':
-        def_pastrec_bl_base = def_pastrec_bl_range[1]-1
-    elif def_scan_type == 'multi':
+    elif def_scan_type == "single-high":
+        def_pastrec_bl_base = def_pastrec_bl_range[1] - 1
+    elif def_scan_type == "multi":
         def_pastrec_bl_base = def_pastrec_bl_range[0]
 
-    p = hardware.AsicRegistersValue(bg_int=args.source, gain=args.gain, peaking=args.peaking,
-                                    tc1c=args.timecancelationC1, tc1r=args.timecancelationR1,
-                                    tc2c=args.timecancelationC2, tc2r=args.timecancelationR2,
-                                    vth=args.threshold, bl=[def_pastrec_bl_base]*8)
+    p = hardware.AsicRegistersValue(
+        bg_int=args.source,
+        gain=args.gain,
+        peaking=args.peaking,
+        tc1c=args.timecancelationC1,
+        tc1r=args.timecancelationR1,
+        tc2c=args.timecancelationC2,
+        tc2r=args.timecancelationR2,
+        vth=args.threshold,
+        bl=[def_pastrec_bl_base] * 8,
+    )
 
     tup = communication.decode_address(args.trbids)
 
-    if (args.defaults):
+    if args.defaults:
         communication.asics_to_defaults(tup, p)
 
-    if def_scan_type == 'multi':
+    if def_scan_type == "multi":
         r = scan_baseline_multi(tup)
     else:
         r = scan_baseline_single(tup)
 
     r.config = p.__dict__
 
-    if (args.defaults):
+    if args.defaults:
         communication.asics_to_defaults(tup, p)
 
-    with open(args.output, 'w') as fp:
+    with open(args.output, "w") as fp:
         json.dump(r.__dict__, fp, indent=2)

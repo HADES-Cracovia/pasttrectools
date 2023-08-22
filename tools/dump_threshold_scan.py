@@ -24,8 +24,8 @@ import argparse
 import json
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Draw baseline scan results')
-    parser.add_argument('json_file', help='list of arguments', type=str)
+    parser = argparse.ArgumentParser(description="Draw baseline scan results")
+    parser.add_argument("json_file", help="list of arguments", type=str)
     args = parser.parse_args()
 
     print(args)
@@ -38,16 +38,16 @@ if __name__ == "__main__":
 
     idx = 1
 
-    bls = d['thresholds']
+    bls = d["thresholds"]
 
     for k, v in bls.items():
         for t in list(range(128)):
-            print('{:d}   '.format(t), end='')
+            print("{:d}   ".format(t), end="")
             for c in [0, 1, 2]:
                 for a in [0, 1]:
                     for ch in list(range(8)):
 
                         tt = v[c][a][ch][t]
-                        print('{:d} '.format(tt), end='')
+                        print("{:d} ".format(tt), end="")
 
-            print(' ')
+            print(" ")

@@ -29,15 +29,21 @@ from pasttrec import communication, misc
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description='Merge baseline scans of PASTTREC chips',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        description="Merge baseline scans of PASTTREC chips",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
 
-    parser.add_argument('files', help='files to merge', type=str, nargs="+")
+    parser.add_argument("files", help="files to merge", type=str, nargs="+")
 
-    parser.add_argument('-o', '--output',
-                        help='output file', type=str, default='merged.json')
-    parser.add_argument('-v', '--verbose', help='verbose level: 0, 1, 2, 3',
-                        type=int, choices=[0, 1, 2, 3], default=0)
+    parser.add_argument("-o", "--output", help="output file", type=str, default="merged.json")
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        help="verbose level: 0, 1, 2, 3",
+        type=int,
+        choices=[0, 1, 2, 3],
+        default=0,
+    )
 
     args = parser.parse_args()
 
@@ -47,7 +53,7 @@ if __name__ == "__main__":
         print(args)
 
     if args.output:
-        out_file = open(args.output, 'w')
+        out_file = open(args.output, "w")
 
     b = misc.Baselines()
 
@@ -60,11 +66,11 @@ if __name__ == "__main__":
 
         out_file = None
 
-        bls = d['baselines']
-        cfg = d['config']
+        bls = d["baselines"]
+        cfg = d["config"]
 
         if b.config is None:
-            b.config = d['config']
+            b.config = d["config"]
 
         barename = os.path.splitext(filename)[0]
         trbid = barename.split("_")[-1]
@@ -75,5 +81,5 @@ if __name__ == "__main__":
             b.add_trb(addr)
             b.baselines[addr][card][asic] = bls[addr][card][asic]
 
-    with open(args.output, 'w') as fp:
+    with open(args.output, "w") as fp:
         json.dump(b.__dict__, fp, indent=2)

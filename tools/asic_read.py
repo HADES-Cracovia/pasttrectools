@@ -31,11 +31,11 @@ def_time = 0.01
 
 def read_asic(address):
 
-    print("   TDC  Cable  Asic   Reg# " + Fore.YELLOW, end='', flush=True)
+    print("   TDC  Cable  Asic   Reg# " + Fore.YELLOW, end="", flush=True)
 
     if communication.g_verbose == 0:
         for reg in range(12):
-            print("    {:2d}".format(reg), end='', flush=True)
+            print("    {:2d}".format(reg), end="", flush=True)
 
     print(Style.RESET_ALL)
     for addr, cable, asic in address:
@@ -44,41 +44,49 @@ def read_asic(address):
             continue
 
         if communication.g_verbose == 0:
-            print(Fore.YELLOW + "{:s}  {:5d}  {:4d}        "
-                  .format(trbaddr(addr), cable, asic) + Style.RESET_ALL, end='', flush=True)
+            print(
+                Fore.YELLOW + "{:s}  {:5d}  {:4d}        ".format(trbaddr(addr), cable, asic) + Style.RESET_ALL,
+                end="",
+                flush=True,
+            )
 
         for reg in range(12):
 
             rc = communication.read_reg(addr, cable, asic, reg)
             try:
-                _t = rc & 0xff
+                _t = rc & 0xFF
             except ValueError as ve:
                 print("Wrong result: ", rc.split()[1])
                 print(ve)
-                _t = 0xdeadbeef
+                _t = 0xDEADBEEF
 
-            if _t == 0xdeadbeef:
-                print(Fore.RED + " Read failed for register {:s}"
-                      .format(hex(reg)) + Style.RESET_ALL, end='')
+            if _t == 0xDEADBEEF:
+                print(
+                    Fore.RED + " Read failed for register {:s}".format(hex(reg)) + Style.RESET_ALL,
+                    end="",
+                )
                 print("  Received {:s}".format(hex(_t)))
             else:
                 if communication.g_verbose > 0:
-                    print(Fore.YELLOW + "{:s}  {:5d}  {:4d}        "
-                          .format(trbaddr(addr), cable, asic) + Style.RESET_ALL, end='', flush=True)
+                    print(
+                        Fore.YELLOW + "{:s}  {:5d}  {:4d}        ".format(trbaddr(addr), cable, asic) + Style.RESET_ALL,
+                        end="",
+                        flush=True,
+                    )
 
                 if reg < 3:
-                    print(Fore.MAGENTA, end='', flush=True)
+                    print(Fore.MAGENTA, end="", flush=True)
                 elif reg == 3:
-                    print(Fore.CYAN, end='', flush=True)
+                    print(Fore.CYAN, end="", flush=True)
                 else:
-                    print(Fore.GREEN, end='', flush=True)
+                    print(Fore.GREEN, end="", flush=True)
 
                 if communication.g_verbose > 0:
                     print("Register: {0:#0{1}x}    Value: {2:#0{3}x}".format(reg, 2, _t, 4))
                 else:
-                    print("  {:#0{}x}".format(_t, 4), end='', flush=True)
+                    print("  {:#0{}x}".format(_t, 4), end="", flush=True)
 
-            print(Style.RESET_ALL, end='', flush=True)
+            print(Style.RESET_ALL, end="", flush=True)
         print(Style.RESET_ALL)
 
     return None
@@ -86,19 +94,26 @@ def read_asic(address):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description='Scan communication of PASTTREC chips',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        description="Scan communication of PASTTREC chips",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
 
-    parser.add_argument('trbids',
-                        help='list of TRBids to scan in form'
-                        ' addres[:card-0-1-2[:asic-0-1]]',
-                        type=str, nargs="+")
+    parser.add_argument(
+        "trbids",
+        help="list of TRBids to scan in form" " addres[:card-0-1-2[:asic-0-1]]",
+        type=str,
+        nargs="+",
+    )
 
-    parser.add_argument('-t', '--time',
-                        help='sleep time', type=float, default=def_time)
-    parser.add_argument('-v', '--verbose',
-                        help='verbose level: 0, 1, 2, 3',
-                        type=int, choices=[0, 1, 2, 3], default=0)
+    parser.add_argument("-t", "--time", help="sleep time", type=float, default=def_time)
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        help="verbose level: 0, 1, 2, 3",
+        type=int,
+        choices=[0, 1, 2, 3],
+        default=0,
+    )
 
     args = parser.parse_args()
 

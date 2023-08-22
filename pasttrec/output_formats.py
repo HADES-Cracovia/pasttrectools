@@ -21,15 +21,15 @@
 # SOFTWARE.
 
 cmd_to_file = None  # if set to file, redirect output to this file
-bgs = '    '
-igs = '  '
+bgs = "    "
+igs = "  "
 
 
 def export_chunk(trbid, cable, asic, data):
     if isinstance(data, list):
-        v = [x & 0xff for x in data]
+        v = [x & 0xFF for x in data]
     else:
-        v = data & 0xff
+        v = data & 0xFF
     dat_write_chunk(trbid, cable, asic, v)
 
 
@@ -39,7 +39,7 @@ def dat_write_chunk(trbid, cable, asic, data, hexflags=[1, 1, 1, 0, 0, 0, 0, 0, 
 
     if cmd_to_file is not None:
         cmd_to_file.write(
-            '  ' + igs.join(fdata[0:3]) + bgs + igs.join(fdata[3:6]) + bgs + fdata[6] + bgs + igs.join(fdata[7:]) + '\n'
+            "  " + igs.join(fdata[0:3]) + bgs + igs.join(fdata[3:6]) + bgs + fdata[6] + bgs + igs.join(fdata[7:]) + "\n"
         )
     else:
-        print('  ' + '  '.join(fdata) + '\n')
+        print("  " + "  ".join(fdata) + "\n")

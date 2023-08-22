@@ -29,32 +29,46 @@ from pasttrec import hardware, communication, misc, output_formats
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description='Calculates baselines from scan results')
-    parser.add_argument('json_file', help='list of arguments', type=str)
+    parser = argparse.ArgumentParser(description="Calculates baselines from scan results")
+    parser.add_argument("json_file", help="list of arguments", type=str)
 
-    parser.add_argument('-o', '--output', help='output file', type=str)
-    parser.add_argument('-O', '--old', help='old output format', action='store_true')
-    parser.add_argument('--range', help='range based blo finder', action='store_true')
+    parser.add_argument("-o", "--output", help="output file", type=str)
+    parser.add_argument("-O", "--old", help="old output format", action="store_true")
+    parser.add_argument("--range", help="range based blo finder", action="store_true")
 
     group = parser.add_mutually_exclusive_group()
-    group.add_argument('-d', '--dump',
-                       help='trbcmd dump file, bl regs only', type=str)
-    group.add_argument('-D', '--Dump',
-                       help='trbcmd dump file, all regs', type=str)
-    parser.add_argument('-e', '--exec', help='execute', action='store_true')
+    group.add_argument("-d", "--dump", help="trbcmd dump file, bl regs only", type=str)
+    group.add_argument("-D", "--Dump", help="trbcmd dump file, all regs", type=str)
+    parser.add_argument("-e", "--exec", help="execute", action="store_true")
 
-    parser.add_argument('-v', '--verbose', help='verbose level: 0, 1, 2, 3',
-                        type=int, choices=[0, 1, 2, 3], default=0)
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        help="verbose level: 0, 1, 2, 3",
+        type=int,
+        choices=[0, 1, 2, 3],
+        default=0,
+    )
 
-    parser.add_argument('-blo', '--offset', help='offset to baselines (ask for'
-                        ' each chip if not given)', type=lambda x: int(x, 0))
+    parser.add_argument(
+        "-blo",
+        "--offset",
+        help="offset to baselines (ask for" " each chip if not given)",
+        type=lambda x: int(x, 0),
+    )
 
-    parser.add_argument('-Vth', '--threshold', help='threshold: 0-127'
-                        ' (overwrites value from input file)',
-                        type=lambda x: int(x, 0))
-    parser.add_argument('-g', '--gain', help='gain: 0-3 (overwrites value'
-                        ' from input file)', type=lambda x: int(x, 0))
+    parser.add_argument(
+        "-Vth",
+        "--threshold",
+        help="threshold: 0-127" " (overwrites value from input file)",
+        type=lambda x: int(x, 0),
+    )
+    parser.add_argument(
+        "-g",
+        "--gain",
+        help="gain: 0-3 (overwrites value" " from input file)",
+        type=lambda x: int(x, 0),
+    )
 
     args = parser.parse_args()
 
@@ -68,17 +82,17 @@ if __name__ == "__main__":
 
     dump_file = None
     if args.dump:
-        dump_file = open(args.dump, 'w')
+        dump_file = open(args.dump, "w")
 
     if args.Dump:
-        dump_file = open(args.Dump, 'w')
+        dump_file = open(args.Dump, "w")
 
     out_file = None
     if args.output:
-        out_file = open(args.output, 'w')
+        out_file = open(args.output, "w")
 
-    bls = d['baselines']
-    cfg = d['config']
+    bls = d["baselines"]
+    cfg = d["config"]
 
     tlist = []
     p = hardware.AsicRegistersValue()
@@ -105,8 +119,7 @@ if __name__ == "__main__":
             card = hardware.PasttrecCard("noname")
 
             for a in [0, 1]:
-                print(Fore.YELLOW + "Scanning {:s}  CARD: {:d}  ASIC: {:d}"
-                      .format(k, c, a) + Style.RESET_ALL)
+                print(Fore.YELLOW + "Scanning {:s}  CARD: {:d}  ASIC: {:d}".format(k, c, a) + Style.RESET_ALL)
                 bl = [0] * 8
 
                 for ch in list(range(8)):
@@ -115,7 +128,7 @@ if __name__ == "__main__":
                     w = 0
                     if args.range:  # old way
                         for i in range(1, 32):
-                            s = s + (i+1) * b[i]
+                            s = s + (i + 1) * b[i]
                             w += b[i]
                     else:
                         cnt_max = max(b)
@@ -129,18 +142,26 @@ if __name__ == "__main__":
                     if w == 0:
                         b = 0
                     else:
-                        b = s/w - 1
+                        b = s / w - 1
                     bl[ch] = int(round(b))
-                    print(ch, " bl:", Fore.YELLOW, "{:2d}"
-                          .format(bl[ch]), Style.RESET_ALL,
-                          "(0x{:s})".format(hex(bl[ch])[2:].zfill(2)),
-                          Fore.GREEN if w > 0 else Fore.RED, "{:>+3d} mV".format(-31 + 2 * bl[ch]),
-                          Style.RESET_ALL,
-                          " [ ", misc.bl_list_with_marker(v[c][a][ch], bl[ch]), "]")
-#                    if w == 0:
-#                        print(Fore.RED, "All Zero - check it", Style.RESET_ALL)
-#                    else:
-#                        print(Fore.GREEN, " * OK *", Style.RESET_ALL)
+                    print(
+                        ch,
+                        " bl:",
+                        Fore.YELLOW,
+                        "{:2d}".format(bl[ch]),
+                        Style.RESET_ALL,
+                        "(0x{:s})".format(hex(bl[ch])[2:].zfill(2)),
+                        Fore.GREEN if w > 0 else Fore.RED,
+                        "{:>+3d} mV".format(-31 + 2 * bl[ch]),
+                        Style.RESET_ALL,
+                        " [ ",
+                        misc.bl_list_with_marker(v[c][a][ch], bl[ch]),
+                        "]",
+                    )
+                #                    if w == 0:
+                #                        print(Fore.RED, "All Zero - check it", Style.RESET_ALL)
+                #                    else:
+                #                        print(Fore.GREEN, " * OK *", Style.RESET_ALL)
 
                 if args.offset is None:
                     while True:

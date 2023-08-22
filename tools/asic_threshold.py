@@ -25,30 +25,46 @@ import argparse
 
 from pasttrec import communication
 
-def_pastrec_thresh_range = [0x00, 0x7f]
+def_pastrec_thresh_range = [0x00, 0x7F]
 
 
 def set_thresholds(address, value):
     # loop over channels
     for addr, cable, asic in address:
-        communication.write_reg(addr, cable, asic, 3, value & 0xff)
+        communication.write_reg(addr, cable, asic, 3, value & 0xFF)
 
     print("Done")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description='Set PASTTREC threshold',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        description="Set PASTTREC threshold",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
 
-    parser.add_argument('trbids', help='list of TRBids to scan in form'
-                        ' addres[:card-0-1-2[:asic-0-1]]', type=str, nargs="+")
+    parser.add_argument(
+        "trbids",
+        help="list of TRBids to scan in form" " addres[:card-0-1-2[:asic-0-1]]",
+        type=str,
+        nargs="+",
+    )
 
-    parser.add_argument('-v', '--verbose', help='verbose level: 0, 1, 2, 3',
-                        type=int, choices=[0, 1, 2, 3], default=0)
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        help="verbose level: 0, 1, 2, 3",
+        type=int,
+        choices=[0, 1, 2, 3],
+        default=0,
+    )
 
-    parser.add_argument('-Vth', '--threshold', help='threshold: 0-127',
-                        type=lambda x: int(x, 0), default=127)
+    parser.add_argument(
+        "-Vth",
+        "--threshold",
+        help="threshold: 0-127",
+        type=lambda x: int(x, 0),
+        default=127,
+    )
 
     args = parser.parse_args()
 
@@ -57,10 +73,8 @@ if __name__ == "__main__":
     if communication.g_verbose > 0:
         print(args)
 
-    if args.threshold > def_pastrec_thresh_range[1] \
-       or args.threshold < def_pastrec_thresh_range[0]:
-        print("\nOption error: Threshold value {:d} is to high, "
-              " allowed value is 0-127".format(args.threshold))
+    if args.threshold > def_pastrec_thresh_range[1] or args.threshold < def_pastrec_thresh_range[0]:
+        print("\nOption error: Threshold value {:d} is to high, " " allowed value is 0-127".format(args.threshold))
         sys.exit(1)
 
     ex = True

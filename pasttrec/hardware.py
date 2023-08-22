@@ -29,9 +29,18 @@ class AsicRegistersValue:
     vth = 0
     bl = [0] * 8
 
-    def __init__(self, bg_int=1, gain=0, peaking=0,
-                 tc1c=0, tc1r=0, tc2c=0, tc2r=0,
-                 vth=0, bl=[0]*8):
+    def __init__(
+        self,
+        bg_int=1,
+        gain=0,
+        peaking=0,
+        tc1c=0,
+        tc1r=0,
+        tc2c=0,
+        tc2r=0,
+        vth=0,
+        bl=[0] * 8,
+    ):
         self.bg_int = bg_int
         self.gain = gain
         self.peaking = peaking
@@ -62,7 +71,7 @@ class AsicRegistersValue:
         r_all[3] = TrbRegistersOffsets.c_config_reg[3] | self.vth
 
         for i in range(8):
-            r_all[4+i] = TrbRegistersOffsets.c_bl_reg[i] | self.bl[i]
+            r_all[4 + i] = TrbRegistersOffsets.c_bl_reg[i] | self.bl[i]
 
         return r_all
 
@@ -74,10 +83,10 @@ class AsicRegistersValue:
 
 
 class TrbFrontendType(Enum):
-    """ Use it to discriminate between different frontend types. """
+    """Use it to discriminate between different frontend types."""
 
-    TRB3 = (3, 2, 0xfe4c)
-    TRB5SC = (4, 2, 0xfe81)
+    TRB3 = (3, 2, 0xFE4C)
+    TRB5SC = (4, 2, 0xFE81)
 
     def __init__(self, cables, asics, broadcast):
         self.cables = cables
@@ -104,12 +113,12 @@ class TrbFrontendType(Enum):
 
 TrbFrontendTypeMapping = {
     0x91000000: TrbFrontendType.TRB3,
-    0xa5000000: TrbFrontendType.TRB5SC
+    0xA5000000: TrbFrontendType.TRB5SC,
 }
 
 
 class TrbRegisters(Enum):
-    SCALERS = 0xc001
+    SCALERS = 0xC001
 
 
 class TrbRegistersOffsets:
@@ -117,8 +126,7 @@ class TrbRegistersOffsets:
 
     # reg desc.: g_int,K,Tp      TC1      TC2      Vth
     c_config_reg = [0x00000, 0x00100, 0x00200, 0x00300]
-    c_bl_reg = [0x00400, 0x00500, 0x00600, 0x00700,
-                0x00800, 0x00900, 0x00a00, 0x00b00]
+    c_bl_reg = [0x00400, 0x00500, 0x00600, 0x00700, 0x00800, 0x00900, 0x00A00, 0x00B00]
 
     c_base_w = 0x0050000
     c_base_r = 0x0051000
@@ -126,7 +134,7 @@ class TrbRegistersOffsets:
     bl_register_size = 32
 
 
-class PasttrecCard():
+class PasttrecCard:
     name = None
     asic1 = None
     asic2 = None
@@ -144,9 +152,9 @@ class PasttrecCard():
 
     def export(self):
         return {
-            'name': self.name,
-            'asic1': self.asic1.__dict__ if self.asic1 is not None else None,
-            'asic2': self.asic2.__dict__ if self.asic2 is not None else None
+            "name": self.name,
+            "asic1": self.asic1.__dict__ if self.asic1 is not None else None,
+            "asic2": self.asic2.__dict__ if self.asic2 is not None else None,
         }
 
     def export_script(self, cable):
@@ -165,14 +173,16 @@ class PasttrecCard():
         if d is None:
             return False, None
 
-        pc = PasttrecCard(d['name'],
-                          AsicRegistersValue().load_asic_from_dict(d['asic1']),
-                          AsicRegistersValue().load_asic_from_dict(d['asic2']))
+        pc = PasttrecCard(
+            d["name"],
+            AsicRegistersValue().load_asic_from_dict(d["asic1"]),
+            AsicRegistersValue().load_asic_from_dict(d["asic2"]),
+        )
 
         return True, pc
 
 
-class TdcConnection():
+class TdcConnection:
     id = 0
     cable1 = None
     cable2 = None
@@ -193,26 +203,16 @@ class TdcConnection():
             self.cable3 = card
 
     def export(self):
-        c1 = self.cable1.export() if isinstance(self.cable1, PasttrecCard) \
-            else None
-        c2 = self.cable2.export() if isinstance(self.cable2, PasttrecCard) \
-            else None
-        c3 = self.cable3.export() if isinstance(self.cable3, PasttrecCard) \
-            else None
+        c1 = self.cable1.export() if isinstance(self.cable1, PasttrecCard) else None
+        c2 = self.cable2.export() if isinstance(self.cable2, PasttrecCard) else None
+        c3 = self.cable3.export() if isinstance(self.cable3, PasttrecCard) else None
 
-        return self.id, {
-            'cable1': c1,
-            'cable2': c2,
-            'cable3': c3
-        }
+        return self.id, {"cable1": c1, "cable2": c2, "cable3": c3}
 
     def export_script(self):
-        c1 = self.cable1.export_script(0) \
-            if isinstance(self.cable1, PasttrecCard) else None
-        c2 = self.cable2.export_script(1) \
-            if isinstance(self.cable2, PasttrecCard) else None
-        c3 = self.cable3.export_script(2) \
-            if isinstance(self.cable3, PasttrecCard) else None
+        c1 = self.cable1.export_script(0) if isinstance(self.cable1, PasttrecCard) else None
+        c2 = self.cable2.export_script(1) if isinstance(self.cable2, PasttrecCard) else None
+        c3 = self.cable3.export_script(2) if isinstance(self.cable3, PasttrecCard) else None
 
         c = []
         if c1:
@@ -225,7 +225,7 @@ class TdcConnection():
 
 
 def dump(tdcs):
-    d = {'version': LIBVERSION}
+    d = {"version": LIBVERSION}
     if isinstance(tdcs, list):
         for t in tdcs:
             k, v = t.export()
@@ -239,21 +239,21 @@ def dump(tdcs):
 
 def load(d, test_version=True):
     if test_version:
-        if 'version' in d:
-            if d['version'] != LIBVERSION:
-                return False, d['version']
+        if "version" in d:
+            if d["version"] != LIBVERSION:
+                return False, d["version"]
         else:
-            return False, '0.0.0'
+            return False, "0.0.0"
 
     connections = []
     for k, v in d.items():
-        if k == 'version':
+        if k == "version":
             continue
 
         id = int(k, 16)
-        r1, _c1 = PasttrecCard.load_card_from_dict(v['cable1'])
-        r2, _c2 = PasttrecCard.load_card_from_dict(v['cable2'])
-        r3, _c3 = PasttrecCard.load_card_from_dict(v['cable3'])
+        r1, _c1 = PasttrecCard.load_card_from_dict(v["cable1"])
+        r2, _c2 = PasttrecCard.load_card_from_dict(v["cable2"])
+        r3, _c3 = PasttrecCard.load_card_from_dict(v["cable3"])
 
         c1 = _c1 if r1 else None
         c2 = _c2 if r2 else None

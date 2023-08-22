@@ -27,6 +27,7 @@ import json
 try:
     import numpy as np
     import gnuplotlib as gp
+
     found = True
 except ModuleNotFoundError:
     # Error handling
@@ -38,31 +39,45 @@ from pasttrec import communication
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description='Calculates baselines from scan results')
-    parser.add_argument('json_file1', help='file1', type=str)
-    parser.add_argument('json_file2', help='file2', type=str)
+    parser = argparse.ArgumentParser(description="Calculates baselines from scan results")
+    parser.add_argument("json_file1", help="file1", type=str)
+    parser.add_argument("json_file2", help="file2", type=str)
 
-    parser.add_argument('-o', '--output', help='output file', type=str)
+    parser.add_argument("-o", "--output", help="output file", type=str)
 
     group = parser.add_mutually_exclusive_group()
-    group.add_argument('-d', '--dump',
-                       help='trbcmd dump file, bl regs only', type=str)
-    group.add_argument('-D', '--Dump',
-                       help='trbcmd dump file, all regs', type=str)
-    parser.add_argument('-e', '--exec', help='execute', action='store_true')
+    group.add_argument("-d", "--dump", help="trbcmd dump file, bl regs only", type=str)
+    group.add_argument("-D", "--Dump", help="trbcmd dump file, all regs", type=str)
+    parser.add_argument("-e", "--exec", help="execute", action="store_true")
 
-    parser.add_argument('-v', '--verbose', help='verbose level: 0, 1, 2, 3',
-                        type=int, choices=[0, 1, 2, 3], default=0)
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        help="verbose level: 0, 1, 2, 3",
+        type=int,
+        choices=[0, 1, 2, 3],
+        default=0,
+    )
 
-    parser.add_argument('-blo', '--offset', help='offset to baselines (ask for'
-                        ' each chip if not given)', type=lambda x: int(x, 0))
+    parser.add_argument(
+        "-blo",
+        "--offset",
+        help="offset to baselines (ask for" " each chip if not given)",
+        type=lambda x: int(x, 0),
+    )
 
-    parser.add_argument('-Vth', '--threshold', help='threshold: 0-127'
-                        ' (overwrites value from input file)',
-                        type=lambda x: int(x, 0))
-    parser.add_argument('-g', '--gain', help='gain: 0-3 (overwrites value'
-                        ' from input file)', type=lambda x: int(x, 0))
+    parser.add_argument(
+        "-Vth",
+        "--threshold",
+        help="threshold: 0-127" " (overwrites value from input file)",
+        type=lambda x: int(x, 0),
+    )
+    parser.add_argument(
+        "-g",
+        "--gain",
+        help="gain: 0-3 (overwrites value" " from input file)",
+        type=lambda x: int(x, 0),
+    )
 
     args = parser.parse_args()
 
@@ -92,12 +107,14 @@ if __name__ == "__main__":
             print("JSON2 has no key {:s}", k)
 
         for c in [0, 1, 2]:
-            card = "cable{:d}".format(c+1)
+            card = "cable{:d}".format(c + 1)
 
             for a in [0, 1]:
-                asic = "asic{:d}".format(a+1)
-                print(Fore.YELLOW + "Comparing {:s}  CARD: {:d}  ASIC: {:d}"
-                      .format(k, c, a) + Style.RESET_ALL, end="")
+                asic = "asic{:d}".format(a + 1)
+                print(
+                    Fore.YELLOW + "Comparing {:s}  CARD: {:d}  ASIC: {:d}".format(k, c, a) + Style.RESET_ALL,
+                    end="",
+                )
                 bldiff = [0] * 8
 
                 print("    bl:", Style.RESET_ALL, " ", end="")
@@ -125,11 +142,11 @@ if __name__ == "__main__":
     print("STATS: ", stats)
 
     if found:
-        g1 = gp.gnuplotlib(title='Baseline difference statistics', terminal='dumb 100,40')
+        g1 = gp.gnuplotlib(title="Baseline difference statistics", terminal="dumb 100,40")
         xx = np.arange(-31, 32, 1)
         yy = np.array([stats[x] if x in stats else 0 for x in xx])
 
-        g1.plot((xx, yy, {'with': 'impulses'}), _with='lines', unset='grid')
+        g1.plot((xx, yy, {"with": "impulses"}), _with="lines", unset="grid")
 
 #        z = np.arange(1000)
 #        g1.plot((np.array(dbl), dict(histogram = 'freq', binwidth=1)), unset='grid')

@@ -30,9 +30,9 @@ def_time = 0
 def_diffs = False
 prev_scalers = None
 
-def_broadcast_addr = 0xfe4c
+def_broadcast_addr = 0xFE4C
 def_max_bl_register_steps = 32
-def_pastrec_thresh_range = [0x00, 0x7f]
+def_pastrec_thresh_range = [0x00, 0x7F]
 def_pastrec_channel_range = 8
 def_pastrec_bl_base = 0x00000
 def_pastrec_bl_range = [0x00, def_max_bl_register_steps]
@@ -57,26 +57,32 @@ def show_scalers(stdscr):
 
     field_width = 10
     height, width = stdscr.getmaxyx()
-    maxnx = min(ntdsc, (width-field_width)/field_width)
-    maxny = min(48, height-1)
+    maxnx = min(ntdsc, (width - field_width) / field_width)
+    maxny = min(48, height - 1)
 
     stdscr.clear()
     stdscr.addstr(0, 0, "R={:.2f} s".format(def_time), curses.A_DIM)
 
     for chan in range(int(maxny)):
-        stdscr.addstr(chan+1, 0, "Chan {:#3d}  ".format(chan), curses.A_STANDOUT)
+        stdscr.addstr(chan + 1, 0, "Chan {:#3d}  ".format(chan), curses.A_STANDOUT)
 
     cnt = 0
     for tdc in sorted(ss.scalers):
-        if cnt > int(maxnx)-1:
+        if cnt > int(maxnx) - 1:
             break
-        stdscr.addstr(0, field_width + cnt*field_width,
-                      "{:>{}s}".format(tdc[:field_width], field_width),
-                      curses.A_STANDOUT)
+        stdscr.addstr(
+            0,
+            field_width + cnt * field_width,
+            "{:>{}s}".format(tdc[:field_width], field_width),
+            curses.A_STANDOUT,
+        )
         for n in range(int(maxny)):
-            stdscr.addstr(1+n, field_width + cnt*field_width,
-                          "{:>#{}d}".format(ss.scalers[tdc][n], field_width),
-                          curses.A_BOLD)
+            stdscr.addstr(
+                1 + n,
+                field_width + cnt * field_width,
+                "{:>#{}d}".format(ss.scalers[tdc][n], field_width),
+                curses.A_BOLD,
+            )
         cnt = cnt + 1
 
 
@@ -91,10 +97,10 @@ def scan_scalers(stdscr):
             show_scalers(stdscr)
             stdscr.refresh()
             c = stdscr.getch()
-            if c == ord('d'):
+            if c == ord("d"):
                 pass
                 def_diffs = 1 - def_diffs
-            elif c == ord('q'):
+            elif c == ord("q"):
                 break  # Exit the while loop
             elif c == curses.KEY_HOME:
                 pass
@@ -108,17 +114,16 @@ def scan_scalers(stdscr):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description='Scan baseline of the PASTTREC chips',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        description="Scan baseline of the PASTTREC chips",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
 
     # parser.add_argument('trbids', help='list of TRBids to scan in form'
     #                    ' addres[:card-0-1-2[:asic-0-1]]', type=str, nargs="+")
 
-    parser.add_argument('-d', '--diffs', help='show differences',
-                        action='store_true')
+    parser.add_argument("-d", "--diffs", help="show differences", action="store_true")
 
-    parser.add_argument('-t', '--time', help='sleep time',
-                        type=float, default=def_time)
+    parser.add_argument("-t", "--time", help="sleep time", type=float, default=def_time)
 
     args = parser.parse_args()
 
@@ -128,5 +133,5 @@ if __name__ == "__main__":
     if def_time > 0:
         par_loop = True
 
-    par_address = 0xfe4c  # args.trbids
+    par_address = 0xFE4C  # args.trbids
     curses.wrapper(scan_scalers)

@@ -27,7 +27,7 @@ from pasttrec import g_verbose
 
 
 def print_verbose(rc):
-    """ Print verbose return info from trbnet communication """
+    """Print verbose return info from trbnet communication"""
 
     if rc is None:
         return
@@ -37,7 +37,7 @@ def print_verbose(rc):
 
 
 def command_w(trbid, reg, data):
-    cmd = ['trbcmd', 'w', trbid, hex(reg), hex(data)]
+    cmd = ["trbcmd", "w", trbid, hex(reg), hex(data)]
     """
     if cmd_to_file is not None:
         cmd_to_file.write(' '.join(cmd) + '\n')
@@ -58,15 +58,15 @@ def command_wm(trbid, reg, data, mode):
         cmd_to_file.write('EOF\n')
         return True
     """
-    cmd = ['trbcmd', 'wm', trbid, hex(reg), str(mode), '-']
+    cmd = ["trbcmd", "wm", trbid, hex(reg), str(mode), "-"]
     _data = "\n".join([hex(x) for x in data])
-    rc = subprocess.run(cmd, input=_data.encode('utf-8'), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    rc = subprocess.run(cmd, input=_data.encode("utf-8"), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     print_verbose(rc)
     return rc.stdout.decode()
 
 
 def command_r(trbid, reg):
-    cmd = ['trbcmd', 'r', trbid, hex(reg)]
+    cmd = ["trbcmd", "r", trbid, hex(reg)]
     """
     if cmd_to_file is not None:
         cmd_to_file.write(' '.join(cmd) + '\n')
@@ -78,7 +78,7 @@ def command_r(trbid, reg):
 
 
 def command_rm(trbid, reg, length):
-    cmd = ['trbcmd', 'rm', trbid, hex(reg), str(length), '0']
+    cmd = ["trbcmd", "rm", trbid, hex(reg), str(length), "0"]
     """
     if cmd_to_file is not None:
         cmd_to_file.write(' '.join(cmd) + '\n')

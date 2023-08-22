@@ -28,17 +28,22 @@ from pasttrec import hardware, communication, misc
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description='Calculates baselines from scan results')
-    parser.add_argument('json_file1', help='first json file', type=str)
-    parser.add_argument('json_file2', help='second json file', type=str)
+    parser = argparse.ArgumentParser(description="Calculates baselines from scan results")
+    parser.add_argument("json_file1", help="first json file", type=str)
+    parser.add_argument("json_file2", help="second json file", type=str)
 
-    parser.add_argument('-o', '--output', help='output file', type=str)
-    parser.add_argument('-O', '--old', help='old output format', action='store_true')
+    parser.add_argument("-o", "--output", help="output file", type=str)
+    parser.add_argument("-O", "--old", help="old output format", action="store_true")
 
     group = parser.add_mutually_exclusive_group()
-    parser.add_argument('-v', '--verbose', help='verbose level: 0, 1, 2, 3',
-                        type=int, choices=[0, 1, 2, 3], default=0)
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        help="verbose level: 0, 1, 2, 3",
+        type=int,
+        choices=[0, 1, 2, 3],
+        default=0,
+    )
 
     args = parser.parse_args()
 
@@ -54,11 +59,11 @@ if __name__ == "__main__":
         d2 = json.load(json_data)
         json_data.close()
 
-    bls1 = d1['baselines']
-    cfg1 = d1['config']
+    bls1 = d1["baselines"]
+    cfg1 = d1["config"]
 
-    bls2 = d2['baselines']
-    cfg2 = d2['config']
+    bls2 = d2["baselines"]
+    cfg2 = d2["config"]
 
     tlist = []
 
@@ -75,8 +80,7 @@ if __name__ == "__main__":
             card = hardware.PasttrecCard("noname")
 
             for a in [0, 1]:
-                print(Fore.YELLOW + "Scanning {:s}  CARD: {:d}  ASIC: {:d}"
-                      .format(k, c, a) + Style.RESET_ALL)
+                print(Fore.YELLOW + "Scanning {:s}  CARD: {:d}  ASIC: {:d}".format(k, c, a) + Style.RESET_ALL)
                 bl = [0] * 8
 
                 for ch in list(range(8)):
@@ -84,19 +88,27 @@ if __name__ == "__main__":
                     s = 0
                     w = 0
                     for i in range(1, 32):
-                        s = s + (i+1) * b[i]
+                        s = s + (i + 1) * b[i]
                         w += b[i]
                     if w == 0:
                         b = 0
                     else:
-                        b = s/w - 1
+                        b = s / w - 1
                     bl[ch] = int(round(b))
-                    print(ch, " bl:", Fore.YELLOW, "{:2d}"
-                          .format(bl[ch]), Style.RESET_ALL,
-                          "(0x{:s})".format(hex(bl[ch])[2:].zfill(2)),
-                          Fore.GREEN if w > 0 else Fore.RED, "{:>+3d} mV".format(-31 + 2 * bl[ch]),
-                          Style.RESET_ALL,
-                          " [ ", misc.bl_list_with_marker(v[c][a][ch], bl[ch]), "]")
+                    print(
+                        ch,
+                        " bl:",
+                        Fore.YELLOW,
+                        "{:2d}".format(bl[ch]),
+                        Style.RESET_ALL,
+                        "(0x{:s})".format(hex(bl[ch])[2:].zfill(2)),
+                        Fore.GREEN if w > 0 else Fore.RED,
+                        "{:>+3d} mV".format(-31 + 2 * bl[ch]),
+                        Style.RESET_ALL,
+                        " [ ",
+                        misc.bl_list_with_marker(v[c][a][ch], bl[ch]),
+                        "]",
+                    )
 
                 if args.offset is None:
                     while True:

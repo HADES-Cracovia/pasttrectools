@@ -26,7 +26,7 @@ from pasttrec import g_verbose
 
 
 def print_verbose(rc):
-    """ Print verbose return info from trbnet communication """
+    """Print verbose return info from trbnet communication"""
 
     if rc is None:
         return
@@ -64,7 +64,7 @@ def command_rm(trbnet, trbid, reg, length, option=1):
     res = {}
     while i < len(rc):
         data = rc[i]
-        partial_len = (data & 0xffff0000) >> 16
-        res[data & 0xffff] = tuple(rc[i+1:i+1+partial_len])
+        partial_len = (data & 0xFFFF0000) >> 16
+        res[data & 0xFFFF] = tuple(rc[i + 1 : i + 1 + partial_len])
         i = i + 1 + partial_len
     return res

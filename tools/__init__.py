@@ -1,1 +1,1 @@
-__all__ = ['pasttrec']
+__all__ = ["pasttrec"]
