@@ -69,6 +69,7 @@ def detect_frontend(address):
         address = int(address, 16)
 
     rc = safe_command_r(address, 0x42)
+
     try:
         return hardware.TrbFrontendTypeMapping[rc & 0xFFFF0000]
     except KeyError:
@@ -109,7 +110,11 @@ def decode_address_entry(string, sort=False):
         print("Incorrect address in string: ", string)
         return []
 
-    trbfetype = detect_frontend(address)
+    try:
+        trbfetype = detect_frontend(address)
+    except ValueError:
+        print(Fore.RED + f"Incorrect address {address}" + Style.RESET_ALL)
+        return []
 
     # do everything backwards
     # asics

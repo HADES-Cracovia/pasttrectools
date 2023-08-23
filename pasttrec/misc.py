@@ -151,7 +151,7 @@ def calc_tdc_channel(trbfetype, cable, asic, channel, with_ref_time=False):
 
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
-    return [lst[i : i + n] for i in range(0, len(lst), n)]
+    return [lst[i:i + n] for i in range(0, len(lst), n)]
 
 
 def convertToInt(num_string):

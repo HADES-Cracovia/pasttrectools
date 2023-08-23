@@ -23,6 +23,7 @@
 """ These functions are trbnetlibrary functions. """
 
 from pasttrec import g_verbose
+from pasttrec.misc import trbaddr
 
 
 def print_verbose(rc):
@@ -50,7 +51,10 @@ def command_wm(trbnet, trbid, reg, data, option=1):
 def command_r(trbnet, trbid, reg):
     rc = trbnet.trb_register_read(trbid, reg)
     print_verbose(rc)
-    return rc[1]
+    if len(rc):
+        return rc[1]
+    else:
+        raise ValueError("Trbid {:s} not available".format(trbaddr(trbid)))
 
 
 def command_rm(trbnet, trbid, reg, length, option=1):
