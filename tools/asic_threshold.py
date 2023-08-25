@@ -31,7 +31,11 @@ def_pastrec_thresh_range = [0x00, 0x7F]
 def set_thresholds(address, value):
     # loop over channels
     for addr, cable, asic in address:
-        communication.write_reg(addr, cable, asic, 3, value & 0xFF)
+        trbfetype = communication.detect_frontend(addr)
+        if trbfetype is None:
+            continue
+
+        communication.write_reg(trbfetype, addr, cable, asic, 3, value & 0xFF)
 
     print("Done")
 

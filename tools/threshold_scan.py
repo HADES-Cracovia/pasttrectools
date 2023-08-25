@@ -54,15 +54,15 @@ def scan_threshold(address):
 
             broadcasts_list.add((trbfetype.broadcast, trbfetype.n_scalers))
 
-            communication.write_reg(addr, cable, asic, 3, vth)
+            communication.write_reg(trbfetype, addr, cable, asic, 3, vth)
 
         sleep(0.1)
         for bc_addr, n_scalers in broadcasts_list:
             v1 = communication.read_rm_scalers(bc_addr, n_scalers)
             sleep(def_time)
             v2 = communication.read_rm_scalers(bc_addr, n_scalers)
-            a1 = parse_rm_scalers(trbfetype, v1)
-            a2 = parse_rm_scalers(trbfetype, v2)
+            a1 = parse_rm_scalers(n_scalers, v1)
+            a2 = parse_rm_scalers(n_scalers, v2)
             bb = a2.diff(a1)
 
             for addr, cable, asic in address:
@@ -95,7 +95,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument("-t", "--time", help="sleep time", type=float, default=def_time)
-    parser.add_argument("-o", "--output", help="output file", type=str, default="result.json")
+    parser.add_argument("-o", "--output", help="output file", type=str, default="results_th.json")
     parser.add_argument(
         "-v",
         "--verbose",

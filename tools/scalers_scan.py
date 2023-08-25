@@ -45,8 +45,9 @@ def show_scalers(stdscr):
     global prev_scalers
     global def_diffs
 
-    v1 = communication.read_rm_scalers(def_broadcast_addr)
-    a1 = misc.parse_rm_scalers(v1)
+    v1 = communication.read_rm_scalers(def_broadcast_addr, 48)
+    a1 = misc.parse_rm_scalers(48, v1)
+
     if prev_scalers is not None and def_diffs:
         ss = a1.diff(prev_scalers)
     else:

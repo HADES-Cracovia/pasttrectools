@@ -1,6 +1,7 @@
 from enum import Enum
 
 from pasttrec import LIBVERSION
+from pasttrec.trb_spi import Trb3Encoder, Trb5scEncoder
 
 
 class AsicRegisters(Enum):
@@ -85,14 +86,15 @@ class AsicRegistersValue:
 class TrbFrontendType(Enum):
     """Use it to discriminate between different frontend types."""
 
-    TRB3 = (3, 2, 0xFE4C)
-    TRB5SC = (4, 2, 0xFE81)
+    TRB3 = (3, 2, 0xFE4C, Trb3Encoder)
+    TRB5SC = (4, 2, 0xFE81, Trb5scEncoder)
 
-    def __init__(self, cables, asics, broadcast):
+    def __init__(self, cables, asics, broadcast, spi_protocol):
         self.cables = cables
         self.asics = asics
         self.broadcast = broadcast
         self.channels = 8
+        self.spi_protocol = spi_protocol
 
     @property
     def n_cables(self):
@@ -109,6 +111,10 @@ class TrbFrontendType(Enum):
     @property
     def n_scalers(self):
         return self.asics * self.cables * self.channels
+
+    @property
+    def spi(self):
+        return self.spi_protocol
 
 
 TrbFrontendTypeMapping = {

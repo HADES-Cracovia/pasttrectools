@@ -89,11 +89,11 @@ class Scalers:
         return s
 
 
-def parse_rm_scalers(trbfetype, res):
-    s = Scalers(trbfetype.n_scalers)
+def parse_rm_scalers(n_scalers, res):
+    s = Scalers(n_scalers)
 
     for addr, values in res.items():
-        if len(values) > trbfetype.n_scalers:
+        if len(values) > n_scalers:
             continue
 
         s.add_trb(addr)

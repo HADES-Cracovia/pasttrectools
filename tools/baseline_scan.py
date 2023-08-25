@@ -59,14 +59,14 @@ def scan_baseline_single(address):
                     continue
 
                 broadcasts_list.append((trbfetype.n_scalers, trbfetype.broadcast))
-                communication.write_reg(addr, cable, asic, 4 + c, blv)
+                communication.write_reg(trbfetype, addr, cable, asic, 4 + c, blv)
 
             for bc_addr, n_scalers in broadcasts_list:
                 v1 = communication.read_rm_scalers(bc_addr, n_scalers)
                 sleep(def_time)
                 v2 = communication.read_rm_scalers(bc_addr, n_scalers)
-                a1 = misc.parse_rm_scalers(trbfetype, v1)
-                a2 = misc.parse_rm_scalers(trbfetype, v2)
+                a1 = misc.parse_rm_scalers(n_scalers, v1)
+                a2 = misc.parse_rm_scalers(n_scalers, v2)
                 bb = a2.diff(a1)
 
                 # get addressess
@@ -81,7 +81,7 @@ def scan_baseline_single(address):
                     bbb.baselines[addr][cable][asic][c][blv] = vv
 
                     # See comment in scan_baseline_multi()
-                    # communication.write_reg(addr, cable, asic, 4+c, 0x00)
+                    # communication.write_reg(trbfetype, addr, cable, asic, 4+c, 0x00)
 
         print("  done")
 
@@ -115,19 +115,20 @@ def scan_baseline_multi(address):
             for c in list(range(trbfetype.n_channels)):
                 blv_data.append(hardware.TrbRegistersOffsets.c_bl_reg[c] | blv)
 
-            communication.write_chunk(addr, cable, asic, blv_data)
+            communication.write_chunk(trbfetype, addr, cable, asic, blv_data)
 
         for bc_addr, n_scalers in broadcasts_list:
             v1 = communication.read_rm_scalers(bc_addr, n_scalers)
             sleep(def_time)
             v2 = communication.read_rm_scalers(bc_addr, n_scalers)
-            a1 = misc.parse_rm_scalers(trbfetype, v1)
-            a2 = misc.parse_rm_scalers(trbfetype, v2)
+            a1 = misc.parse_rm_scalers(n_scalers, v1)
+            a2 = misc.parse_rm_scalers(n_scalers, v2)
             bb = a2.diff(a1)
 
             # reset base line
             # loop over channels
             for addr, cable, asic in address:
+                hex_addr = misc.trbaddr(addr)
                 blv_data = []
                 for c in list(range(trbfetype.n_channels)):
                     blv_data.append(hardware.TrbRegistersOffsets.c_bl_reg[c])
@@ -138,8 +139,8 @@ def scan_baseline_multi(address):
                     if vv < 0:
                         vv += 0x80000000
 
-                    bbb.add_trb(addr, trbfetype)
-                    bbb.baselines[addr][cable][asic][c][blv] = vv
+                    bbb.add_trb(hex_addr, trbfetype)
+                    bbb.baselines[hex_addr][cable][asic][c][blv] = vv
 
                 # This line kills baseline scan for the reg #16 (last of 2nd asic
                 # but dunno why. Why writing zero kills it?
@@ -164,7 +165,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument("-t", "--time", help="sleep time", type=float, default=def_time)
-    parser.add_argument("-o", "--output", help="output file", type=str, default="result.json")
+    parser.add_argument("-o", "--output", help="output file", type=str, default="results_bl.json")
     parser.add_argument(
         "-s",
         "--scan",

@@ -21,12 +21,13 @@
 # SOFTWARE.
 
 import argparse
+from time import sleep
 from colorama import Fore, Style
 
 from pasttrec import communication
 from pasttrec.misc import trbaddr
 
-def_time = 0.01
+def_time = 0.0
 
 
 def read_asic(address):
@@ -39,8 +40,8 @@ def read_asic(address):
 
     print(Style.RESET_ALL)
     for addr, cable, asic in address:
-        feetype = communication.detect_frontend(addr)
-        if feetype is None:
+        trbfetype = communication.detect_frontend(addr)
+        if trbfetype is None:
             continue
 
         if communication.g_verbose == 0:
@@ -52,7 +53,7 @@ def read_asic(address):
 
         for reg in range(12):
 
-            rc = communication.read_reg(addr, cable, asic, reg)
+            rc = communication.read_reg(trbfetype, addr, cable, asic, reg)
             try:
                 _t = rc & 0xFF
             except ValueError as ve:
@@ -87,6 +88,8 @@ def read_asic(address):
                     print("  {:#0{}x}".format(_t, 4), end="", flush=True)
 
             print(Style.RESET_ALL, end="", flush=True)
+            sleep(def_time)
+
         print(Style.RESET_ALL)
 
     return None

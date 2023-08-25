@@ -45,6 +45,10 @@ def scan_communication(address):
 
     test_ok = True
     for addr, cable, asic in address:
+        trbfetype = communication.detect_frontend(addr)
+        if trbfetype is None:
+            continue
+
         print(
             Fore.YELLOW + "{:s}  {:5d} {:5d}  ".format(trbaddr(addr), cable, asic) + Style.RESET_ALL,
             end="",
@@ -58,9 +62,9 @@ def scan_communication(address):
 
             for t in reg_test_vals:
                 print(".", end="", flush=True)
-                communication.write_reg(addr, cable, asic, reg, t)
+                communication.write_reg(trbfetype, addr, cable, asic, reg, t)
                 sleep(def_time)
-                rc = communication.read_reg(addr, cable, asic, reg)
+                rc = communication.read_reg(trbfetype, addr, cable, asic, reg)
                 try:
                     _t = rc & 0xFF
                 except ValueError as ve:

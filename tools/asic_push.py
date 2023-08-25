@@ -22,7 +22,7 @@
 
 import argparse
 
-from pasttrec import communication, misc
+from pasttrec import communication, misc, g_verbose
 
 
 if __name__ == "__main__":
@@ -45,8 +45,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    communication.g_verbose = args.verbose
-    if communication.g_verbose > 0:
+    g_verbose = args.verbose
+    if g_verbose > 0:
         print(args)
 
     dump_file = None
@@ -63,31 +63,33 @@ if __name__ == "__main__":
 
         for line in lines:
             # Pawel Kulessa enumerates cables 1..3 and asics 1..2, unlike RL 0..2 and 0..1, so sub 1 for PK files
-            pk_corr = 0
+
+            if g_verbose > 0:
+                print(f"Parsing line: {line}", end="")
+
             parts = line.split()
 
             nl = [misc.convertToInt(x) for x in parts[0:15]]
-            if nl[0] >= 0x6400 and nl[0] <= 0x64FF:
-                trbid = hex(nl[0])
-            else:
-                trbid = "0x" + str(nl[0])
-                pk_corr = 1
+
+            trbfetype = communication.detect_frontend(nl[0])
+            if trbfetype is None:
+                continue
 
             for i, val in enumerate(nl[3:15]):
                 nl[3 + i] = nl[3 + i] | i << 8
 
             if args.dump:
                 communication.cmd_to_file = dump_file
-                communication.write_chunk(trbid, nl[1] - pk_corr, nl[2] - pk_corr, nl[3:15])
+                communication.write_chunk(trbfetype, nl[0], nl[1], nl[2], nl[3:15])
                 communication.cmd_to_file = None
 
             if args.Dump:
                 communication.cmd_to_file = dump_file
-                communication.write_chunk(trbid, nl[1] - pk_corr, nl[2] - pk_corr, nl[3:15])
+                communication.write_chunk(trbfetype, nl[0], nl[1], nl[2], nl[3:15])
                 communication.cmd_to_file = None
 
             if args.exec or args.dump is None and args.Dump is None:
-                communication.write_chunk(trbid, nl[1] - pk_corr, nl[2] - pk_corr, nl[3:15])
+                communication.write_chunk(trbfetype, nl[0], nl[1], nl[2], nl[3:15])
 
     if dump_file:
         dump_file.close()

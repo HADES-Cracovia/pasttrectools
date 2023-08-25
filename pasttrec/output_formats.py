@@ -25,21 +25,19 @@ bgs = "    "
 igs = "  "
 
 
-def export_chunk(trbid, cable, asic, data):
+def export_chunk(trbid, cable, asic, data, format_string=None):
     if isinstance(data, list):
         v = [x & 0xFF for x in data]
     else:
         v = data & 0xFF
-    dat_write_chunk(trbid, cable, asic, v)
+    dat_write_chunk(trbid, cable, asic, v, format_string)
 
 
-def dat_write_chunk(trbid, cable, asic, data, hexflags=[1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]):
-    zdata = list(zip(data, hexflags))
-    fdata = [trbid, str(cable), str(asic)] + [hex(x[0]) if x[1] else str(x[0]).rjust(2) for x in zdata]
+def dat_write_chunk(trbid, cable, asic, data, format_string=None):
+    if format_string is None:
+        format_string = "  %s  %d  %d    %#04x  %#04x  %#04x    %3d    %2d  %2d  %2d  %2d  %2d  %2d  %2d  %2d"
 
     if cmd_to_file is not None:
-        cmd_to_file.write(
-            "  " + igs.join(fdata[0:3]) + bgs + igs.join(fdata[3:6]) + bgs + fdata[6] + bgs + igs.join(fdata[7:]) + "\n"
-        )
+        cmd_to_file.write(format_string % tuple([trbid, cable, asic] + data) + "\n")
     else:
-        print("  " + "  ".join(fdata) + "\n")
+        print(format_string % tuple(trbid, cable, asic + data) + "\n")

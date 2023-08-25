@@ -31,7 +31,7 @@ else:
         author="Rafal Lalik",
         author_email="rafal.lalik@uj.edu.pl",
         license="MIT",
-        packages=["pasttrec", "pasttrec.trb_comm"],
+        packages=["pasttrec"],
         scripts=[
             "tools/baseline_calc.py",
             "tools/baseline_merge.py",
@@ -39,7 +39,7 @@ else:
             "tools/draw_baseline_scan.py",
             "tools/threshold_scan.py",
             "tools/dump_threshold_scan.py",
-            "tools/communication_test.py",
+            "tools/communication_scan.py",
             "tools/compare_baselines.py",
             "tools/asic_push.py",
             "tools/asic_read.py",

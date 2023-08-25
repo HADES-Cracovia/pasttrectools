@@ -115,11 +115,11 @@ if __name__ == "__main__":
 
         t = hardware.TdcConnection(k)
 
-        for c in [0, 1, 2]:
+        for c in range(len(v)):  # deduce number of cards from file
             card = hardware.PasttrecCard("noname")
 
-            for a in [0, 1]:
-                print(Fore.YELLOW + "Scanning {:s}  CARD: {:d}  ASIC: {:d}".format(k, c, a) + Style.RESET_ALL)
+            for a in range(2):  # two asics
+                print(Fore.YELLOW + "Processing  {:s}  CARD: {:d}  ASIC: {:d}".format(k, c, a) + Style.RESET_ALL)
                 bl = [0] * 8
 
                 for ch in list(range(8)):
@@ -197,7 +197,8 @@ if __name__ == "__main__":
                         communication.cmd_to_file = None
                     else:
                         output_formats.cmd_to_file = dump_file
-                        output_formats.export_chunk(k, c, a, regs)
+                        output_formats.export_chunk(k, c, a, regs,
+                                                    "  %s  %d  %d    %2d  %2d  %2d  %2d  %2d  %2d  %2d  %2d")
 
                 if args.Dump:
                     regs = p.dump_config()
