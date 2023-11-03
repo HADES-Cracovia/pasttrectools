@@ -46,10 +46,10 @@ trbnet_interface = None
 
 if trbnet_interface_env is not None:
     if trbnet_interface_env == "trbnet":
-        from pasttrec.trbnet_com import TrbNetComLib
+        from pasttrec.interface import TrbNetComLib
         trbnet_interface = TrbNetComLib()
     elif trbnet_interface_env == "shell":
-        from pasttrec.trbnet_com import TrbNetComShell
+        from pasttrec.interface import TrbNetComShell
         trbnet_interface = TrbNetComShell()
     elif trbnet_interface_env == "file":
         pass
@@ -58,11 +58,11 @@ if trbnet_interface_env is not None:
         raise "TRBNET_INTERFACE is incorrect"
 else:
     if trbnet_available:
-        from pasttrec.trbnet_com import TrbNetComLib
+        from pasttrec.interface import TrbNetComLib
         trbnet = TrbNet(libtrbnet=lib, daqopserver=host)
         trbnet_interface = TrbNetComLib(trbnet)
     elif cmd_to_file:
-        from pasttrec.trbnet_com import TrbNetComShell
+        from pasttrec.interface import TrbNetComShell
         trbnet_interface = TrbNetComShell()
     else:
         pass

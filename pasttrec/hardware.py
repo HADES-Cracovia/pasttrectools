@@ -1,3 +1,13 @@
+"""
+This module provides generic structures describing various hardware components.
+
+This includes:
+* the TrbNet registers to communicate with Pasttrec
+* the Pasttrec card with peripherials
+* the Pasttrec ASIC with internal registers
+The functions provide also export/import of the components settings.
+"""
+
 from enum import Enum
 
 from pasttrec import LIBVERSION

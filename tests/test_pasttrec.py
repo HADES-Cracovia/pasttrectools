@@ -7,7 +7,7 @@
 
 from pasttrec import hardware, LIBVERSION
 from pasttrec.trb_spi import TrbSpiProtocol, Trb3Spi, Trb5scSpi
-from pasttrec.trbnet_com import TrbNetComInterface, TrbNetComLib, TrbNetComShell
+from pasttrec.interface import TrbNetComInterface, TrbNetComLib, TrbNetComShell
 
 
 
