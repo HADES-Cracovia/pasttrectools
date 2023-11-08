@@ -26,6 +26,7 @@ or
 ## List of tools
 
 The `tools` directory provides list of various tools:
+* `asic_communication_scan.py` - test communication with ASIC
 * `asic_push.py` - read data file and dump to script file or push to ASIC
 * `asic_read.py` - read data from ASIC
 * `asic_reset.py` - reset ASIC
@@ -35,12 +36,12 @@ The `tools` directory provides list of various tools:
 * `baseline_compare.py` - compare two baseline sets
 * `baseline_merge.py` - merge differences in two base line sets
 * `baseline_scan.py` - scan ASIC for baselines settings
-* `communication_test.py` - test communication with ASIC
 * `draw_baseline_scan.py` - draw baseline scan histograms
 * `dump_threshold_scan.py` - dump threshold scan results to file
 * `pasttrec_write_and_verify.py` - write data to ASIC and verify correctness
 * `scalers_scan.py` - scan scalers of ASICs
 * `threshold_scan.py` - scan ASIC threshold settings
+* `trb_communication_scan.py` - test communication with TRB
 
 Each tool provides basic help of its usage with command line option `-h` or `--help`.
 

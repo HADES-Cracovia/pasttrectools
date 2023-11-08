@@ -27,6 +27,8 @@ from pasttrec import hardware, g_verbose
 from pasttrec.misc import trbaddr
 from pasttrec.trb_spi import TrbTdcSpi
 
+
+"""Try to import TrbNet library"""
 try:
     from trbnet import TrbNet
 except ImportError:
@@ -44,13 +46,20 @@ trbnet_interface_env = os.getenv("TRBNET_INTERFACE")
 
 trbnet_interface = None
 
+
+"""Env TRBNET_INTERFACE controls which backend to use for communication.
+   Default one is libtrbnet."""
 if trbnet_interface_env is not None:
     if trbnet_interface_env == "trbnet":
+        trbnet = TrbNet(libtrbnet=lib, daqopserver=host)
+
         from pasttrec.interface import TrbNetComLib
-        trbnet_interface = TrbNetComLib()
+        trbnet_interface = TrbNetComLib(trbnet)
+
     elif trbnet_interface_env == "shell":
         from pasttrec.interface import TrbNetComShell
         trbnet_interface = TrbNetComShell()
+
     elif trbnet_interface_env == "file":
         pass
         # import pasttrec.trb_comm.file as comm
@@ -58,12 +67,15 @@ if trbnet_interface_env is not None:
         raise "TRBNET_INTERFACE is incorrect"
 else:
     if trbnet_available:
-        from pasttrec.interface import TrbNetComLib
         trbnet = TrbNet(libtrbnet=lib, daqopserver=host)
+
+        from pasttrec.interface import TrbNetComLib
         trbnet_interface = TrbNetComLib(trbnet)
+
     elif cmd_to_file:
         from pasttrec.interface import TrbNetComShell
         trbnet_interface = TrbNetComShell()
+
     else:
         pass
         # import pasttrec.trb_comm.file as comm
@@ -120,7 +132,7 @@ def decode_address_entry(string, sort=False):
         return ()
 
     try:
-        trbfetype = detect_frontend(address)
+        trb_fe_type = detect_frontend(address)
     except ValueError:
         print(Fore.RED + f"Incorrect address {address}" + Style.RESET_ALL)
         return ()
@@ -129,16 +141,16 @@ def decode_address_entry(string, sort=False):
     # asics
     if sec_len == 3 and len(sections[2]) > 0:
         _asics = sections[2].split(",")
-        asics = (int(a) - 1 for a in _asics if int(a) in range(1, trbfetype.asics))
+        asics = (int(a) - 1 for a in _asics if int(a) in range(1, trb_fe_type.asics))
     else:
-        asics = tuple(range(trbfetype.asics))
+        asics = tuple(range(trb_fe_type.asics))
 
     # asics
     if sec_len >= 2 and len(sections[1]) > 0:
         _cables = sections[1].split(",")
-        cables = (int(c) - 1 for c in _cables if int(c) in range(1, trbfetype.cables))
+        cables = (int(c) - 1 for c in _cables if int(c) in range(1, trb_fe_type.cables))
     else:
-        cables = tuple(range(trbfetype.cables))
+        cables = tuple(range(trb_fe_type.cables))
 
     tup = ([int(address, 16)] + [y] + [z] for y in cables for z in asics)
 
@@ -154,6 +166,12 @@ def decode_address(string, sort=False):
         for s in string:
             tup += decode_address_entry(s, sort)
         return tup
+
+
+def filter_address(addresses, sort=False):
+    """Use this for a single string or list of strings."""
+
+    return set((int(x.split(':')[0], 16) for x in addresses))
 
 
 def print_verbose(rc):
@@ -174,8 +192,8 @@ def reset_asic(address, verbose=False):
     _addr = None
     _cable = None
     for addr, cable, asic in a:
-        trbfetype = detect_frontend(addr)
-        if trbfetype is None:
+        trb_fe_type = detect_frontend(addr)
+        if trb_fe_type is None:
             continue
 
         if addr == _addr and cable == _cable:
@@ -212,20 +230,20 @@ def read_r_scalers(trbid, channel):
     They all call safe_command_ functions. """
 
 
-def write_reg(trbfetype, trbid, cable, asic, reg, val):
-    trbfetype.spi(trb_spi).reg_write(trbid, cable, asic, reg, val)
+def write_reg(trb_fe_type, trbid, cable, asic, reg, val):
+    trb_fe_type.spi(trb_spi).reg_write(trbid, cable, asic, reg, val)
 
 
-def read_reg(trbfetype, trbid, cable, asic, reg):
-    return trbfetype.spi(trb_spi).reg_read(trbid, cable, asic, reg)
+def read_reg(trb_fe_type, trbid, cable, asic, reg):
+    return trb_fe_type.spi(trb_spi).reg_read(trbid, cable, asic, reg)
 
 
-def write_data(trbfetype, trbid, cable, asic, data):
-    trbfetype.spi(trb_spi).reg_write_data(trbid, cable, asic, data)
+def write_data(trb_fe_type, trbid, cable, asic, data):
+    trb_fe_type.spi(trb_spi).reg_write_data(trbid, cable, asic, data)
 
 
-def write_chunk(trbfetype, trbid, cable, asic, data):
-    trbfetype.spi(trb_spi).reg_write_chunk(trbid, cable, asic, data)
+def write_chunk(trb_fe_type, trbid, cable, asic, data):
+    trb_fe_type.spi(trb_spi).reg_write_chunk(trbid, cable, asic, data)
 
 
 """ SPI protocol function. """

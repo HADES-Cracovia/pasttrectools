@@ -1,12 +1,14 @@
 #!/bin/env python3
 
+from context import *
+
 #import json
 #import os
 #import unittest
 #import tempfile
 
 from pasttrec import hardware, LIBVERSION
-from pasttrec.trb_spi import TrbSpiProtocol, Trb3Spi, Trb5scSpi
+#from pasttrec.trb_spi import TrbSpiProtocol, Trb3Spi, Trb5scSpi
 from pasttrec.interface import TrbNetComInterface, TrbNetComLib, TrbNetComShell
 
 
@@ -82,10 +84,10 @@ def test_com_interfaces():
     assert issubclass(TrbNetComShell, TrbNetComInterface) == True
 
 
-def test_spi_com():
-    assert issubclass(Trb3Spi, TrbSpiProtocol) == True
-    assert issubclass(Trb5scSpi, TrbSpiProtocol) == True
-    pass
+#def test_spi_com():
+    #assert issubclass(Trb3Spi, TrbSpiProtocol) == True
+    #assert issubclass(Trb5scSpi, TrbSpiProtocol) == True
+    #pass
 
 
 #if __name__ == "__main__":

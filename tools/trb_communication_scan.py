@@ -29,65 +29,63 @@ from pasttrec import communication, g_verbose
 from pasttrec.misc import trbaddr
 
 def_time = 0.0
-def_quick = False
 
+def scan_trb_communication(address, def_time = 1.0, infinite_loop = False):
 
-def scan_communication(address):
-
-    print("   TDC  Cable  Asic  >{:s}<".format("-" * 58))
-
-    if def_quick is True:
-        reg_range = [3]
-        reg_test_vals = [0x5A]
-    else:
-        reg_range = range(12)
-        reg_test_vals = [1, 4, 7, 10, 13]
-
+    reg_range = [0xd400]
+    reg_test_vals = range(0,255,2)
+    do_first_loop = True
     test_ok = True
-    for addr, cable, asic in address:
-        trbfetype = communication.detect_frontend(addr)
-        if trbfetype is None:
-            continue
 
-        print(
-            Fore.YELLOW + "{:s}  {:5d} {:5d}  ".format(trbaddr(addr), cable, asic) + Style.RESET_ALL,
-            end="",
-            flush=True,
-        )
+    cnt = 0
 
-        asic_test_ok = True
+    print(" TRBID  Register >{:s}<".format("-" * len(reg_test_vals)))
 
-        for reg in reg_range:
-            reg_test_ok = True
+    while do_first_loop or infinite_loop:
 
-            for t in reg_test_vals:
-                print(".", end="", flush=True)
-                communication.write_reg(trbfetype, addr, cable, asic, reg, t)
-                sleep(def_time)
-                rc = communication.read_reg(trbfetype, addr, cable, asic, reg)
-                try:
-                    _t = rc & 0xFF
-                except ValueError as ve:
-                    print("Wrong result: ", rc.split()[1])
-                    print(ve)
-                    _t = 0xDEADBEEF
+        for addr in address:
 
-                if _t != t or _t == 0xDEADBEEF:
-                    print(
-                        Fore.RED + " Test failed for register {:d}".format(reg) + Style.RESET_ALL,
-                        end="",
-                    )
-                    print("  Sent {:d}, received {:d}".format(t, _t))
-                    reg_test_ok = False
-                    break
+            asic_test_ok = True
+            for reg in reg_range:
 
-            if reg_test_ok is False:
-                asic_test_ok = False
-                test_ok = False
-                break
+                print(
+                    Fore.YELLOW + "{:s}  {:s}    ".format(trbaddr(addr), hex(reg)) + Style.RESET_ALL,
+                    end="",
+                    flush=True,
+                )
 
-        if asic_test_ok:
-            print(Fore.GREEN + " OK " + Style.RESET_ALL)
+
+                for t in reg_test_vals:
+                    communication.trbnet_interface.write(addr, reg, t)
+                    sleep(def_time)
+                    rc = communication.trbnet_interface.read(addr, reg)
+                    cnt = cnt + 1
+
+                    try:
+                        _t = rc & 0xFF
+                    except ValueError as ve:
+                        print("Wrong result: ", rc.split()[1])
+                        print(ve)
+                        _t = None
+
+                    if _t != t or _t == None:
+                        print(Fore.RED + "." + Style.RESET_ALL, end="", flush=True)
+                        print(
+                            Fore.RED + " Test failed for register {:d}".format(reg) + Style.RESET_ALL,
+                            end="",
+                        )
+                        print("  Sent {:d}, received {:d}".format(t, _t))
+                        asic_test_ok = False
+                    else:
+                        print(Fore.GREEN + "." + Style.RESET_ALL, end="", flush=True)
+
+
+            if asic_test_ok:
+                print(Fore.GREEN + " OK " + Style.RESET_ALL, cnt)
+            else:
+                print(Fore.RED + " FAILED " + Style.RESET_ALL, cnt)
+
+            do_first_loop = False
 
     if test_ok:
         print("All test done and OK")
@@ -109,8 +107,8 @@ if __name__ == "__main__":
         nargs="+",
     )
 
-    parser.add_argument("-q", "--quick", help="quick test", action="store_true")
     parser.add_argument("-t", "--time", help="sleep time", type=float, default=def_time)
+    parser.add_argument("-i", "--infinite", help="quick test", action="store_true")
     parser.add_argument(
         "-v",
         "--verbose",
@@ -126,10 +124,8 @@ if __name__ == "__main__":
     if g_verbose > 0:
         print(args)
 
-    def_time = args.time
-    def_quick = args.quick
-
-    tup = communication.decode_address(args.trbids)
+    tup = communication.filter_address(args.trbids)
     a = args.trbids
-    r = scan_communication(tup)
+
+    r = scan_trb_communication(tup, args.time, args.infinite)
     sys.exit(r)

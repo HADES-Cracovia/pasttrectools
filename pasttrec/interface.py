@@ -134,8 +134,8 @@ class TrbNetComShell:
         if g_verbose >= 1:
             print("[{:s}]  {:d}".format(hex(rc[0]), rc[1]))
 
-    def write(self, trbnet, trbid, reg, data):
-        cmd = ["trbcmd", "w", trbid, hex(reg), hex(data)]
+    def write(self, trbid, reg, data):
+        cmd = ["trbcmd", "w", hex(trbid), hex(reg), hex(data)]
         """
         if cmd_to_file is not None:
             cmd_to_file.write(' '.join(cmd) + '\n')
@@ -145,35 +145,39 @@ class TrbNetComShell:
         self.print_verbose(rc)
         return rc.stdout.decode()
 
-    def write_mem(self, trbnet, trbid, reg, data, option=1):
+    def write_mem(self, trbid, reg, data, option=1):
         """
         if cmd_to_file is not None:
-            cmd = ['trbcmd', 'wm', trbid, hex(reg), str(mode), '- << EOF']
+            cmd = ['trbcmd', 'wm', hex(trbid), hex(reg), str(mode), '- << EOF']
             cmd_to_file.write(' '.join(cmd) + '\n')
             for d in data:
                 cmd_to_file.write(hex(d) + '\n')
             cmd_to_file.write('EOF\n')
             return True
         """
-        cmd = ["trbcmd", "wm", trbid, hex(reg), str(option), "-"]
+        cmd = ["trbcmd", "wm", hex(trbid), hex(reg), str(option), "-"]
         _data = "\n".join([hex(x) for x in data])
         rc = subprocess.run(cmd, input=_data.encode("utf-8"), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.print_verbose(rc)
         return rc.stdout.decode()
 
-    def read(self, trbnet, trbid, reg):
-        cmd = ["trbcmd", "r", trbid, hex(reg)]
+    def read(self, trbid, reg):
+        cmd = ["trbcmd", "r", hex(trbid), hex(reg)]
         """
         if cmd_to_file is not None:
             cmd_to_file.write(' '.join(cmd) + '\n')
             return True
         """
+
         rc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.print_verbose(rc)
-        return rc.stdout.decode()
+        try:
+            return int(rc.stdout.decode().split()[1], 16)
+        except IndexError:
+            return 0xdeadbeef # TODO Add exceptions
 
-    def read_mem(self, trbnet, trbid, reg, length, option=1):
-        cmd = ["trbcmd", "rm", trbid, hex(reg), str(length), "0"]
+    def read_mem(self, trbid, reg, length, option=1):
+        cmd = ["trbcmd", "rm", hex(trbid), hex(reg), str(length), "0"]
         """
         if cmd_to_file is not None:
             cmd_to_file.write(' '.join(cmd) + '\n')
