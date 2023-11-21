@@ -71,25 +71,23 @@ if __name__ == "__main__":
 
             nl = [misc.convertToInt(x) for x in parts[0:15]]
 
-            trbfetype = communication.detect_frontend(nl[0])
-            if trbfetype is None:
-                continue
+            con = tuple(communication.make_asic_connections((tuple(nl[0:3]),)))[0]
 
             for i, val in enumerate(nl[3:15]):
-                nl[3 + i] = nl[3 + i] | i << 8
+                nl[3 + i] = i << 8 | nl[3 + i]
 
             if args.dump:
                 communication.cmd_to_file = dump_file
-                communication.write_chunk(trbfetype, nl[0], nl[1], nl[2], nl[3:15])
+                con.write_chunk(nl[2], nl[3:15])
                 communication.cmd_to_file = None
 
             if args.Dump:
                 communication.cmd_to_file = dump_file
-                communication.write_chunk(trbfetype, nl[0], nl[1], nl[2], nl[3:15])
+                con.write_chunk(nl[3:15])
                 communication.cmd_to_file = None
 
             if args.exec or args.dump is None and args.Dump is None:
-                communication.write_chunk(trbfetype, nl[0], nl[1], nl[2], nl[3:15])
+                con.write_chunk(nl[3:15])
 
     if dump_file:
         dump_file.close()

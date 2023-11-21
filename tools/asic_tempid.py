@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 #
-# Copyright 2018 Rafal Lalik <rafal.lalik@uj.edu.pl>
+# Copyright 2022 Akshay Malige <akshay.malige@doctoral.uj.edu.pl>
+# Copyright 2023 Rafal Lalik <rafal.lalik@uj.edu.pl>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -20,16 +21,62 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import os
+import sys
+import glob
 import argparse
+from time import sleep
+import json
+import math
+from colorama import Fore, Style
 
 from pasttrec import communication
+from pasttrec.misc import trbaddr
 
-def_time = 1
+def_time = 0
+
+
+def asic_tempid(address, pretty_mode, show_temp):
+
+    if pretty_mode:
+        print("   TDC  Cable   Temp  WireId " + Fore.YELLOW, end="", flush=True)
+        print(Style.RESET_ALL)
+
+    for con in communication.make_cable_connections(address):
+        if pretty_mode:
+            print(
+                Fore.YELLOW
+                + "{:s}  {:5d} ".format(trbaddr(con.trbid), con.cable)
+                + Style.RESET_ALL,
+                end="",
+                flush=True,
+            )
+
+        if pretty_mode or show_temp:
+            rc1 = con.read_wire_temp()
+
+            if pretty_mode:
+                print(Fore.MAGENTA, end="")
+                print(" {:3.2f}".format(rc1), end="")
+            elif show_temp:
+                print("{:3.2f}".format(rc1))
+
+        if pretty_mode or not show_temp:
+            rc2 = con.read_wire_id()
+
+            if pretty_mode:
+                print(Fore.CYAN, end="")
+                print("  {:#0{}x}".format(rc2, 4), end="")
+            elif not show_temp:
+                print("{:#0{}x}".format(rc2, 4))
+
+        if pretty_mode:
+            print(Style.RESET_ALL)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Reset PASTTREC chips",
+        description="Scan communication of PASTTREC chips",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
@@ -50,6 +97,14 @@ if __name__ == "__main__":
         default=0,
     )
 
+    parser.add_argument(
+        "-p",
+        "--pretty",
+        help="pretty view -- shwo both temp and id",
+        action="store_true",
+    )
+    parser.add_argument("--temp", help="show temperature not id", action="store_true")
+
     args = parser.parse_args()
 
     communication.g_verbose = args.verbose
@@ -58,5 +113,5 @@ if __name__ == "__main__":
     if communication.g_verbose > 0:
         print(args)
 
-    tup = communication.decode_address(args.trbids, True)
-    communication.reset_asic(tup)
+    tup = communication.decode_address(args.trbids)
+    r = asic_tempid(tup, args.pretty, args.temp)

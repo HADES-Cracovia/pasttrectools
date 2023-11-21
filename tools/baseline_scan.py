@@ -36,52 +36,57 @@ def_pastrec_bl_base = 0x00000
 def_pastrec_bl_range = [0x00, def_max_bl_register_steps]
 
 
+def update_baselines(bbb, broadcasts_list, connections, blv):
+    for bc_addr, n_scalers in broadcasts_list:
+        v1 = communication.read_rm_scalers(bc_addr, n_scalers)
+        sleep(def_time)
+        v2 = communication.read_rm_scalers(bc_addr, n_scalers)
+        a1 = misc.parse_rm_scalers(n_scalers, v1)
+        a2 = misc.parse_rm_scalers(n_scalers, v2)
+        bb = a2.diff(a1)
+
+        for con in connections:
+            hex_addr = misc.trbaddr(con.trbid)
+            blv_data = []
+            for c in list(range(con.fetype.n_channels)):
+                blv_data.append(hardware.TrbRegistersOffsets.c_bl_reg[c])
+
+                chan = misc.calc_tdc_channel(con.fetype, con.cable, con.asic, c)
+
+                vv = bb.scalers[con.trbid][chan]
+                if vv < 0:
+                    vv += 0x80000000
+
+                bbb.add_trb(hex_addr, con.fetype)
+                bbb.baselines[hex_addr][con.cable][con.asic][c][blv] = vv
+
+            # This line kills baseline scan for the reg #16 (last of 2nd asic
+            # but dunno why. Why writing zero kills it?
+            # communication.write_chunk(addr, cable, asic, blv_data)
+
+
 def scan_baseline_single(address):
     bbb = misc.Baselines()
+    connections = communication.make_asic_connections(address)
+
+    # Store here pairs of bc address and number of channels in an endpoint
+    broadcasts_list = set()
+    for con in connections:
+        broadcasts_list.add((con.trbid, con.fetype.n_scalers))
 
     print(" trbid   channel   bl 0{:s}31".format(" " * 32))
     print("                      |{:s}|".format("-" * 32))
-    # loop over channels
-    for c in list(range(hardware.PasttrecRegistersCodes.channels_num)):
-        print("{:s}    {:s}          ".format(trbaddr(0), c), end="", flush=True)
 
-        # loop over bl register value
+    for c in list(range(8)):  # FIXME do not use magic number
+        print("{:s}    {:d}            ".format(trbaddr(0), c), end="", flush=True)
+
         for blv in range(def_pastrec_bl_range[0], def_pastrec_bl_range[1]):
-            print("#", end="", flush=True)
+            print(".", end="", flush=True)
 
-            # Store here pairs of bc address and number of channels in an endpoint
-            broadcasts_list = set()
+            for con in connections:
+                con.write_reg(4 + c, blv)
 
-            # get addressess
-            for addr, cable, asic in address:
-                trbfetype = communication.detect_frontend(addr)
-                if trbfetype is None:
-                    continue
-
-                broadcasts_list.append((trbfetype.n_scalers, trbfetype.broadcast))
-                communication.write_reg(trbfetype, addr, cable, asic, 4 + c, blv)
-
-            for bc_addr, n_scalers in broadcasts_list:
-                v1 = communication.read_rm_scalers(bc_addr, n_scalers)
-                sleep(def_time)
-                v2 = communication.read_rm_scalers(bc_addr, n_scalers)
-                a1 = misc.parse_rm_scalers(n_scalers, v1)
-                a2 = misc.parse_rm_scalers(n_scalers, v2)
-                bb = a2.diff(a1)
-
-                # get addressess
-                for addr, cable, asic in address:
-                    chan = misc.calc_tdc_channel(cable, asic, c)
-
-                    vv = bb.scalers[addr][chan]
-                    if vv < 0:
-                        vv += 0x80000000
-
-                    bbb.add_trb(addr)
-                    bbb.baselines[addr][cable][asic][c][blv] = vv
-
-                    # See comment in scan_baseline_multi()
-                    # communication.write_reg(trbfetype, addr, cable, asic, 4+c, 0x00)
+            update_baselines(bbb, broadcasts_list, connections, blv)
 
         print("  done")
 
@@ -90,61 +95,31 @@ def scan_baseline_single(address):
 
 def scan_baseline_multi(address):
     bbb = misc.Baselines()
+    connections = communication.make_asic_connections(address)
+
+    # Store here pairs of bc address and number of channels in an endpoint
+    broadcasts_list = set()
+    for con in connections:
+        broadcasts_list.add((con.trbid, con.fetype.n_scalers))
 
     print(" trbid   channel   bl 0{:s}31".format(" " * 32))
     print("                      |{:s}|".format("-" * 32))
-    print("{:s}    {:s}          ".format(trbaddr(0), "all"), end="", flush=True)  # FIXME set proper BC address?
+    print(
+        "{:s}    {:s}          ".format(trbaddr(0), "all"), end="", flush=True
+    )  # FIXME set proper BC address?
 
-    # loop over bl register value
     for blv in range(def_pastrec_bl_range[0], def_pastrec_bl_range[1]):
-        print("#", end="", flush=True)
+        print(".", end="", flush=True)
 
-        # Store here pairs of bc address and number of channels in an endpoint
-        broadcasts_list = set()
-
-        # get addressess
-        for addr, cable, asic in address:
-            trbfetype = communication.detect_frontend(addr)
-            if trbfetype is None:
-                continue
-
-            broadcasts_list.add((trbfetype.broadcast, trbfetype.n_scalers))
-
+        for con in connections:
             blv_data = []
-            # loop over channels
-            for c in list(range(trbfetype.n_channels)):
+
+            for c in list(range(con.fetype.n_channels)):
                 blv_data.append(hardware.TrbRegistersOffsets.c_bl_reg[c] | blv)
 
-            communication.write_chunk(trbfetype, addr, cable, asic, blv_data)
+            con.write_chunk(blv_data)
 
-        for bc_addr, n_scalers in broadcasts_list:
-            v1 = communication.read_rm_scalers(bc_addr, n_scalers)
-            sleep(def_time)
-            v2 = communication.read_rm_scalers(bc_addr, n_scalers)
-            a1 = misc.parse_rm_scalers(n_scalers, v1)
-            a2 = misc.parse_rm_scalers(n_scalers, v2)
-            bb = a2.diff(a1)
-
-            # reset base line
-            # loop over channels
-            for addr, cable, asic in address:
-                hex_addr = misc.trbaddr(addr)
-                blv_data = []
-                for c in list(range(trbfetype.n_channels)):
-                    blv_data.append(hardware.TrbRegistersOffsets.c_bl_reg[c])
-
-                    chan = misc.calc_tdc_channel(trbfetype, cable, asic, c)
-
-                    vv = bb.scalers[addr][chan]
-                    if vv < 0:
-                        vv += 0x80000000
-
-                    bbb.add_trb(hex_addr, trbfetype)
-                    bbb.baselines[hex_addr][cable][asic][c][blv] = vv
-
-                # This line kills baseline scan for the reg #16 (last of 2nd asic
-                # but dunno why. Why writing zero kills it?
-                # communication.write_chunk(addr, cable, asic, blv_data)
+        update_baselines(bbb, broadcasts_list, connections, blv)
 
     print("  done")
 
@@ -165,7 +140,9 @@ if __name__ == "__main__":
     )
 
     parser.add_argument("-t", "--time", help="sleep time", type=float, default=def_time)
-    parser.add_argument("-o", "--output", help="output file", type=str, default="results_bl.json")
+    parser.add_argument(
+        "-o", "--output", help="output file", type=str, default="results_bl.json"
+    )
     parser.add_argument(
         "-s",
         "--scan",
@@ -265,8 +242,14 @@ if __name__ == "__main__":
     if communication.g_verbose > 0:
         print(args)
 
-    if args.threshold > def_pastrec_thresh_range[1] or args.threshold < def_pastrec_thresh_range[0]:
-        print("\nOption error: Threshold value {:d} is to high," " allowed value is 0-127".format(args.threshold))
+    if (
+        args.threshold > def_pastrec_thresh_range[1]
+        or args.threshold < def_pastrec_thresh_range[0]
+    ):
+        print(
+            "\nOption error: Threshold value {:d} is to high,"
+            " allowed value is 0-127".format(args.threshold)
+        )
         sys.exit(1)
 
     # scan type

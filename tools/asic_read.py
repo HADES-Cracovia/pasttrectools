@@ -39,21 +39,22 @@ def read_asic(address):
             print("    {:2d}".format(reg), end="", flush=True)
 
     print(Style.RESET_ALL)
-    for addr, cable, asic in address:
-        trbfetype = communication.detect_frontend(addr)
-        if trbfetype is None:
-            continue
 
+    for con in communication.make_asic_connections(address):
         if communication.g_verbose == 0:
             print(
-                Fore.YELLOW + "{:s}  {:5d}  {:4d}        ".format(trbaddr(addr), cable, asic) + Style.RESET_ALL,
+                Fore.YELLOW
+                + "{:s}  {:5d}  {:4d}        ".format(
+                    trbaddr(con.trbid), con.cable, con.asic
+                )
+                + Style.RESET_ALL,
                 end="",
                 flush=True,
             )
 
         for reg in range(12):
 
-            rc = communication.read_reg(trbfetype, addr, cable, asic, reg)
+            rc = con.read_reg(reg)
             try:
                 _t = rc & 0xFF
             except ValueError as ve:
@@ -63,14 +64,20 @@ def read_asic(address):
 
             if _t == 0xDEADBEEF:
                 print(
-                    Fore.RED + " Read failed for register {:s}".format(hex(reg)) + Style.RESET_ALL,
+                    Fore.RED
+                    + " Read failed for register {:s}".format(hex(reg))
+                    + Style.RESET_ALL,
                     end="",
                 )
                 print("  Received {:s}".format(hex(_t)))
             else:
                 if communication.g_verbose > 0:
                     print(
-                        Fore.YELLOW + "{:s}  {:5d}  {:4d}        ".format(trbaddr(addr), cable, asic) + Style.RESET_ALL,
+                        Fore.YELLOW
+                        + "{:s}  {:5d}  {:4d}        ".format(
+                            trbaddr(addr), cable, asic
+                        )
+                        + Style.RESET_ALL,
                         end="",
                         flush=True,
                     )
@@ -83,7 +90,11 @@ def read_asic(address):
                     print(Fore.GREEN, end="", flush=True)
 
                 if communication.g_verbose > 0:
-                    print("Register: {0:#0{1}x}    Value: {2:#0{3}x}".format(reg, 2, _t, 4))
+                    print(
+                        "Register: {0:#0{1}x}    Value: {2:#0{3}x}".format(
+                            reg, 2, _t, 4
+                        )
+                    )
                 else:
                     print("  {:#0{}x}".format(_t, 4), end="", flush=True)
 
@@ -127,5 +138,4 @@ if __name__ == "__main__":
         print(args)
 
     tup = communication.decode_address(args.trbids)
-    a = args.trbids
     r = read_asic(tup)

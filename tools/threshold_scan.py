@@ -35,26 +35,27 @@ def_pastrec_thresh_range = [0x00, 0x7F]
 def scan_threshold(address):
     ttt = misc.Thresholds()
 
-    print(" trbid   channel   th 0{:s}{:d}".format(" " * def_threshold_max, def_threshold_max))
+    connections = communication.make_asic_connections(address)
+
+    # Store here pairs of bc address and number of channels in an endpoint
+    broadcasts_list = set()
+    for con in connections:
+        broadcasts_list.add((con.trbid, con.fetype.n_scalers))
+
+    print(
+        " trbid   channel   th 0{:s}{:d}".format(
+            " " * def_threshold_max, def_threshold_max
+        )
+    )
     print("                      |{:s}|".format("-" * def_threshold_max))
     print("{:s}    {:s}          ".format(hex(0xFFFF), "all"), end="", flush=True)
 
     # loop over bl register value
     for vth in range(def_pastrec_thresh_range[0], def_threshold_max):
-        print("#", end="", flush=True)
+        print(".", end="", flush=True)
 
-        # Store here pairs of bc address and number of channels in an endpoint
-        broadcasts_list = set()
-
-        # loop over TDC
-        for addr, cable, asic in address:
-            trbfetype = communication.detect_frontend(addr)
-            if trbfetype is None:
-                continue
-
-            broadcasts_list.add((trbfetype.broadcast, trbfetype.n_scalers))
-
-            communication.write_reg(trbfetype, addr, cable, asic, 3, vth)
+        for con in connections:
+            con.write_reg(3, vth)
 
         sleep(0.1)
         for bc_addr, n_scalers in broadcasts_list:
@@ -65,16 +66,18 @@ def scan_threshold(address):
             a2 = parse_rm_scalers(n_scalers, v2)
             bb = a2.diff(a1)
 
-            for addr, cable, asic in address:
-                for c in list(range(trbfetype.n_channels)):
-                    chan = calc_tdc_channel(trbfetype, cable, asic, c)
+            for con in connections:
+                hex_addr = misc.trbaddr(con.trbid)
 
-                    vv = bb.scalers[addr][chan]
+                for c in list(range(con.fetype.n_channels)):
+                    chan = misc.calc_tdc_channel(con.fetype, con.cable, con.asic, c)
+
+                    vv = bb.scalers[con.trbid][chan]
                     if vv < 0:
                         vv += 0x80000000
 
-                    ttt.add_trb(addr, trbfetype)
-                    ttt.thresholds[addr][cable][asic][c][vth] = vv
+                    ttt.add_trb(hex_addr, con.fetype)
+                    ttt.thresholds[hex_addr][con.cable][con.asic][c][vth] = vv
 
     print("  done")
 
@@ -95,7 +98,9 @@ if __name__ == "__main__":
     )
 
     parser.add_argument("-t", "--time", help="sleep time", type=float, default=def_time)
-    parser.add_argument("-o", "--output", help="output file", type=str, default="results_th.json")
+    parser.add_argument(
+        "-o", "--output", help="output file", type=str, default="results_th.json"
+    )
     parser.add_argument(
         "-v",
         "--verbose",

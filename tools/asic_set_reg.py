@@ -29,13 +29,8 @@ def_pastrec_thresh_range = [0x00, 0x7F]
 
 
 def set_register(address, register, value):
-    # loop over channels
-    for addr, cable, asic in address:
-        trbfetype = communication.detect_frontend(addr)
-        if trbfetype is None:
-            continue
-
-        communication.write_reg(trbfetype, addr, cable, asic, register, value & 0xFF)
+    for con in communication.make_asic_connections(address):
+        con.write_reg(register, value & 0xFF)
 
     print("Done")
 
@@ -46,7 +41,9 @@ if __name__ == "__main__":
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
-    parser.add_argument("trbids", help="trb address" " addres[:card-0-1-2[:asic-0-1]]", type=str)
+    parser.add_argument(
+        "trbids", help="trb address" " addres[:card-0-1-2[:asic-0-1]]", type=str
+    )
     parser.add_argument("reg", help="register 0-12", type=int)
     parser.add_argument("val", help="value to write", type=int)
 
@@ -74,11 +71,15 @@ if __name__ == "__main__":
     if communication.g_verbose > 0:
         print(args)
 
-    if args.threshold > def_pastrec_thresh_range[1] or args.threshold < def_pastrec_thresh_range[0]:
-        print("\nOption error: Threshold value {:d} is to high, " " allowed value is 0-127".format(args.threshold))
+    if (
+        args.threshold > def_pastrec_thresh_range[1]
+        or args.threshold < def_pastrec_thresh_range[0]
+    ):
+        print(
+            "\nOption error: Threshold value {:d} is to high, "
+            " allowed value is 0-127".format(args.threshold)
+        )
         sys.exit(1)
-
-    ex = True
 
     tup = communication.decode_address(args.trbids)
     set_register(tup, args.reg, args.val)

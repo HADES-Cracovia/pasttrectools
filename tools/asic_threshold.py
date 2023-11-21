@@ -29,13 +29,8 @@ def_pastrec_thresh_range = [0x00, 0x7F]
 
 
 def set_thresholds(address, value):
-    # loop over channels
-    for addr, cable, asic in address:
-        trbfetype = communication.detect_frontend(addr)
-        if trbfetype is None:
-            continue
-
-        communication.write_reg(trbfetype, addr, cable, asic, 3, value & 0xFF)
+    for con in communication.make_asic_connections(address):
+        con.write_reg(3, value & 0xFF)
 
     print("Done")
 
@@ -77,8 +72,14 @@ if __name__ == "__main__":
     if communication.g_verbose > 0:
         print(args)
 
-    if args.threshold > def_pastrec_thresh_range[1] or args.threshold < def_pastrec_thresh_range[0]:
-        print("\nOption error: Threshold value {:d} is to high, " " allowed value is 0-127".format(args.threshold))
+    if (
+        args.threshold > def_pastrec_thresh_range[1]
+        or args.threshold < def_pastrec_thresh_range[0]
+    ):
+        print(
+            "\nOption error: Threshold value {:d} is to high, "
+            " allowed value is 0-127".format(args.threshold)
+        )
         sys.exit(1)
 
     ex = True

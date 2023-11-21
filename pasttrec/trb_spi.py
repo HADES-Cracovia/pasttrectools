@@ -1,5 +1,5 @@
-
 import abc
+from time import sleep
 
 from pasttrec import misc
 
@@ -9,44 +9,51 @@ class TrbSpiDriver(metaclass=abc.ABCMeta):
 
     @classmethod
     def __subclasshook__(self, subclass):
-        return (hasattr(subclass, 'spi_fill_buffer') and
-                callable(subclass.spi_fill_buffer) and
-                hasattr(subclass, 'spi_prepare') and
-                callable(subclass.spi_prepare) and
-                hasattr(subclass, 'spi_read') and
-                callable(subclass.spi_read) and
-                hasattr(subclass, 'spi_write') and
-                callable(subclass.spi_write) and
-                hasattr(subclass, 'spi_write_chunk') and
-                callable(subclass.spi_write_chunk) and
-                hasattr(subclass, 'spi_reset') and
-                callable(subclass.spi_reset) or
-                NotImplemented)
+        return (
+            hasattr(subclass, "fill_buffer")
+            and callable(subclass.fill_buffer)
+            and hasattr(subclass, "prepare")
+            and callable(subclass.prepare)
+            and hasattr(subclass, "read")
+            and callable(subclass.read)
+            and hasattr(subclass, "write")
+            and callable(subclass.write)
+            and hasattr(subclass, "write_chunk")
+            and callable(subclass.write_chunk)
+            and hasattr(subclass, "reset")
+            and callable(subclass.reset)
+            or NotImplemented
+        )
 
     @abc.abstractmethod
-    def spi_prepare(self, trbid, cable, asic):
+    def prepare(self, trbid, cable, asic):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def spi_read(self, trbid, cable, asic, data):
+    def read(self, trbid, cable, asic, data):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def spi_write(self, trbid, cable, asic, data):
+    def write(self, trbid, cable, asic, data):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def spi_write_chunk(self, trbid, cable, asic, data):
+    def write_chunk(self, trbid, cable, asic, data):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def spi_reset(self, trbid, cable):
+    def reset(self, trbid, cable):
         raise NotImplementedError
 
 
-class TrbTdcSpi:
+class SpiTrbTdc:
     """Doc"""
+
     trb_com = None
+
+    spi_mem = {}
+    spi_queue = 0
+    spi_interface = None
 
     def __init__(self, trb_com):
         """
@@ -59,7 +66,7 @@ class TrbTdcSpi:
         """
         self.trb_com = trb_com
 
-    def spi_prepare(self, trbid: int, cable: int):
+    def prepare(self, trbid: int, cable: int):
         """
         Prepare the SPI interface
 
@@ -70,7 +77,7 @@ class TrbTdcSpi:
         cable : int
             The cable number 0..max (typically 3 or 4 cables on a single TDC)
         """
-
+        # print(f"PREPARE {hex(trbid)} {cable}")
         # bring all CS (reset lines) in the default state (1) - upper four nibbles:
         # invert CS, lower four nibbles: disable CS
         self.trb_com.write(trbid, 0xD417, 0x0000FFFF)
@@ -94,10 +101,10 @@ class TrbTdcSpi:
         # trbcmd w $trbid 0xd415 0xFFFF
         # trbcmd w $trbid 0xd416 0xFFFF
 
-    def spi_read(self, trbid):
+    def read(self, trbid):
         return self.trb_com.read(trbid, 0xD412)
 
-    def spi_write(self, trbid: int, cable: int, asic: int, data: int):
+    def write(self, trbid: int, cable: int, data: int):
         """
         Write data to spi interface
 
@@ -107,8 +114,6 @@ class TrbTdcSpi:
             The trbid address
         cable : int
             The cable number 0..max (typically 3 or 4 cables on a single TDC)
-        asic : int
-            the asis number, 0..1 (two asics on a single cables)
         data : int
             data to write
         """
@@ -118,7 +123,7 @@ class TrbTdcSpi:
         else:
             my_data_list = [data]
 
-        self.spi_prepare(trbid, cable)
+        self.prepare(trbid, cable)
 
         for data in my_data_list:
             # writing one data word, append zero to the data word, the chip will get some more SCK clock cycles
@@ -126,13 +131,13 @@ class TrbTdcSpi:
             # write 1 to length register to trigger sending
             self.trb_com.write(trbid, 0xD411, 0x0001)
 
-    def spi_write_chunk(self, trbid, cable, asic, data):
+    def write_chunk(self, trbid, cable, data):
         if isinstance(data, list):
             my_data_list = data
         else:
             my_data_list = [data]
 
-        self.spi_prepare(trbid, cable)
+        self.prepare(trbid, cable)
 
         for d in misc.chunks(my_data_list, 16):
             # i = 0
@@ -145,7 +150,7 @@ class TrbTdcSpi:
             # write length register to trigger sending
             self.trb_com.write(trbid, 0xD411, len(d))
 
-    def spi_reset(self, trbid, cable):
+    def reset(self, trbid, cable):
         # bring all CS (reset lines) in the default state (1) - upper four nibbles:
         # invert CS, lower four nibbles: disable CS
         self.trb_com.write(trbid, 0xD417, 0x0000FFFF)
@@ -160,21 +165,50 @@ class TrbTdcSpi:
         # restore default CS
         self.trb_com.write(trbid, 0xD417, 0x0000FFFF)
 
+    def read_wire_temp(
+        self, trbid, cable
+    ):  # non mux| dedicated 1wire component for each connector/cable
+        for c in range(4):
+            self.trb_com.write(trbid, 0xD416, 0xFFFF0000 & (0xF0000))
+            self.trb_com.write(trbid, 0xD416, 0x00000000)
+
+        self.trb_com.write(trbid, 0x23, (0x0001 << cable + 1 | 0x0001))
+        sleep(0.5)
+        rc = self.trb_com.read(trbid, 0x8)
+        self.trb_com.write(trbid, 0x23, 0x0)
+        return (rc >> 16) * 0.0625
+
+    def read_wire_id(
+        self, trbid, cable
+    ):  # non mux| dedicated 1wire component for each connector/cable
+        for c in range(4):
+            self.trb_com.write(trbid, 0xD416, 0xFFFF0000 & (0xF0000))
+            self.trb_com.write(trbid, 0xD416, 0x00000000)
+
+        self.trb_com.write(trbid, 0x23, (0x0001 << cable + 1 | 0x0001))
+        sleep(0.1)
+        rc0 = self.trb_com.read(trbid, 0xA)
+        rc1 = self.trb_com.read(trbid, 0xB)
+        self.trb_com.write(trbid, 0x23, 0x0)
+        return (rc1 << 32) | rc0
+
 
 class TrbSpiEncoder(metaclass=abc.ABCMeta):
     """A TrbMetaclass that will be used for trb interface class creation."""
 
     @classmethod
     def __subclasshook__(self, subclass):
-        return (hasattr(subclass, 'reg_write') and
-                callable(subclass.reg_write) and
-                hasattr(subclass, 'reg_read') and
-                callable(subclass.reg_read) and
-                hasattr(subclass, 'reg_write_data') and
-                callable(subclass.reg_write_data) and
-                hasattr(subclass, 'reg_write_chunk') and
-                callable(subclass.reg_write_chunk) or
-                NotImplemented)
+        return (
+            hasattr(subclass, "reg_write")
+            and callable(subclass.reg_write)
+            and hasattr(subclass, "reg_read")
+            and callable(subclass.reg_read)
+            and hasattr(subclass, "reg_write_data")
+            and callable(subclass.reg_write_data)
+            and hasattr(subclass, "reg_write_chunk")
+            and callable(subclass.reg_write_chunk)
+            or NotImplemented
+        )
 
     @abc.abstractmethod
     def reg_write(trbid, cable, asic, reg, val):
@@ -191,49 +225,3 @@ class TrbSpiEncoder(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def reg_write_chunk(trbid, cable, asic, data):
         raise NotImplementedError
-
-
-class Trb3Encoder:
-    """Doc"""
-    c_asic = [0x2000, 0x4000]
-    # reg desc.: g_int,K,Tp      TC1      TC2      Vth
-    c_config_reg = [0x00000, 0x00100, 0x00200, 0x00300]
-    c_bl_reg = [0x00400, 0x00500, 0x00600, 0x00700, 0x00800, 0x00900, 0x00A00, 0x00B00]
-    c_base_w = 0x0050000
-    c_base_r = 0x0051000
-    bl_register_size = 32
-
-    spi_mem = {}
-    spi_queue = 0
-    spi_interface = None
-
-    def __init__(self, spi_interface):
-        self.spi_interface = spi_interface
-
-    def reg_write(self, trbid, cable, asic, reg, val):
-        word = self.c_base_w | self.c_asic[asic] | (reg << 8) | val
-        self.spi_interface.spi_write(trbid, cable, asic, word)
-
-    def reg_read(self, trbid, cable, asic, reg):
-        word = self.c_base_w | self.c_asic[asic] | (reg << 8)
-        self.spi_interface.spi_write(trbid, cable, asic, word << 1)
-        return self.spi_interface.spi_read(trbid)
-
-    def reg_write_data(self, trbid, cable, asic, data):
-        if isinstance(data, list):
-            word = [self.c_base_w | self.c_asic[asic] | x for x in data]
-        else:
-            word = self.c_base_w | self.c_asic[asic] | data
-        self.spi_interface.spi_write(trbid, cable, asic, word)
-
-    def reg_write_chunk(self, trbid, cable, asic, data):
-        if isinstance(data, list):
-            word = [self.c_base_w | self.c_asic[asic] | x for x in data]
-        else:
-            word = self.c_base_w | self.c_asic[asic] | data
-        self.spi_interface.spi_write_chunk(trbid, cable, asic, word)
-
-
-class Trb5scEncoder(Trb3Encoder):
-    """Doc"""
-    pass

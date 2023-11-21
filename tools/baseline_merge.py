@@ -35,7 +35,9 @@ if __name__ == "__main__":
 
     parser.add_argument("files", help="files to merge", type=str, nargs="+")
 
-    parser.add_argument("-o", "--output", help="output file", type=str, default="merged.json")
+    parser.add_argument(
+        "-o", "--output", help="output file", type=str, default="merged.json"
+    )
     parser.add_argument(
         "-v",
         "--verbose",

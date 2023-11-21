@@ -28,7 +28,9 @@ from pasttrec import hardware, communication, misc
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Calculates baselines from scan results")
+    parser = argparse.ArgumentParser(
+        description="Calculates baselines from scan results"
+    )
     parser.add_argument("json_file1", help="first json file", type=str)
     parser.add_argument("json_file2", help="second json file", type=str)
 
@@ -80,7 +82,11 @@ if __name__ == "__main__":
             card = hardware.PasttrecCard("noname")
 
             for a in [0, 1]:
-                print(Fore.YELLOW + "Scanning {:s}  CARD: {:d}  ASIC: {:d}".format(k, c, a) + Style.RESET_ALL)
+                print(
+                    Fore.YELLOW
+                    + "Scanning {:s}  CARD: {:d}  ASIC: {:d}".format(k, c, a)
+                    + Style.RESET_ALL
+                )
                 bl = [0] * 8
 
                 for ch in list(range(8)):

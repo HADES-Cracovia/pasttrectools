@@ -69,7 +69,9 @@ if __name__ == "__main__":
             read_cmd = words[0:4]
             read_cmd[1] = "r"
             # read data
-            rc = subprocess.run(read_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            rc = subprocess.run(
+                read_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
             ret_data = int(rc.stdout.split()[1], 16)
 
             orig_data = int(rb[4][-2:], 16)

@@ -30,7 +30,8 @@ from pasttrec.misc import trbaddr
 
 def_time = 0.0
 
-def scan_asic_communication(address, def_time = 1.0, def_quick = False, def_no_skip = False):
+
+def scan_asic_communication(address, def_time=1.0, def_quick=False, def_no_skip=False):
 
     print("   TDC  Cable  Asic  >{:s}<".format("-" * 58))
 
@@ -42,13 +43,12 @@ def scan_asic_communication(address, def_time = 1.0, def_quick = False, def_no_s
         reg_test_vals = [1, 4, 7, 10, 13]
 
     test_ok = True
-    for addr, cable, asic in address:
-        trbfetype = communication.detect_frontend(addr)
-        if trbfetype is None:
-            continue
 
+    for con in communication.make_asic_connections(address):
         print(
-            Fore.YELLOW + "{:s}  {:5d} {:5d}  ".format(trbaddr(addr), cable, asic) + Style.RESET_ALL,
+            Fore.YELLOW
+            + "{:s}  {:5d} {:5d}  ".format(trbaddr(con.trbid), con.cable, con.asic)
+            + Style.RESET_ALL,
             end="",
             flush=True,
         )
@@ -59,9 +59,9 @@ def scan_asic_communication(address, def_time = 1.0, def_quick = False, def_no_s
             reg_test_ok = True
 
             for t in reg_test_vals:
-                communication.write_reg(trbfetype, addr, cable, asic, reg, t)
+                con.write_reg(reg, t)
                 sleep(def_time)
-                rc = communication.read_reg(trbfetype, addr, cable, asic, reg)
+                rc = con.read_reg(reg)
                 try:
                     _t = rc & 0xFF
                 except ValueError as ve:
@@ -73,7 +73,9 @@ def scan_asic_communication(address, def_time = 1.0, def_quick = False, def_no_s
                     print(Fore.RED + "." + Style.RESET_ALL, end="", flush=True)
                     if not def_no_skip:
                         print(
-                            Fore.RED + " Test failed for register {:d}".format(reg) + Style.RESET_ALL,
+                            Fore.RED
+                            + " Test failed for register {:d}".format(reg)
+                            + Style.RESET_ALL,
                             end="",
                         )
                         print("  Sent {:d}, received {:d}".format(t, _t))
@@ -112,7 +114,9 @@ if __name__ == "__main__":
         nargs="+",
     )
 
-    parser.add_argument("-n", "--no-skip", help="do not skip missing FEEs", action="store_true")
+    parser.add_argument(
+        "-n", "--no-skip", help="do not skip missing FEEs", action="store_true"
+    )
     parser.add_argument("-q", "--quick", help="quick test", action="store_true")
     parser.add_argument("-t", "--time", help="sleep time", type=float, default=def_time)
     parser.add_argument(
@@ -131,6 +135,5 @@ if __name__ == "__main__":
         print(args)
 
     tup = communication.decode_address(args.trbids)
-    a = args.trbids
     r = scan_asic_communication(tup, args.time, args.quick, args.no_skip)
     sys.exit(r)

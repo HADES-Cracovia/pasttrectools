@@ -30,10 +30,11 @@ from pasttrec.misc import trbaddr
 
 def_time = 0.0
 
-def scan_trb_communication(address, def_time = 1.0, infinite_loop = False):
 
-    reg_range = [0xd400]
-    reg_test_vals = range(0,255,2)
+def scan_trb_communication(address, def_time=1.0, infinite_loop=False):
+
+    reg_range = [0xD400]
+    reg_test_vals = range(0, 255, 2)
     do_first_loop = True
     test_ok = True
 
@@ -49,11 +50,12 @@ def scan_trb_communication(address, def_time = 1.0, infinite_loop = False):
             for reg in reg_range:
 
                 print(
-                    Fore.YELLOW + "{:s}  {:s}    ".format(trbaddr(addr), hex(reg)) + Style.RESET_ALL,
+                    Fore.YELLOW
+                    + "{:s}  {:s}    ".format(trbaddr(addr), hex(reg))
+                    + Style.RESET_ALL,
                     end="",
                     flush=True,
                 )
-
 
                 for t in reg_test_vals:
                     communication.trbnet_interface.write(addr, reg, t)
@@ -71,14 +73,15 @@ def scan_trb_communication(address, def_time = 1.0, infinite_loop = False):
                     if _t != t or _t == None:
                         print(Fore.RED + "." + Style.RESET_ALL, end="", flush=True)
                         print(
-                            Fore.RED + " Test failed for register {:d}".format(reg) + Style.RESET_ALL,
+                            Fore.RED
+                            + " Test failed for register {:d}".format(reg)
+                            + Style.RESET_ALL,
                             end="",
                         )
                         print("  Sent {:d}, received {:d}".format(t, _t))
                         asic_test_ok = False
                     else:
                         print(Fore.GREEN + "." + Style.RESET_ALL, end="", flush=True)
-
 
             if asic_test_ok:
                 print(Fore.GREEN + " OK " + Style.RESET_ALL, cnt)

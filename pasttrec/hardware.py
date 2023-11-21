@@ -11,7 +11,7 @@ The functions provide also export/import of the components settings.
 from enum import Enum
 
 from pasttrec import LIBVERSION
-from pasttrec.trb_spi import Trb3Encoder, Trb5scEncoder
+from pasttrec.trb_spi import SpiTrbTdc
 
 
 class AsicRegisters(Enum):
@@ -93,18 +93,18 @@ class AsicRegistersValue:
         return [hex(i) for i in self.dump_config()[4:]]
 
 
-class TrbFrontendType(Enum):
+class TrbBoardType(Enum):
     """Use it to discriminate between different frontend types."""
 
-    TRB3 = (3, 2, 0xFE4C, Trb3Encoder)
-    TRB5SC = (4, 2, 0xFE81, Trb5scEncoder)
+    TRB3 = (3, 2, 0xFE4C, SpiTrbTdc)
+    TRB5SC = (4, 2, 0xFE81, SpiTrbTdc)
 
-    def __init__(self, cables, asics, broadcast, spi_protocol):
+    def __init__(self, cables, asics, broadcast, spi):
         self.cables = cables
         self.asics = asics
         self.broadcast = broadcast
         self.channels = 8
-        self.spi_protocol = spi_protocol
+        self.spi_protocol = spi
 
     @property
     def n_cables(self):
@@ -127,10 +127,42 @@ class TrbFrontendType(Enum):
         return self.spi_protocol
 
 
-TrbFrontendTypeMapping = {
-    0x91000000: TrbFrontendType.TRB3,
-    0xA5000000: TrbFrontendType.TRB5SC,
+TrbBoardTypeMapping = {
+    0x91000000: TrbBoardType.TRB3,
+    0xA5000000: TrbBoardType.TRB5SC,
 }
+
+
+class PasttrecDataWordEncoder:
+    """This class describes hwo different data frames are created for Pasttrec."""
+
+    c_asic = [0x2000, 0x4000]
+    # reg desc.: g_int,K,Tp      TC1      TC2      Vth
+    c_config_reg = [0x00000, 0x00100, 0x00200, 0x00300]
+    c_bl_reg = [0x00400, 0x00500, 0x00600, 0x00700, 0x00800, 0x00900, 0x00A00, 0x00B00]
+    c_base_w = 0x0050000
+    c_base_r = 0x0051000
+    bl_register_size = 32
+
+    def write(self, asic, reg, val):
+        return self.c_base_w | self.c_asic[asic] | (reg << 8) | val
+
+    def read(self, asic, reg):
+        return self.c_base_r | self.c_asic[asic] | (reg << 8)
+
+    def write_data(self, asic, data):
+        if isinstance(data, list):
+            return [self.c_base_w | self.c_asic[asic] | x for x in data]
+        else:
+            return self.c_base_w | self.c_asic[asic] | data
+        # self.spi_interface.spi_write(trbid, cable, asic, word)
+
+    def write_chunk(self, asic, data):
+        if isinstance(data, list):
+            return [self.c_base_w | self.c_asic[asic] | x for x in data]
+        else:
+            return self.c_base_w | self.c_asic[asic] | data
+        # self.spi_interface.spi_write_chunk(trbid, cable, asic, word)
 
 
 class TrbRegisters(Enum):
@@ -226,9 +258,21 @@ class TdcConnection:
         return self.id, {"cable1": c1, "cable2": c2, "cable3": c3}
 
     def export_script(self):
-        c1 = self.cable1.export_script(0) if isinstance(self.cable1, PasttrecCard) else None
-        c2 = self.cable2.export_script(1) if isinstance(self.cable2, PasttrecCard) else None
-        c3 = self.cable3.export_script(2) if isinstance(self.cable3, PasttrecCard) else None
+        c1 = (
+            self.cable1.export_script(0)
+            if isinstance(self.cable1, PasttrecCard)
+            else None
+        )
+        c2 = (
+            self.cable2.export_script(1)
+            if isinstance(self.cable2, PasttrecCard)
+            else None
+        )
+        c3 = (
+            self.cable3.export_script(2)
+            if isinstance(self.cable3, PasttrecCard)
+            else None
+        )
 
         c = []
         if c1:

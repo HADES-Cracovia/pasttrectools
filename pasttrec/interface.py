@@ -36,17 +36,19 @@ class TrbNetComInterface(metaclass=abc.ABCMeta):
 
     @classmethod
     def __subclasshook__(self, subclass):
-        return (hasattr(subclass, 'print_verbose') and
-                callable(subclass.print_verbose) and
-                hasattr(subclass, 'write') and
-                callable(subclass.write) and
-                hasattr(subclass, 'write_mem') and
-                callable(subclass.write_mem) and
-                hasattr(subclass, 'read') and
-                callable(subclass.read) and
-                hasattr(subclass, 'read_mem') and
-                callable(subclass.read_mem) or
-                NotImplemented)
+        return (
+            hasattr(subclass, "print_verbose")
+            and callable(subclass.print_verbose)
+            and hasattr(subclass, "write")
+            and callable(subclass.write)
+            and hasattr(subclass, "write_mem")
+            and callable(subclass.write_mem)
+            and hasattr(subclass, "read")
+            and callable(subclass.read)
+            and hasattr(subclass, "read_mem")
+            and callable(subclass.read_mem)
+            or NotImplemented
+        )
 
     @abc.abstractmethod
     def print_verbose(self, rc):
@@ -119,7 +121,7 @@ class TrbNetComLib:
         while i < len(rc):
             data = rc[i]
             partial_len = (data & 0xFFFF0000) >> 16
-            res[data & 0xFFFF] = tuple(rc[i + 1:i + 1 + partial_len])
+            res[data & 0xFFFF] = tuple(rc[i + 1 : i + 1 + partial_len])
             i = i + 1 + partial_len
         return res
 
@@ -157,7 +159,12 @@ class TrbNetComShell:
         """
         cmd = ["trbcmd", "wm", hex(trbid), hex(reg), str(option), "-"]
         _data = "\n".join([hex(x) for x in data])
-        rc = subprocess.run(cmd, input=_data.encode("utf-8"), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        rc = subprocess.run(
+            cmd,
+            input=_data.encode("utf-8"),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
         self.print_verbose(rc)
         return rc.stdout.decode()
 
@@ -174,7 +181,7 @@ class TrbNetComShell:
         try:
             return int(rc.stdout.decode().split()[1], 16)
         except IndexError:
-            return 0xdeadbeef # TODO Add exceptions
+            return 0xDEADBEEF  # TODO Add exceptions
 
     def read_mem(self, trbid, reg, length, option=1):
         cmd = ["trbcmd", "rm", hex(trbid), hex(reg), str(length), "0"]
