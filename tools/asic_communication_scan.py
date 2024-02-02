@@ -46,9 +46,7 @@ def scan_asic_communication(address, def_time=1.0, def_quick=False, def_no_skip=
 
     for con in communication.make_asic_connections(address):
         print(
-            Fore.YELLOW
-            + "{:s}  {:5d} {:5d}  ".format(trbaddr(con.trbid), con.cable, con.asic)
-            + Style.RESET_ALL,
+            Fore.YELLOW + "{:s}  {:5d} {:5d}  ".format(trbaddr(con.trbid), con.cable, con.asic) + Style.RESET_ALL,
             end="",
             flush=True,
         )
@@ -73,9 +71,7 @@ def scan_asic_communication(address, def_time=1.0, def_quick=False, def_no_skip=
                     print(Fore.RED + "." + Style.RESET_ALL, end="", flush=True)
                     if not def_no_skip:
                         print(
-                            Fore.RED
-                            + " Test failed for register {:d}".format(reg)
-                            + Style.RESET_ALL,
+                            Fore.RED + " Test failed for register {:d}".format(reg) + Style.RESET_ALL,
                             end="",
                         )
                         print("  Sent {:d}, received {:d}".format(t, _t))
@@ -114,9 +110,7 @@ if __name__ == "__main__":
         nargs="+",
     )
 
-    parser.add_argument(
-        "-n", "--no-skip", help="do not skip missing FEEs", action="store_true"
-    )
+    parser.add_argument("-n", "--no-skip", help="do not skip missing FEEs", action="store_true")
     parser.add_argument("-q", "--quick", help="quick test", action="store_true")
     parser.add_argument("-t", "--time", help="sleep time", type=float, default=def_time)
     parser.add_argument(

@@ -104,9 +104,7 @@ def scan_baseline_multi(address):
 
     print(" trbid   channel   bl 0{:s}31".format(" " * 32))
     print("                      |{:s}|".format("-" * 32))
-    print(
-        "{:s}    {:s}          ".format(trbaddr(0), "all"), end="", flush=True
-    )  # FIXME set proper BC address?
+    print("{:s}    {:s}          ".format(trbaddr(0), "all"), end="", flush=True)  # FIXME set proper BC address?
 
     for blv in range(def_pastrec_bl_range[0], def_pastrec_bl_range[1]):
         print(".", end="", flush=True)
@@ -140,9 +138,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument("-t", "--time", help="sleep time", type=float, default=def_time)
-    parser.add_argument(
-        "-o", "--output", help="output file", type=str, default="results_bl.json"
-    )
+    parser.add_argument("-o", "--output", help="output file", type=str, default="results_bl.json")
     parser.add_argument(
         "-s",
         "--scan",
@@ -242,14 +238,8 @@ if __name__ == "__main__":
     if communication.g_verbose > 0:
         print(args)
 
-    if (
-        args.threshold > def_pastrec_thresh_range[1]
-        or args.threshold < def_pastrec_thresh_range[0]
-    ):
-        print(
-            "\nOption error: Threshold value {:d} is to high,"
-            " allowed value is 0-127".format(args.threshold)
-        )
+    if args.threshold > def_pastrec_thresh_range[1] or args.threshold < def_pastrec_thresh_range[0]:
+        print("\nOption error: Threshold value {:d} is to high," " allowed value is 0-127".format(args.threshold))
         sys.exit(1)
 
     # scan type

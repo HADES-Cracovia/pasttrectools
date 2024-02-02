@@ -258,21 +258,9 @@ class TdcConnection:
         return self.id, {"cable1": c1, "cable2": c2, "cable3": c3}
 
     def export_script(self):
-        c1 = (
-            self.cable1.export_script(0)
-            if isinstance(self.cable1, PasttrecCard)
-            else None
-        )
-        c2 = (
-            self.cable2.export_script(1)
-            if isinstance(self.cable2, PasttrecCard)
-            else None
-        )
-        c3 = (
-            self.cable3.export_script(2)
-            if isinstance(self.cable3, PasttrecCard)
-            else None
-        )
+        c1 = self.cable1.export_script(0) if isinstance(self.cable1, PasttrecCard) else None
+        c2 = self.cable2.export_script(1) if isinstance(self.cable2, PasttrecCard) else None
+        c3 = self.cable3.export_script(2) if isinstance(self.cable3, PasttrecCard) else None
 
         c = []
         if c1:

@@ -72,14 +72,8 @@ if __name__ == "__main__":
     if communication.g_verbose > 0:
         print(args)
 
-    if (
-        args.threshold > def_pastrec_thresh_range[1]
-        or args.threshold < def_pastrec_thresh_range[0]
-    ):
-        print(
-            "\nOption error: Threshold value {:d} is to high, "
-            " allowed value is 0-127".format(args.threshold)
-        )
+    if args.threshold > def_pastrec_thresh_range[1] or args.threshold < def_pastrec_thresh_range[0]:
+        print("\nOption error: Threshold value {:d} is to high, " " allowed value is 0-127".format(args.threshold))
         sys.exit(1)
 
     ex = True

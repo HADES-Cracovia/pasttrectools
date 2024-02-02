@@ -29,9 +29,7 @@ from pasttrec import hardware, communication, misc, output_formats
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Calculates baselines from scan results"
-    )
+    parser = argparse.ArgumentParser(description="Calculates baselines from scan results")
     parser.add_argument("json_file", help="list of arguments", type=str)
 
     parser.add_argument("-o", "--output", help="output file", type=str)
@@ -121,11 +119,7 @@ if __name__ == "__main__":
             card = hardware.PasttrecCard("noname")
 
             for a in range(2):  # two asics
-                print(
-                    Fore.YELLOW
-                    + "Processing  {:s}  CARD: {:d}  ASIC: {:d}".format(k, c, a)
-                    + Style.RESET_ALL
-                )
+                print(Fore.YELLOW + "Processing  {:s}  CARD: {:d}  ASIC: {:d}".format(k, c, a) + Style.RESET_ALL)
                 bl = [0] * 8
 
                 for ch in list(range(8)):
@@ -139,9 +133,7 @@ if __name__ == "__main__":
                     else:
                         cnt_max = max(b)
                         # find duplicates
-                        indices = [
-                            index for index, item in enumerate(b) if item == cnt_max
-                        ]
+                        indices = [index for index, item in enumerate(b) if item == cnt_max]
                         if len(indices) == 1:
                             s = indices[0] + 1
                             w = 1

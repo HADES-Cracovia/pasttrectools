@@ -21,11 +21,12 @@
 # SOFTWARE.
 
 import argparse
+from colorama import Fore, Style
 
 from pasttrec import communication
+from pasttrec.misc import trbaddr
 
-def_time = 1
-
+def_spi_time = 0.0
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -40,7 +41,8 @@ if __name__ == "__main__":
         nargs="+",
     )
 
-    parser.add_argument("-t", "--time", help="sleep time", type=float, default=def_time)
+    parser.add_argument("-t", "--time", help="SPI sleep time", type=float, default=def_spi_time)
+    # parser.add_argument("-s", "--spi", help="spi reset, not registers", action="store_true")
     parser.add_argument(
         "-v",
         "--verbose",
@@ -53,10 +55,29 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     communication.g_verbose = args.verbose
-    def_time = args.time
+    def_spi_time = args.time
 
     if communication.g_verbose > 0:
         print(args)
 
     tup = communication.decode_address(args.trbids, True)
-    communication.reset_asic(tup)
+
+    # if args.spi:
+    # conns = communication.make_cable_connections(tup)
+    # else:
+    # conns = communication.make_asic_connections(tup)
+
+    conns = communication.make_asic_connections(tup)
+
+    print(Fore.YELLOW + "Resetting ", end="")
+    for con in conns:
+        con.spi.delay_asic_spi = def_spi_time
+
+        print(" {:s}:{:d}".format(trbaddr(con.trbid), con.cable), end="", flush=True)
+        # if args.spi:
+        # rc = con.reset_spi()
+        # else:
+        # rc = con.reset_asic()
+        rc = con.reset_spi()
+
+    print(Style.RESET_ALL)

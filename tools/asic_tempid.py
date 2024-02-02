@@ -45,9 +45,7 @@ def asic_tempid(address, pretty_mode, show_temp):
     for con in communication.make_cable_connections(address):
         if pretty_mode:
             print(
-                Fore.YELLOW
-                + "{:s}  {:5d} ".format(trbaddr(con.trbid), con.cable)
-                + Style.RESET_ALL,
+                Fore.YELLOW + "{:s}  {:5d} ".format(trbaddr(con.trbid), con.cable) + Style.RESET_ALL,
                 end="",
                 flush=True,
             )

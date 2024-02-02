@@ -42,11 +42,7 @@ def scan_threshold(address):
     for con in connections:
         broadcasts_list.add((con.trbid, con.fetype.n_scalers))
 
-    print(
-        " trbid   channel   th 0{:s}{:d}".format(
-            " " * def_threshold_max, def_threshold_max
-        )
-    )
+    print(" trbid   channel   th 0{:s}{:d}".format(" " * def_threshold_max, def_threshold_max))
     print("                      |{:s}|".format("-" * def_threshold_max))
     print("{:s}    {:s}          ".format(hex(0xFFFF), "all"), end="", flush=True)
 
@@ -98,9 +94,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument("-t", "--time", help="sleep time", type=float, default=def_time)
-    parser.add_argument(
-        "-o", "--output", help="output file", type=str, default="results_th.json"
-    )
+    parser.add_argument("-o", "--output", help="output file", type=str, default="results_th.json")
     parser.add_argument(
         "-v",
         "--verbose",

@@ -39,16 +39,13 @@ class Baselines:
     def __init__(self):
         self.baselines = {}
 
-    def add_trb(self, trbid, trbfetype):
+    def add_trb(self, trbid, trb_design_type):
         if trbid not in self.baselines:
             w = hardware.TrbRegistersOffsets.bl_register_size
-            h = trbfetype.n_channels
-            a = trbfetype.n_asics
-            c = trbfetype.n_cables
-            self.baselines[trbid] = [
-                [[[0 for x in range(w)] for y in range(h)] for _a in range(a)]
-                for _c in range(c)
-            ]
+            h = trb_design_type.n_channels
+            a = trb_design_type.n_asics
+            c = trb_design_type.n_cables
+            self.baselines[trbid] = [[[[0 for x in range(w)] for y in range(h)] for _a in range(a)] for _c in range(c)]
 
 
 class Thresholds:
@@ -58,16 +55,13 @@ class Thresholds:
     def __init__(self):
         self.thresholds = {}
 
-    def add_trb(self, trbid, trbfetype):
+    def add_trb(self, trbid, trb_design_type):
         if trbid not in self.thresholds:
             w = 128
-            h = trbfetype.n_channels
-            a = trbfetype.n_asics
-            c = trbfetype.n_cables
-            self.thresholds[trbid] = [
-                [[[0 for x in range(w)] for y in range(h)] for _a in range(a)]
-                for _c in range(c)
-            ]
+            h = trb_design_type.n_channels
+            a = trb_design_type.n_asics
+            c = trb_design_type.n_cables
+            self.thresholds[trbid] = [[[[0 for x in range(w)] for y in range(h)] for _a in range(a)] for _c in range(c)]
 
 
 class Scalers:
@@ -130,14 +124,14 @@ def parse_r_scalers(res):
     return r
 
 
-def calc_tdc_channel(trbfetype, cable, asic, channel, with_ref_time=False):
+def calc_tdc_channel(trb_design_type, cable, asic, channel, with_ref_time=False):
     """Calculate address of cable and asic channel in tdc (0,48) or with
     reference channel offset (1, 49).
     """
     return (
         channel
-        + trbfetype.n_channels * asic
-        + trbfetype.n_channels * trbfetype.n_asics * cable
+        + trb_design_type.n_channels * asic
+        + trb_design_type.n_channels * trb_design_type.n_asics * cable
         + (1 if with_ref_time is True else 0)
     )
 

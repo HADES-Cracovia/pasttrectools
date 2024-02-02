@@ -47,8 +47,10 @@ trbnet_interface_env = os.getenv("TRBNET_INTERFACE")
 trbnet_interface = None
 
 
-"""Env TRBNET_INTERFACE controls which backend to use for communication.
-   Default one is libtrbnet."""
+"""
+Env TRBNET_INTERFACE controls which backend to use for communication.
+Default one is libtrbnet.
+"""
 if trbnet_interface_env is not None:
     if trbnet_interface_env == "trbnet":
         trbnet = TrbNet(libtrbnet=lib, daqopserver=host)
@@ -85,8 +87,9 @@ else:
         # import pasttrec.trb_comm.file as comm
 
 
-def detect_frontend(address):
+def detect_design(address):
     """Detect the Trb board type"""
+
     if type(address) == str:
         address = int(address, 16)
 
@@ -95,11 +98,7 @@ def detect_frontend(address):
     try:
         return hardware.TrbBoardTypeMapping[rc & 0xFFFF0000]
     except KeyError:
-        print(
-            "FrontendTypeMapping not known for hardware type {:s} in {:s}".format(
-                hex(rc), trbaddr(address)
-            )
-        )
+        print("FrontendTypeMapping not known for hardware type {:s} in {:s}".format(hex(rc), trbaddr(address)))
         return None
 
 
@@ -137,7 +136,7 @@ def decode_address_entry(string, sort=False):
         return ()
 
     try:
-        trb_fe_type = detect_frontend(address)
+        trb_fe_type = detect_design(address)
         if trb_fe_type is None:
             return ()
     except ValueError:
@@ -148,14 +147,14 @@ def decode_address_entry(string, sort=False):
     # asics
     if sec_len == 3 and len(sections[2]) > 0:
         _asics = sections[2].split(",")
-        asics = (int(a) - 1 for a in _asics if int(a) in range(1, trb_fe_type.asics))
+        asics = (int(a) for a in _asics if int(a) in range(0, trb_fe_type.asics))  # TODO add 1-2 mode
     else:
         asics = tuple(range(trb_fe_type.asics))
 
     # asics
     if sec_len >= 2 and len(sections[1]) > 0:
         _cables = sections[1].split(",")
-        cables = (int(c) - 1 for c in _cables if int(c) in range(1, trb_fe_type.cables))
+        cables = (int(c) for c in _cables if int(c) in range(0, trb_fe_type.cables))  # TODO add 1-4 mode
     else:
         cables = tuple(range(trb_fe_type.cables))
 
@@ -164,6 +163,7 @@ def decode_address_entry(string, sort=False):
 
 def decode_address(string, sort=False):
     """Use this for a single string or list of strings."""
+
     if type(string) is str:
         return decode_address_entry(string, sort)
     else:
@@ -172,24 +172,27 @@ def decode_address(string, sort=False):
 
 def filter_raw_trbids(addresses, sort=False):
     """Return list of unique trbnet addresses."""
+
     return tuple(set((int(x.split(":")[0], 16) for x in addresses)))
 
 
 def filter_decoded_trbids(addresses, sort=False):
     """Return list of unique trbnet addresses."""
+
     return tuple(set(trbid for trbid, cable, asic in addresses))
 
 
 def filter_decoded_cables(addresses, sort=False):
     """Return list of unique trbnet addresses."""
+
     return tuple(set((trbid, cable) for trbid, cable, asic in addresses))
 
 
-def get_trbfetype(trbnetids):
-    trbfetype = {}
+def get_trb_design_type(trbnetids):
+    trb_design_type = {}
     for trbid in trbnetids:
-        trbfetype[trbid] = detect_frontend(trbid)
-    return trbfetype
+        trb_design_type[trbid] = detect_design(trbid)
+    return trb_design_type
 
 
 def print_verbose(rc):
@@ -207,7 +210,8 @@ class CardConnection:
     trbid = None
     cable = None
 
-    spi = SpiTrbTdc(trbnet_interface)  # chip communication
+    trb_spi = None
+
     encoder = hardware.PasttrecDataWordEncoder()
 
     def __init__(self, trb_frontend, trbid, cable):
@@ -217,20 +221,24 @@ class CardConnection:
         self.trb_fe_type = trb_frontend
         self.trbid = trbid
         self.cable = cable
+        self.trb_spi = self.trb_fe_type.spi(trbnet_interface)
 
     @property
     def fetype(self):
         return self.trb_fe_type
 
+    @property
+    def spi(self):
+        return self.trb_spi
+
     def read_wire_temp(self):
-        return self.trb_fe_type.spi(trbnet_interface).read_wire_temp(
-            self.trbid, self.cable
-        )
+        return self.trb_spi.read_wire_temp(self.trbid, self.cable)
 
     def read_wire_id(self):
-        return self.trb_fe_type.spi(trbnet_interface).read_wire_id(
-            self.trbid, self.cable
-        )
+        return self.trb_spi.read_wire_id(self.trbid, self.cable)
+
+    def reset_spi(self):
+        self.trb_spi.spi_reset(self.trbid, self.cable)
 
     def __str__(self):
         return f"Frontend connection to {trbaddr(self.trbid)} for cable={self.cable}"
@@ -241,12 +249,10 @@ def make_cable_connections(address):
 
     filtered_trbids = filter_decoded_trbids(address)
     filtered_cables = filter_decoded_cables(address)
-    fee_types = get_trbfetype(filter_decoded_trbids(address))
+    fee_types = get_trb_design_type(filter_decoded_trbids(address))
 
     return tuple(
-        CardConnection(fee_types[addr], addr, cable)
-        for addr, cable in filtered_cables
-        if fee_types[addr] is not None
+        CardConnection(fee_types[addr], addr, cable) for addr, cable in filtered_cables if fee_types[addr] is not None
     )
 
 
@@ -258,7 +264,6 @@ class PasttrecConnection(CardConnection):
     cable = None
     asic = None
 
-    spi = SpiTrbTdc(trbnet_interface)  # chip communication
     encoder = hardware.PasttrecDataWordEncoder()
 
     def __init__(self, trb_frontend, trbid, cable, asic):
@@ -268,20 +273,24 @@ class PasttrecConnection(CardConnection):
 
     def write_reg(self, reg, val):
         word = self.encoder.write(self.asic, reg, val)
-        self.trb_fe_type.spi(trbnet_interface).write(self.trbid, self.cable, word)
+        self.trb_spi.write(self.trbid, self.cable, word)
 
     def read_reg(self, reg):
         word = self.encoder.read(self.asic, reg)
-        self.trb_fe_type.spi(trbnet_interface).write(self.trbid, self.cable, word << 1)
-        return self.trb_fe_type.spi(trbnet_interface).read(self.trbid)
+        self.trb_spi.write(self.trbid, self.cable, word << 1)
+        return self.trb_spi.read(self.trbid)
 
     def write_data(self, data):
         word = self.encoder.write_data(self.asic, data)
-        self.trb_fe_type.spi(trbnet_interface).write_data(self.trbid, self.cable, word)
+        self.trb_spi.write_data(self.trbid, self.cable, word)
 
     def write_chunk(self, data):
         word = self.encoder.write_chunk(self.asic, data)
-        self.trb_fe_type.spi(trbnet_interface).write_chunk(self.trbid, self.cable, word)
+        self.trb_spi.write_chunk(self.trbid, self.cable, word)
+
+    def reset_asic(self):
+        word = self.encoder.reset(self.asic)
+        self.trb_spi.write(self.trbid, self.cable, word << 1)
 
     def __str__(self):
         return f"Pasttrec connection to {trbaddr(self.trbid)} for cable={self.cable} asic={self.asic}"
@@ -290,40 +299,12 @@ class PasttrecConnection(CardConnection):
 def make_asic_connections(address):
     """Make instances of PasttercConenction based on the decoded addresses."""
 
-    fee_types = get_trbfetype(filter_decoded_trbids(address))
+    fee_types = get_trb_design_type(filter_decoded_trbids(address))
     return tuple(
         PasttrecConnection(fee_types[addr], addr, cable, asic)
         for addr, cable, asic in address
         if fee_types[addr] is not None
     )
-
-
-def reset_asic(address, verbose=False):
-    """Send reset signal to asic, resets all registers to defaults."""
-    if type(address) is not tuple:
-        a = decode_address(address, True)
-    else:
-        a = address
-
-    _addr = None
-    _cable = None
-
-    spi = SpiTrbTdc(trbnet_interface)
-
-    for con in make_asic_connections(a):
-
-        if con.trbid == _addr and con.cable == _cable:
-            continue
-
-        _addr = con.trbid
-        _cable = con.cable
-
-        print(
-            Fore.YELLOW
-            + "Reseting {:s} cable {:d}".format(trbaddr(con.trbid), con.cable)
-            + Style.RESET_ALL
-        )
-        spi.reset(con.trbid, con.cable)
 
 
 def asics_to_defaults(address, def_pasttrec):
@@ -339,9 +320,7 @@ def asic_to_defaults(address, cable, asic, def_pasttrec):
 
 
 def read_rm_scalers(trbid, n_scalers):
-    return trbnet_interface.read_mem(
-        trbid, hardware.TrbRegisters.SCALERS.value, n_scalers
-    )
+    return trbnet_interface.read_mem(trbid, hardware.TrbRegisters.SCALERS.value, n_scalers)
 
 
 def read_r_scalers(trbid, channel):

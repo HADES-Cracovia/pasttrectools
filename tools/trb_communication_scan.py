@@ -50,9 +50,7 @@ def scan_trb_communication(address, def_time=1.0, infinite_loop=False):
             for reg in reg_range:
 
                 print(
-                    Fore.YELLOW
-                    + "{:s}  {:s}    ".format(trbaddr(addr), hex(reg))
-                    + Style.RESET_ALL,
+                    Fore.YELLOW + "{:s}  {:s}    ".format(trbaddr(addr), hex(reg)) + Style.RESET_ALL,
                     end="",
                     flush=True,
                 )
@@ -73,9 +71,7 @@ def scan_trb_communication(address, def_time=1.0, infinite_loop=False):
                     if _t != t or _t == None:
                         print(Fore.RED + "." + Style.RESET_ALL, end="", flush=True)
                         print(
-                            Fore.RED
-                            + " Test failed for register {:d}".format(reg)
-                            + Style.RESET_ALL,
+                            Fore.RED + " Test failed for register {:d}".format(reg) + Style.RESET_ALL,
                             end="",
                         )
                         print("  Sent {:d}, received {:d}".format(t, _t))
@@ -127,8 +123,8 @@ if __name__ == "__main__":
     if g_verbose > 0:
         print(args)
 
-    tup = communication.filter_address(args.trbids)
-    a = args.trbids
-
+    tup1 = communication.decode_address(args.trbids, True)
+    tup = communication.filter_decoded_trbids(tup1)
+    print(tup)
     r = scan_trb_communication(tup, args.time, args.infinite)
     sys.exit(r)

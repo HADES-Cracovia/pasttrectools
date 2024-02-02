@@ -44,9 +44,7 @@ def read_asic(address):
         if communication.g_verbose == 0:
             print(
                 Fore.YELLOW
-                + "{:s}  {:5d}  {:4d}        ".format(
-                    trbaddr(con.trbid), con.cable, con.asic
-                )
+                + "{:s}  {:5d}  {:4d}        ".format(trbaddr(con.trbid), con.cable, con.asic)
                 + Style.RESET_ALL,
                 end="",
                 flush=True,
@@ -64,20 +62,14 @@ def read_asic(address):
 
             if _t == 0xDEADBEEF:
                 print(
-                    Fore.RED
-                    + " Read failed for register {:s}".format(hex(reg))
-                    + Style.RESET_ALL,
+                    Fore.RED + " Read failed for register {:s}".format(hex(reg)) + Style.RESET_ALL,
                     end="",
                 )
                 print("  Received {:s}".format(hex(_t)))
             else:
                 if communication.g_verbose > 0:
                     print(
-                        Fore.YELLOW
-                        + "{:s}  {:5d}  {:4d}        ".format(
-                            trbaddr(addr), cable, asic
-                        )
-                        + Style.RESET_ALL,
+                        Fore.YELLOW + "{:s}  {:5d}  {:4d}        ".format(trbaddr(addr), cable, asic) + Style.RESET_ALL,
                         end="",
                         flush=True,
                     )
@@ -90,11 +82,7 @@ def read_asic(address):
                     print(Fore.GREEN, end="", flush=True)
 
                 if communication.g_verbose > 0:
-                    print(
-                        "Register: {0:#0{1}x}    Value: {2:#0{3}x}".format(
-                            reg, 2, _t, 4
-                        )
-                    )
+                    print("Register: {0:#0{1}x}    Value: {2:#0{3}x}".format(reg, 2, _t, 4))
                 else:
                     print("  {:#0{}x}".format(_t, 4), end="", flush=True)
 
