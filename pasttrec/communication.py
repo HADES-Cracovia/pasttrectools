@@ -206,12 +206,7 @@ def print_verbose(rc):
 class CardConnection:
     """These functions write, read memory for given cable and asic."""
 
-    trb_fe_type = None
-    trbid = None
-    cable = None
-
-    trb_spi = None
-
+    shared_trb_spi = {}
     encoder = hardware.PasttrecDataWordEncoder()
 
     def __init__(self, trb_frontend, trbid, cable):
@@ -221,7 +216,10 @@ class CardConnection:
         self.trb_fe_type = trb_frontend
         self.trbid = trbid
         self.cable = cable
-        self.trb_spi = self.trb_fe_type.spi(trbnet_interface)
+
+        if not trbid in self.shared_trb_spi:
+            self.shared_trb_spi[trbid] = self.trb_fe_type.spi(trbnet_interface, trbid)
+        self.trb_spi = self.shared_trb_spi[trbid]
 
     @property
     def fetype(self):
@@ -232,13 +230,13 @@ class CardConnection:
         return self.trb_spi
 
     def read_wire_temp(self):
-        return self.trb_spi.read_wire_temp(self.trbid, self.cable)
+        return self.trb_spi.read_wire_temp(self.cable)
 
     def read_wire_id(self):
-        return self.trb_spi.read_wire_id(self.trbid, self.cable)
+        return self.trb_spi.read_wire_id(self.cable)
 
     def reset_spi(self):
-        self.trb_spi.spi_reset(self.trbid, self.cable)
+        self.trb_spi.spi_reset(self.cable)
 
     def __str__(self):
         return f"Frontend connection to {trbaddr(self.trbid)} for cable={self.cable}"
@@ -273,24 +271,23 @@ class PasttrecConnection(CardConnection):
 
     def write_reg(self, reg, val):
         word = self.encoder.write(self.asic, reg, val)
-        self.trb_spi.write(self.trbid, self.cable, word)
+        self.trb_spi.write(self.cable, word)
 
     def read_reg(self, reg):
         word = self.encoder.read(self.asic, reg)
-        self.trb_spi.write(self.trbid, self.cable, word << 1)
-        return self.trb_spi.read(self.trbid)
+        return self.trb_spi.read(self.cable, word << 1)
 
     def write_data(self, data):
         word = self.encoder.write_data(self.asic, data)
-        self.trb_spi.write_data(self.trbid, self.cable, word)
+        self.trb_spi.write_data(self.cable, word)
 
     def write_chunk(self, data):
         word = self.encoder.write_chunk(self.asic, data)
-        self.trb_spi.write_chunk(self.trbid, self.cable, word)
+        self.trb_spi.write_chunk(self.cable, word)
 
     def reset_asic(self):
         word = self.encoder.reset(self.asic)
-        self.trb_spi.write(self.trbid, self.cable, word << 1)
+        self.trb_spi.write(self.cable, word << 1)
 
     def __str__(self):
         return f"Pasttrec connection to {trbaddr(self.trbid)} for cable={self.cable} asic={self.asic}"

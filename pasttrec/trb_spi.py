@@ -49,13 +49,10 @@ class TrbSpiDriver(metaclass=abc.ABCMeta):
 class SpiTrbTdc:
     """Doc"""
 
-    trb_com = None
+    default_word_length = 20
+    owire_mode = False
 
-    spi_mem = {}
-    spi_queue = 0
-    spi_interface = None
-
-    def __init__(self, trb_com):
+    def __init__(self, trb_com, trbid: int):
         """
         The constructor
 
@@ -63,6 +60,8 @@ class SpiTrbTdc:
         ----------
         trb_com : TrbNet
             The TrbNet object
+        trbid: int
+            The TRB board address
         """
 
         self.delay_asic_spi = 0.0
@@ -70,8 +69,14 @@ class SpiTrbTdc:
         self.delay_1wire_id = 0.15
 
         self.trb_com = trb_com
+        self.trbid = trbid
 
-    def prepare(self, trbid: int, cable: int):
+        self.flag_rb = False  # Enable blocking state when the response is expected
+
+        self.restore = self.trb_com.read(self.trbid, 0xD419) != self.default_word_length  # restore to some defaults
+        self.owire_mode = self.trb_com.read(self.trbid, 0x23) != 0x0  # restore to some defaults
+
+    def prepare(self, cable: int):
         """
         Prepare the SPI interface
 
@@ -83,52 +88,94 @@ class SpiTrbTdc:
             The cable number 0..max (typically 3 or 4 cables on a single TDC)
         """
 
-        self.enable_spi(trbid, cable)
+        if self.owire_mode:
+            self.enable_spi(cable)
 
         # bring all CS (reset lines) in the default state (1) - upper four nibbles:
         # invert CS, lower four nibbles: disable CS
-        self.trb_com.write(trbid, 0xD417, 0x0000FFFF)
+        self.trb_com.write(self.trbid, 0xD417, 0x0000FFFF)
 
         # (chip-)select output $CONN for i/o multiplexer reasons, remember CS lines are disabled
-        self.trb_com.write(trbid, 0xD410, 1 << cable)
+        self.trb_com.write(self.trbid, 0xD410, 1 << cable)
 
         # disable all SDO outputs but output $CONN
-        self.trb_com.write(trbid, 0xD415, 0xFFFF & ~(1 << cable))
+        self.trb_com.write(self.trbid, 0xD415, 0xFFFF & ~(1 << cable))
 
         # disable all SCK outputs but output $CONN
-        self.trb_com.write(trbid, 0xD416, 0xFFFF & ~(1 << cable))
+        self.trb_com.write(self.trbid, 0xD416, 0xFFFF & ~(1 << cable))
 
-    def read(self, trbid):
-        return self.trb_com.read(trbid, 0xD412)
+    def transmit(self, length: int, data_word_length=20):
+        """
+        Transmit the data
 
-    def write(self, trbid: int, cable: int, data: int):
+        Paramaters
+        ----------
+        length: int
+            Number of words to transmit
+        data_word_length: int
+            How many bits to transmit
+        """
+
+        # Change the data word length either when:
+        #  1. The current data word is different than default
+        #  2. The restore flag was used
+        if data_word_length != self.default_word_length or self.restore:
+            self.trb_com.write(self.trbid, 0xD419, data_word_length)
+            self.restore = True
+
+        rb_flag = 1 << 16 if self.flag_rb else 0
+        self.trb_com.write(self.trbid, 0xD411, length & 0xFFFF | rb_flag)
+
+    def write(self, cable: int, data: int):
         """
         Write data to spi interface
 
         Paramaters
         ----------
-        trbid : int
-            The trbid address
         cable : int
             The cable number 0..max (typically 3 or 4 cables on a single TDC)
         data : int
             data to write
         """
 
-        if isinstance(data, list):
-            my_data_list = data
-        else:
-            my_data_list = [data]
+        self.prepare(cable)
 
-        self.prepare(trbid, cable)
+        # writing one data word, append zero to the data word, the chip will get some more SCK clock cycles
+        self.trb_com.write(self.trbid, 0xD400, data)
+        # write 1 to length register to trigger sending
+        self.transmit(1)
 
-        for data in my_data_list:
-            # writing one data word, append zero to the data word, the chip will get some more SCK clock cycles
-            self.trb_com.write(trbid, 0xD400, data)
-            # write 1 to length register to trigger sending
-            self.trb_com.write(trbid, 0xD411, 0x0001)
+    def read(self, cable: int, data: int):
+        """
+        Write data to spi interface and expect result.
 
-    def write_chunk(self, trbid, cable, data):
+        Paramaters
+        ----------
+        cable : int
+            The cable number 0..max (typically 3 or 4 cables on a single TDC)
+        data : int
+            data to write
+        """
+
+        self.prepare(cable)
+
+        # writing one data word, append zero to the data word, the chip will get some more SCK clock cycles
+        self.trb_com.write(self.trbid, 0xD400, data)
+        # write 1 to length register to trigger sending
+        self.rb_flag = True
+        self.transmit(1)
+
+        if self.restore:
+            rc = self.trb_com.read(self.trbid, 0xD412)
+            self.trb_com.write(self.trbid, 0xD419, self.default_word_length)
+            self.restore = False
+            return rc
+
+        self.rb_flag = False
+
+        return self.trb_com.read(self.trbid, 0xD412)
+
+    def write_chunk(self, cable, data):
         """ """
 
         if isinstance(data, list):
@@ -136,96 +183,76 @@ class SpiTrbTdc:
         else:
             my_data_list = [data]
 
-        self.prepare(trbid, cable)
+        self.prepare(cable)
+
+        self.rb_flag = False
 
         for d in misc.chunks(my_data_list, 16):
             # i = 0
-            self.trb_com.write_mem(trbid, 0xD400, my_data_list, 0)
+            self.trb_com.write_mem(self.trbid, 0xD400, my_data_list, 0)
             # for val in d:
             #    # writing one data word, append zero to the data word, the chip will get some more SCK clock cycles
-            #    self.trb_com.write(trbid, 0xd400 + i, val)
+            #    self.trb_com.write(self.trbid, 0xd400 + i, val)
             #    i = i + 1
 
             # write length register to trigger sending
-            self.trb_com.write(trbid, 0xD411, len(d))
+            self.transmit(len(d))
 
-    def spi_reset(self, trbid, cable):
+    def spi_reset(self, cable):
         """Reset sequence for the ASIC."""
 
-        self.enable_spi(trbid, cable)
+        self.enable_spi(cable)
 
         # bring all CS (reset lines) in the default state (1) - upper four nibbles:
         # invert CS, lower four nibbles: disable CS
-        self.trb_com.write(trbid, 0xD417, 0xFFFFFFFF)  # FIXME calble selection
-        # and bring down selected bit
-        # self.trb_com.write(trbid, 0xD417, 0x10000 << cable)
+        self.trb_com.write(self.trbid, 0xD417, 0x10000 << cable | 0x0000FFFF)
 
-        # TODO can be be more generic like below?
-        # generate 25 clock cycles
-        # sleep(self.delay_asic_spi)
-
-        # for c in range(25):
-        # self.trb_com.write(trbid, 0xD416, ~(0x1 << cable))
-        # sleep(self.delay_asic_spi)
-
-        # self.trb_com.write(trbid, 0xD416, 0x00000000)
-        # sleep(self.delay_asic_spi)
-
-        # Alternate
+        # To reset the ASIC one needs to send 25 clocks with CS=0
         # Just send empty word instead of 25 cycles
-        self.trb_com.write(trbid, 0xD411, 0x0002)
+        self.transmit(1, 25)
 
         # restore default CS
-        self.trb_com.write(trbid, 0xD417, 0x0000FFFF)
+        self.trb_com.write(self.trbid, 0xD417, 0x0000FFFF)
 
-    def read_wire_temp(self, trbid, cable):
+    def read_wire_temp(self, cable):
         """non mux| dedicated 1wire component for each connector/cable"""
 
-        self.enable_1wire(trbid, cable)
+        self.enable_1wire(cable)
 
         # delay is mandatory due to how the 1wire device works
         sleep(self.delay_1wire_temp)
 
-        rc = self.trb_com.read(trbid, 0x8)
+        rc = self.trb_com.read(self.trbid, 0x8)
 
         return (rc >> 16) * 0.0625
 
-    def read_wire_id(self, trbid, cable):
+    def read_wire_id(self, cable):
         """non mux| dedicated 1wire component for each connector/cable"""
 
-        self.enable_1wire(trbid, cable)
+        self.enable_1wire(cable)
 
         # delay is mandatory due to how the 1wire device works
         sleep(self.delay_1wire_id)
 
-        rc0 = self.trb_com.read(trbid, 0xA)
-        rc1 = self.trb_com.read(trbid, 0xB)
+        rc0 = self.trb_com.read(self.trbid, 0xA)
+        rc1 = self.trb_com.read(self.trbid, 0xB)
 
         return (rc1 << 32) | rc0
 
-    def enable_spi(self, trbid, cable):
+    def enable_spi(self, cable):
         """The sequence is required to change from 1-wire to SPI."""
 
-        self.trb_com.write(trbid, 0x23, 0x0)
+        self.owire_mode = False
+        self.trb_com.write(self.trbid, 0x23, 0x0)
 
-        for c in range(4):
-            self.trb_com.write(trbid, 0xD416, 0x10000 << cable)
-            sleep(self.delay_asic_spi)
-
-            self.trb_com.write(trbid, 0xD416, 0x00000000)
-            sleep(self.delay_asic_spi)
-
-    def enable_1wire(self, trbid, cable):
+    def enable_1wire(self, cable):
         """The sequence is required to change from SPI to 1-wire."""
 
-        self.trb_com.write(trbid, 0x23, (0x0001 << cable + 1 | 0x0001))
+        self.owire_mode = True
+        self.trb_com.write(self.trbid, 0x23, 0x0002 << cable)
 
-        for c in range(4):
-            self.trb_com.write(trbid, 0xD416, 0x10000 << cable)
-            sleep(self.delay_asic_spi)
-
-            self.trb_com.write(trbid, 0xD416, 0x00000000)
-            sleep(self.delay_asic_spi)
+        # send clocks to charge and run 1-wire devices
+        self.transmit(1, 4)
 
     def print_info(self):
         print("Communication delays")

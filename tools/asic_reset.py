@@ -42,7 +42,6 @@ if __name__ == "__main__":
     )
 
     parser.add_argument("-t", "--time", help="SPI sleep time", type=float, default=def_spi_time)
-    # parser.add_argument("-s", "--spi", help="spi reset, not registers", action="store_true")
     parser.add_argument(
         "-v",
         "--verbose",
@@ -62,22 +61,13 @@ if __name__ == "__main__":
 
     tup = communication.decode_address(args.trbids, True)
 
-    # if args.spi:
-    # conns = communication.make_cable_connections(tup)
-    # else:
-    # conns = communication.make_asic_connections(tup)
-
-    conns = communication.make_asic_connections(tup)
+    conns = communication.make_cable_connections(tup)
 
     print(Fore.YELLOW + "Resetting ", end="")
     for con in conns:
         con.spi.delay_asic_spi = def_spi_time
 
         print(" {:s}:{:d}".format(trbaddr(con.trbid), con.cable), end="", flush=True)
-        # if args.spi:
-        # rc = con.reset_spi()
-        # else:
-        # rc = con.reset_asic()
         rc = con.reset_spi()
 
     print(Style.RESET_ALL)

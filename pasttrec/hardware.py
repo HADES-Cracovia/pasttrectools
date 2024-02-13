@@ -155,14 +155,12 @@ class PasttrecDataWordEncoder:
             return [self.c_base_w | self.c_asic[asic] | x for x in data]
         else:
             return self.c_base_w | self.c_asic[asic] | data
-        # self.spi_interface.spi_write(trbid, cable, asic, word)
 
     def write_chunk(self, asic, data):
         if isinstance(data, list):
             return [self.c_base_w | self.c_asic[asic] | x for x in data]
         else:
             return self.c_base_w | self.c_asic[asic] | data
-        # self.spi_interface.spi_write_chunk(trbid, cable, asic, word)
 
 
 class TrbRegisters(Enum):

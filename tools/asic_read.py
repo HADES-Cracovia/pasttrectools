@@ -69,7 +69,9 @@ def read_asic(address):
             else:
                 if communication.g_verbose > 0:
                     print(
-                        Fore.YELLOW + "{:s}  {:5d}  {:4d}        ".format(trbaddr(addr), cable, asic) + Style.RESET_ALL,
+                        Fore.YELLOW
+                        + "{:s}  {:5d}  {:4d}        ".format(trbaddr(con.trbid), con.cable, con.asic)
+                        + Style.RESET_ALL,
                         end="",
                         flush=True,
                     )
