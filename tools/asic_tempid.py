@@ -21,13 +21,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import os
-import sys
-import glob
 import argparse
-from time import sleep
-import json
-import math
 from colorama import Fore, Style
 
 from pasttrec import communication

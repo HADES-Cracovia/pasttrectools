@@ -217,7 +217,7 @@ class CardConnection:
         self.trbid = trbid
         self.cable = cable
 
-        if not trbid in self.shared_trb_spi:
+        if trbid not in self.shared_trb_spi:
             self.shared_trb_spi[trbid] = self.trb_fe_type.spi(trbnet_interface, trbid)
         self.trb_spi = self.shared_trb_spi[trbid]
 

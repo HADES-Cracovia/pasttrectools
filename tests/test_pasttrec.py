@@ -82,8 +82,8 @@ from pasttrec.hardware import PasttrecDataWordEncoder
 
 
 def test_com_interfaces():
-    assert issubclass(TrbNetComLib, TrbNetComInterface) == True
-    assert issubclass(TrbNetComShell, TrbNetComInterface) == True
+    assert issubclass(TrbNetComLib, TrbNetComInterface) is True
+    assert issubclass(TrbNetComShell, TrbNetComInterface) is True
 
 
 def test_pasttrec_encoder():

@@ -25,7 +25,7 @@ if vercmp(dist.version, "40.0.0") >= 0:
 else:
     setup(
         name="pasttrectools",
-        version="0.7.0",
+        version="0.8.0",
         description="Tools for scanning and configuring pasttrec ASICs",
         url="https://github.com/HADES-Cracovia/pasttrectools",
         author="Rafal Lalik",
@@ -33,11 +33,11 @@ else:
         license="MIT",
         packages=["pasttrec"],
         scripts=[
-            "tools/asic_communication_scan.py",
+            "tools/asic_scan.py",
             "tools/asic_push.py",
             "tools/asic_read.py",
             "tools/asic_reset.py",
-            "tools/asic_set_reg.py",
+            "tools/asic_set.py",
             "tools/asic_tempid.py",
             "tools/asic_threshold.py",
             "tools/baseline_calc.py",
@@ -49,7 +49,7 @@ else:
             "tools/pasttrec_write_and_verify.py",
             "tools/scalers_scan.py",
             "tools/threshold_scan.py",
-            "tools/trb_communication_scan.py",
+            "tools/trb_scan.py",
         ],
         install_requires=[
             "colorama",
