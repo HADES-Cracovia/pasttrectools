@@ -44,17 +44,25 @@ def set_register(address, register, value):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Set PASTTREC threshold",
+        description="Set PASTTREC registers",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
     parser.add_argument("trbids", help="trb address" " addres[:card-0-1-2[:asic-0-1]]", type=str)
 
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("-f", "--fill", action="store_true")
-    group.add_argument("reg", help="register 0-12", type=int, nargs="?")
-
-    parser.add_argument("val", help="value to write", type=int)
+    group.add_argument(
+        "-f", "--fill", help="Fill all registers with value", type=lambda x: int(x, 0), nargs=1, metavar="VALUE"
+    )
+    group.add_argument(
+        "-r",
+        "--reg",
+        help="Set single register with value",
+        type=lambda x: int(x, 0),
+        nargs=2,
+        metavar=("REGISTER", "VALUE"),
+    )
+    group.add_argument("-t", "--threshold", help="Set threshold (range: 0-127)", type=lambda x: int(x, 0), nargs=1)
 
     parser.add_argument(
         "-v",
@@ -65,14 +73,6 @@ if __name__ == "__main__":
         default=0,
     )
 
-    parser.add_argument(
-        "-Vth",
-        "--threshold",
-        help="threshold: 0-127",
-        type=lambda x: int(x, 0),
-        default=127,
-    )
-
     args = parser.parse_args()
 
     communication.g_verbose = args.verbose
@@ -80,13 +80,17 @@ if __name__ == "__main__":
     if communication.g_verbose > 0:
         print(args)
 
-    if args.threshold > def_pastrec_thresh_range[1] or args.threshold < def_pastrec_thresh_range[0]:
-        print("\nOption error: Threshold value {:d} is to high, " " allowed value is 0-127".format(args.threshold))
-        sys.exit(1)
-
     tup = communication.decode_address(args.trbids)
 
     if args.fill:
-        sys.exit(fill_register(tup, args.val))
+        sys.exit(fill_register(tup, args.fill[0]))
+    elif args.reg:
+        sys.exit(set_register(tup, args.reg[0], args.reg[1]))
+    elif args.threshold:
+        if args.threshold[0] > def_pastrec_thresh_range[1] or args.threshold[0] < def_pastrec_thresh_range[0]:
+            print("\nOption error: Threshold value {:d} is to high, " " allowed value is 0-127".format(args.threshold))
+            sys.exit(1)
+
+        sys.exit(set_register(tup, 3, args.threshold[0]))
     else:
-        sys.exit(set_register(tup, args.reg, args.val))
+        sys.exit(1)

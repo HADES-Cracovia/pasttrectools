@@ -71,10 +71,12 @@ def scan_asic_communication(address, def_time=1.0, def_quick=False, def_no_skip=
                     print(Fore.RED + "." + Style.RESET_ALL, end="", flush=True)
                     if not def_no_skip:
                         print(
-                            Fore.RED + " Test failed for register {:d}".format(reg) + Style.RESET_ALL,
+                            Fore.RED
+                            + " Test failed for register {:d}".format(reg)
+                            + Style.RESET_ALL
+                            + "  Sent {:d}, received {:d}".format(t, _t),
                             end="",
                         )
-                        print("  Sent {:d}, received {:d}".format(t, _t))
                         reg_test_ok = False
                         break
                 else:

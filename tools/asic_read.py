@@ -98,7 +98,7 @@ def read_asic(address):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Scan communication of PASTTREC chips",
+        description="Read registers of the PASTTREC chips",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 

@@ -71,10 +71,12 @@ def scan_trb_communication(address, def_time=1.0, infinite_loop=False):
                     if _t != t or _t == None:
                         print(Fore.RED + "." + Style.RESET_ALL, end="", flush=True)
                         print(
-                            Fore.RED + " Test failed for register {:d}".format(reg) + Style.RESET_ALL,
+                            Fore.RED
+                            + " Test failed for register {:d}".format(reg)
+                            + Style.RESET_ALL
+                            + "  Sent {:d}, received {:d}".format(t, _t),
                             end="",
                         )
-                        print("  Sent {:d}, received {:d}".format(t, _t))
                         asic_test_ok = False
                     else:
                         print(Fore.GREEN + "." + Style.RESET_ALL, end="", flush=True)

@@ -36,8 +36,9 @@ from pasttrec.misc import trbaddr
 def_time = 0
 
 
-def asic_tempid(address, pretty_mode, show_temp):
+def asic_tempid(address, uid_mode, temp_mode):
 
+    pretty_mode = not uid_mode and not temp_mode
     if pretty_mode:
         print("   TDC  Cable   Temp  WireId " + Fore.YELLOW, end="", flush=True)
         print(Style.RESET_ALL)
@@ -50,22 +51,22 @@ def asic_tempid(address, pretty_mode, show_temp):
                 flush=True,
             )
 
-        if pretty_mode or show_temp:
+        if pretty_mode or temp_mode:
             rc1 = con.read_wire_temp()
 
             if pretty_mode:
                 print(Fore.MAGENTA, end="")
                 print(" {:3.2f}".format(rc1), end="")
-            elif show_temp:
+            elif temp_mode:
                 print("{:3.2f}".format(rc1))
 
-        if pretty_mode or not show_temp:
+        if pretty_mode or uid_mode:
             rc2 = con.read_wire_id()
 
             if pretty_mode:
                 print(Fore.CYAN, end="")
                 print("  {:#0{}x}".format(rc2, 4), end="")
-            elif not show_temp:
+            elif uid_mode:
                 print("{:#0{}x}".format(rc2, 4))
 
         if pretty_mode:
@@ -74,7 +75,7 @@ def asic_tempid(address, pretty_mode, show_temp):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Scan communication of PASTTREC chips",
+        description="Read 1-wire devices of PASTTREC board",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
@@ -95,13 +96,10 @@ if __name__ == "__main__":
         default=0,
     )
 
-    parser.add_argument(
-        "-p",
-        "--pretty",
-        help="pretty view -- shwo both temp and id",
-        action="store_true",
-    )
-    parser.add_argument("--temp", help="show temperature not id", action="store_true")
+    group = parser.add_mutually_exclusive_group()
+
+    group.add_argument("--uid", help="show uid", action="store_true")
+    group.add_argument("--temp", help="show temperature", action="store_true")
 
     args = parser.parse_args()
 
@@ -112,4 +110,4 @@ if __name__ == "__main__":
         print(args)
 
     tup = communication.decode_address(args.trbids)
-    r = asic_tempid(tup, args.pretty, args.temp)
+    r = asic_tempid(tup, args.uid, args.temp)
