@@ -87,7 +87,7 @@ class SpiTrbTdc:
         """
 
         if self.owire_mode:
-            self.enable_spi(cable)
+            self.__enable_spi(cable)
 
         # bring all CS (reset lines) in the default state (1) - upper four nibbles:
         # invert CS, lower four nibbles: disable CS
