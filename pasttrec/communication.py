@@ -191,7 +191,8 @@ def group_cables(ctrbids_tuple: tuple):
     min_c = min(ctrbids_tuple, key=lambda tup: tup[1])[1]
     max_c = max(ctrbids_tuple, key=lambda tup: tup[1])[1]
 
-    tup_group = lambda c, ct: tuple(tup for tup in ct if tup[1] == c)
+    def tup_group(c, ct):
+        return tuple(tup for tup in ct if tup[1] == c)
 
     return tuple(sort_by_trbid(tup_group(x, ctrbids_tuple)) for x in range(min_c, max_c + 1))
 

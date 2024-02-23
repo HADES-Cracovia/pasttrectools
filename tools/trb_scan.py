@@ -25,6 +25,8 @@ import argparse
 from time import sleep
 from colorama import Fore, Style
 
+from alive_progress import alive_bar
+
 from pasttrec import communication, g_verbose
 from pasttrec.misc import trbaddr
 
@@ -33,27 +35,28 @@ def_time = 0.0
 
 def scan_trb_communication(address, def_time=1.0, infinite_loop=False):
 
-    reg_range = [0xD400]
+    reg = 0xD400
     reg_test_vals = range(0, 255, 2)
     do_first_loop = True
     test_ok = True
 
     cnt = 0
 
-    print(" TRBID  Register >{:s}<".format("-" * len(reg_test_vals)))
+    print(" TRBID  Register".format())
 
     while do_first_loop or infinite_loop:
 
         for addr in address:
 
             asic_test_ok = True
-            for reg in reg_range:
 
-                print(
-                    Fore.YELLOW + "{:s}  {:s}    ".format(trbaddr(addr), hex(reg)) + Style.RESET_ALL,
-                    end="",
-                    flush=True,
-                )
+            with alive_bar(
+                len(reg_test_vals),
+                title=Fore.YELLOW + "{:s}  {:s}    ".format(trbaddr(addr), hex(reg)) + Style.RESET_ALL,
+                file=sys.stderr,
+                receipt_text=True,
+            ) as bar:
+                bar.text("Testing...")
 
                 for t in reg_test_vals:
                     communication.trbnet_interface.write(addr, reg, t)
@@ -64,13 +67,12 @@ def scan_trb_communication(address, def_time=1.0, infinite_loop=False):
                     try:
                         _t = rc & 0xFF
                     except ValueError as ve:
-                        print("Wrong result: ", rc.split()[1])
-                        print(ve)
+                        bar.text(f"Wrong result: {rc.split()[1]} {ve}")
                         _t = None
 
                     if _t != t or _t is None:
-                        print(Fore.RED + "." + Style.RESET_ALL, end="", flush=True)
-                        print(
+                        bar()
+                        bar.text(
                             Fore.RED
                             + " Test failed for register {:d}".format(reg)
                             + Style.RESET_ALL
@@ -79,12 +81,12 @@ def scan_trb_communication(address, def_time=1.0, infinite_loop=False):
                         )
                         asic_test_ok = False
                     else:
-                        print(Fore.GREEN + "." + Style.RESET_ALL, end="", flush=True)
+                        bar()
 
-            if asic_test_ok:
-                print(Fore.GREEN + " OK " + Style.RESET_ALL, cnt)
-            else:
-                print(Fore.RED + " FAILED " + Style.RESET_ALL, cnt)
+                if asic_test_ok:
+                    bar.text(Fore.GREEN + " OK " + Style.RESET_ALL)
+                else:
+                    bar.text(Fore.RED + " FAILED " + Style.RESET_ALL)
 
             do_first_loop = False
 
@@ -125,7 +127,7 @@ if __name__ == "__main__":
     if g_verbose > 0:
         print(args)
 
-    tup1 = communication.decode_address(args.trbids, True)
+    tup1 = communication.decode_address(args.trbids)
     tup = communication.filter_decoded_trbids(tup1)
     print(tup)
     r = scan_trb_communication(tup, args.time, args.infinite)

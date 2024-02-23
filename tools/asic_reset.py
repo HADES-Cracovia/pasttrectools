@@ -22,6 +22,9 @@
 
 import argparse
 from colorama import Fore, Style
+import sys
+
+from alive_progress import alive_bar
 
 from pasttrec import communication
 from pasttrec.misc import trbaddr
@@ -60,14 +63,18 @@ if __name__ == "__main__":
         print(args)
 
     tup = communication.decode_address(args.trbids)
+    tup = communication.filter_decoded_cables(tup)
 
     conns = communication.make_cable_connections(tup)
 
-    print(Fore.YELLOW + "Resetting ", end="")
-    for con in conns:
-        con.spi.delay_asic_spi = def_spi_time
+    with alive_bar(
+        len(tup), title=Fore.YELLOW + "Resetting" + Style.RESET_ALL, file=sys.stderr, receipt_text=True
+    ) as bar:
 
-        print(" {:s}:{:d}".format(trbaddr(con.trbid), con.cable), end="", flush=True)
-        rc = con.reset_spi()
+        for con in conns:
+            con.spi.delay_asic_spi = def_spi_time
 
-    print(Style.RESET_ALL)
+            bar.text(" {:s}:{:d}".format(trbaddr(con.trbid), con.cable))
+            rc = con.reset_spi()
+            bar()
+        bar.text("Done")

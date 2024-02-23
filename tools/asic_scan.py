@@ -25,6 +25,8 @@ import argparse
 from time import sleep
 from colorama import Fore, Style
 
+from alive_progress import alive_bar
+
 from pasttrec import communication, g_verbose
 from pasttrec.misc import trbaddr
 
@@ -33,7 +35,7 @@ def_time = 0.0
 
 def scan_asic_communication(address, def_time=1.0, def_quick=False, def_no_skip=False):
 
-    print("   TDC  Cable  Asic  >{:s}<".format("-" * 58))
+    print("   TDC  Cable  Asic")
 
     if def_quick is True:
         reg_range = [3]
@@ -45,52 +47,54 @@ def scan_asic_communication(address, def_time=1.0, def_quick=False, def_no_skip=
     test_ok = True
 
     for con in communication.make_asic_connections(address):
-        print(
-            Fore.YELLOW + "{:s}  {:5d} {:5d}  ".format(trbaddr(con.trbid), con.cable, con.asic) + Style.RESET_ALL,
-            end="",
-            flush=True,
-        )
 
-        asic_test_ok = True
+        with alive_bar(
+            len(reg_range) * len(reg_test_vals),
+            title=Fore.YELLOW + "{:s}  {:5d} {:5d}  ".format(trbaddr(con.trbid), con.cable, con.asic) + Style.RESET_ALL,
+            file=sys.stderr,
+            receipt_text=True,
+            spinner=None,
+            monitor=False,
+            elapsed=False,
+            stats=False,
+        ) as bar:
+            asic_test_ok = True
 
-        for reg in reg_range:
-            reg_test_ok = True
+            for reg in reg_range:
+                reg_test_ok = True
 
-            for t in reg_test_vals:
-                con.write_reg(reg, t)
-                sleep(def_time)
-                rc = con.read_reg(reg)
-                try:
-                    _t = rc & 0xFF
-                except ValueError as ve:
-                    print("Wrong result: ", rc.split()[1])
-                    print(ve)
-                    _t = None
+                for t in reg_test_vals:
+                    con.write_reg(reg, t)
+                    sleep(def_time)
+                    rc = con.read_reg(reg)
+                    try:
+                        _t = rc & 0xFF
+                    except ValueError as ve:
+                        bar.text(f"Wrong result: {rc.split()[1]} {ve}")
+                        _t = None
 
-                if _t != t or _t is None:
-                    print(Fore.RED + "." + Style.RESET_ALL, end="", flush=True)
-                    if not def_no_skip:
-                        print(
-                            Fore.RED
-                            + " Test failed for register {:d}".format(reg)
-                            + Style.RESET_ALL
-                            + "  Sent {:d}, received {:d}".format(t, _t),
-                            end="",
-                        )
-                        reg_test_ok = False
-                        break
-                else:
-                    print(Fore.GREEN + "." + Style.RESET_ALL, end="", flush=True)
+                    if _t != t or _t is None:
+                        if not def_no_skip:
+                            bar.text(
+                                Fore.RED
+                                + " Test failed for register {:d}".format(reg)
+                                + Style.RESET_ALL
+                                + "  Sent {:d}, received {:d}".format(t, _t),
+                            )
+                            reg_test_ok = False
+                            break
+                    else:
+                        bar()
 
-            if reg_test_ok is False:
-                asic_test_ok = False
-                test_ok = False
-                break
+                if reg_test_ok is False:
+                    asic_test_ok = False
+                    test_ok = False
+                    break
 
-        if asic_test_ok:
-            print(Fore.GREEN + " OK" + Style.RESET_ALL)
-        else:
-            print(Fore.RED + " FAILED" + Style.RESET_ALL)
+            if asic_test_ok:
+                bar.text(Fore.GREEN + " OK" + Style.RESET_ALL)
+            else:
+                bar.text(Fore.RED + " FAILED" + Style.RESET_ALL)
 
     if test_ok:
         print("All test done and OK")

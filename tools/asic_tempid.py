@@ -60,8 +60,8 @@ def asic_tempid(address, uid_mode, temp_mode):
             time.sleep(0.5)
 
             for con in cable_cons:
-                rc1 = con.get_1wire_temp() if temp_mode or pretty_mode else -1
-                rc2 = con.get_1wire_id() if uid_mode or pretty_mode else -1
+                rc1 = con.get_1wire_temp() if temp_mode or pretty_mode else 0
+                rc2 = con.get_1wire_id() if uid_mode or pretty_mode else 0
 
                 results_map[con.address] = rc1, rc2
 
