@@ -1,3 +1,4 @@
 colorama
 setuptools
 matplotlib
+alive-progress

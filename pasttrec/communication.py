@@ -161,31 +161,55 @@ def decode_address_entry(string, sort=False):
     return tuple((int(address, 16), y, z) for y in cables for z in asics)
 
 
-def decode_address(string, sort=False):
+def decode_address(string):
     """Use this for a single string or list of strings."""
 
     if type(string) is str:
-        return decode_address_entry(string, sort)
+        return decode_address_entry(string)
     else:
-        return sum((decode_address_entry(s, sort) for s in string), ())
+        return sum((decode_address_entry(s) for s in string), ())
 
 
-def filter_raw_trbids(addresses, sort=False):
+def filter_raw_trbids(addresses):
     """Return list of unique trbnet addresses."""
 
     return tuple(set((int(x.split(":")[0], 16) for x in addresses)))
 
 
-def filter_decoded_trbids(addresses, sort=False):
+def filter_decoded_trbids(addresses):
     """Return list of unique trbnet addresses."""
 
-    return tuple(set(trbid for trbid, cable, asic in addresses))
+    return tuple(set(trbid for trbid, *_ in addresses))
 
 
-def filter_decoded_cables(addresses, sort=False):
-    """Return list of unique trbnet addresses."""
+def filter_decoded_cables(addresses):
+    """Return list of unique trbnet ctrbids."""
+    return tuple(set((trbid, cable) for trbid, cable, *_ in addresses))
 
-    return tuple(set((trbid, cable) for trbid, cable, asic in addresses))
+
+def group_cables(ctrbids_tuple: tuple):
+    min_c = min(ctrbids_tuple, key=lambda tup: tup[1])[1]
+    max_c = max(ctrbids_tuple, key=lambda tup: tup[1])[1]
+
+    tup_group = lambda c, ct: tuple(tup for tup in ct if tup[1] == c)
+
+    return tuple(sort_by_trbid(tup_group(x, ctrbids_tuple)) for x in range(min_c, max_c + 1))
+
+
+def sort_by_cable(xtrbids_tuple: tuple):
+    return tuple(sorted(xtrbids_tuple, key=lambda tup: (tup[1], tup[0])))
+
+
+def sort_by_ct(xtrbids_tuple: tuple):
+    return tuple(sorted(xtrbids_tuple, key=lambda tup: (tup[1], tup[0])))
+
+
+def sort_by_tc(xtrbids_tuple: tuple):
+    return tuple(sorted(xtrbids_tuple, key=lambda tup: (tup[0], tup[1])))
+
+
+def sort_by_trbid(xtrbids_tuple: tuple):
+    return tuple(sorted(xtrbids_tuple, key=lambda tup: tup[0]))
 
 
 def get_trb_design_type(trbnetids):
@@ -229,11 +253,24 @@ class CardConnection:
     def spi(self):
         return self.trb_spi
 
-    def read_wire_temp(self):
-        return self.trb_spi.read_wire_temp(self.cable)
+    @property
+    def address(self):
+        return (self.trbid, self.cable)
 
-    def read_wire_id(self):
-        return self.trb_spi.read_wire_id(self.cable)
+    def read_1wire_temp(self):
+        return self.trb_spi.read_1wire_temp(self.cable)
+
+    def read_1wire_id(self):
+        return self.trb_spi.read_1wire_id(self.cable)
+
+    def activate_1wire(self):
+        return self.trb_spi.activate_1wire(self.cable)
+
+    def get_1wire_temp(self):
+        return self.trb_spi.get_1wire_temp(self.cable)
+
+    def get_1wire_id(self):
+        return self.trb_spi.get_1wire_id(self.cable)
 
     def reset_spi(self):
         self.trb_spi.spi_reset(self.cable)
@@ -245,12 +282,13 @@ class CardConnection:
 def make_cable_connections(address):
     """Make instances of CardConenction based on the decoded addresses."""
 
-    filtered_trbids = filter_decoded_trbids(address)
     filtered_cables = filter_decoded_cables(address)
+    sorted_cables = sort_by_cable(filtered_cables)
+
     fee_types = get_trb_design_type(filter_decoded_trbids(address))
 
     return tuple(
-        CardConnection(fee_types[addr], addr, cable) for addr, cable in filtered_cables if fee_types[addr] is not None
+        CardConnection(fee_types[addr], addr, cable) for addr, cable in sorted_cables if fee_types[addr] is not None
     )
 
 

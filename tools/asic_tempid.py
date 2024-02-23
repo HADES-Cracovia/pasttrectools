@@ -24,29 +24,64 @@
 import argparse
 from colorama import Fore, Style
 
+# import logging
+import time
+import sys
+
+from alive_progress import alive_bar
+
 from pasttrec import communication
 from pasttrec.misc import trbaddr
 
 def_time = 0
 
+# logging.basicConfig(level=logging.INFO)
+# logger = logging.getLogger('alive_progress')
+
 
 def asic_tempid(address, uid_mode, temp_mode):
 
     pretty_mode = not uid_mode and not temp_mode
+
+    results_map = {}
+
+    stup_ct = communication.sort_by_ct(address)
+    stup_t = communication.sort_by_tc(address)
+
+    with alive_bar(len(stup_ct), title="Reading out 1-wires", file=sys.stderr) as bar:
+
+        for cg in communication.group_cables(stup_ct):
+            cable_cons = communication.make_cable_connections(cg)
+
+            for con in cable_cons:
+                bar()
+                rc1 = con.activate_1wire()
+
+            time.sleep(0.5)
+
+            for con in cable_cons:
+                rc1 = con.get_1wire_temp() if temp_mode or pretty_mode else -1
+                rc2 = con.get_1wire_id() if uid_mode or pretty_mode else -1
+
+                results_map[con.address] = rc1, rc2
+
+            # logger.info(f"Cable {cg[0][1]} done")
+
     if pretty_mode:
         print("   TDC  Cable   Temp  WireId " + Fore.YELLOW, end="", flush=True)
         print(Style.RESET_ALL)
 
-    for con in communication.make_cable_connections(address):
+    for addr in stup_t:
+        res = results_map[addr]
         if pretty_mode:
             print(
-                Fore.YELLOW + "{:s}  {:5d} ".format(trbaddr(con.trbid), con.cable) + Style.RESET_ALL,
+                Fore.YELLOW + "{:s}  {:5d} ".format(trbaddr(addr[0]), addr[1]) + Style.RESET_ALL,
                 end="",
                 flush=True,
             )
 
         if pretty_mode or temp_mode:
-            rc1 = con.read_wire_temp()
+            rc1 = res[0]
 
             if pretty_mode:
                 print(Fore.MAGENTA, end="")
@@ -55,7 +90,7 @@ def asic_tempid(address, uid_mode, temp_mode):
                 print("{:3.2f}".format(rc1))
 
         if pretty_mode or uid_mode:
-            rc2 = con.read_wire_id()
+            rc2 = res[1]
 
             if pretty_mode:
                 print(Fore.CYAN, end="")
@@ -103,5 +138,7 @@ if __name__ == "__main__":
     if communication.g_verbose > 0:
         print(args)
 
-    tup = communication.decode_address(args.trbids)
+    etrbids = communication.decode_address(args.trbids)
+    tup = communication.filter_decoded_cables(etrbids)
+
     r = asic_tempid(tup, args.uid, args.temp)

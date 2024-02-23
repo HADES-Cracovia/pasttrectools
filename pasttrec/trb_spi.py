@@ -212,7 +212,7 @@ class SpiTrbTdc:
         # restore default CS
         self.trb_com.write(self.trbid, 0xD417, 0x0000FFFF)
 
-    def read_wire_temp(self, cable: int):
+    def read_1wire_temp(self, cable: int):
         """non mux| dedicated 1wire component for each connector/cable"""
 
         self.__enable_1wire(cable)
@@ -224,13 +224,40 @@ class SpiTrbTdc:
 
         return (rc >> 16) * 0.0625
 
-    def read_wire_id(self, cable: int):
+    def read_1wire_id(self, cable: int):
         """non mux| dedicated 1wire component for each connector/cable"""
 
         self.__enable_1wire(cable)
 
         # delay is mandatory due to how the 1wire device works
         sleep(self.delay_1wire_id)
+
+        rc0 = self.trb_com.read(self.trbid, 0xA)
+        rc1 = self.trb_com.read(self.trbid, 0xB)
+
+        return (rc1 << 32) | rc0
+
+    def activate_1wire(self, cable: int):
+        """Activate 1wire component for given connector/cable"""
+
+        self.__enable_1wire(cable)
+
+    def get_1wire_temp(self, cable: int):
+        """
+        Read the 1wire temp.
+        User is responsible for proper delay between
+        1wire activation and temp readout.
+        """
+
+        rc = self.trb_com.read(self.trbid, 0x8)
+        return (rc >> 16) * 0.0625
+
+    def get_1wire_id(self, cable: int):
+        """
+        Read the 1wire id.
+        User is responsible for proper delay between
+        1wire activation and id readout.
+        """
 
         rc0 = self.trb_com.read(self.trbid, 0xA)
         rc1 = self.trb_com.read(self.trbid, 0xB)
