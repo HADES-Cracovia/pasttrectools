@@ -33,23 +33,20 @@ from pasttrec.misc import trbaddr
 def_time = 0.0
 
 
-def scan_asic_communication(address, def_time=1.0, def_quick=False, def_no_skip=False):
+def scan_spi_communication(address, def_time=1.0, def_no_skip=False):
 
     print("   TDC  Cable  Asic")
 
-    if def_quick is True:
-        reg_range = [3]
-        reg_test_vals = [0x5A]
-    else:
-        reg_range = range(12)
-        reg_test_vals = [0x00, 0xFF, 0x0F, 0xF0, 0x55, 0x99, 0x95, 0x59]
+    reg_target = 0x0C
+    reg_test_vals = [0x00, 0xFF, 0x0F, 0xF0, 0x55, 0x99, 0x95, 0x59]
 
-    test_ok = True
+    tests_failed = 0
+    tests_ok = 0
 
     for con in communication.make_asic_connections(address):
 
         with alive_bar(
-            len(reg_range) * len(reg_test_vals),
+            len(reg_test_vals),
             title=Fore.YELLOW + "{:s}  {:5d} {:5d}  ".format(trbaddr(con.trbid), con.cable, con.asic) + Style.RESET_ALL,
             file=sys.stderr,
             receipt_text=True,
@@ -58,54 +55,50 @@ def scan_asic_communication(address, def_time=1.0, def_quick=False, def_no_skip=
             elapsed=False,
             stats=False,
         ) as bar:
-            asic_test_ok = True
+            reg_test_ok = True
 
-            for reg in reg_range:
-                reg_test_ok = True
+            for t in reg_test_vals:
+                con.write_reg(reg_target, t)
+                sleep(def_time)
+                rc = con.read_reg(reg_target)
+                try:
+                    _t = rc & 0xFF
+                except ValueError as ve:
+                    bar.text(f"Wrong result: {rc.split()[1]} {ve}")
+                    _t = None
 
-                for t in reg_test_vals:
-                    con.write_reg(reg, t)
-                    sleep(def_time)
-                    rc = con.read_reg(reg)
-                    try:
-                        _t = rc & 0xFF
-                    except ValueError as ve:
-                        bar.text(f"Wrong result: {rc.split()[1]} {ve}")
-                        _t = None
+                if _t != t or _t is None:
+                    if not def_no_skip:
+                        bar.text(
+                            Fore.RED
+                            + " Test failed for register {:d}".format(reg_target)
+                            + Style.RESET_ALL
+                            + "  Sent {:d}, received {:d}".format(t, _t),
+                        )
+                        reg_test_ok = False
+                        break
+                else:
+                    bar()
 
-                    if _t != t or _t is None:
-                        if not def_no_skip:
-                            bar.text(
-                                Fore.RED
-                                + " Test failed for register {:d}".format(reg)
-                                + Style.RESET_ALL
-                                + "  Sent {:d}, received {:d}".format(t, _t),
-                            )
-                            reg_test_ok = False
-                            break
-                    else:
-                        bar()
-
-                if reg_test_ok is False:
-                    asic_test_ok = False
-                    test_ok = False
-                    break
-
-            if asic_test_ok:
+            if reg_test_ok:
                 bar.text(Fore.GREEN + " OK" + Style.RESET_ALL)
+                tests_ok += 1
             else:
                 bar.text(Fore.RED + " FAILED" + Style.RESET_ALL)
+                tests_failed += 1
 
-    if test_ok:
-        print("All test done and OK")
-        return True
+    print(Fore.GREEN + f"OK tests: {tests_ok}  ", end="")
+    if tests_failed:
+        print(Fore.RED + f"Failed tests: {tests_failed}" + Style.RESET_ALL)
+    else:
+        print(Style.RESET_ALL + f"Failed tests: {tests_failed}")
 
     return False
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Scan communication of PASTTREC chips",
+        description="Scan SPI communication of PASTTREC chips",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
@@ -117,7 +110,6 @@ if __name__ == "__main__":
     )
 
     parser.add_argument("-n", "--no-skip", help="do not skip missing FEEs", action="store_true")
-    parser.add_argument("-q", "--quick", help="quick test", action="store_true")
     parser.add_argument("-t", "--time", help="sleep time", type=float, default=def_time)
     parser.add_argument(
         "-v",
@@ -135,5 +127,5 @@ if __name__ == "__main__":
         print(args)
 
     tup = communication.decode_address(args.trbids)
-    r = scan_asic_communication(tup, args.time, args.quick, args.no_skip)
+    r = scan_spi_communication(tup, args.time, args.no_skip)
     sys.exit(r)
