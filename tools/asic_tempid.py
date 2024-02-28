@@ -42,8 +42,8 @@ def asic_tempid(address, uid_mode, temp_mode, no_color, trbnet_map):
     results_map = {}
 
     stup_ct = communication.sort_by_ct(address)
-    stup_t = communication.sort_by_tc(address)
 
+    ctrbid_list = []
     with alive_bar(len(stup_ct), title="Reading out 1-wires", file=sys.stderr) as bar:
 
         for cg in communication.group_cables(stup_ct):
@@ -59,10 +59,20 @@ def asic_tempid(address, uid_mode, temp_mode, no_color, trbnet_map):
                 time.sleep(con.spi.delay_1wire_temp)
 
             for con in cable_cons:
-                rc1 = con.get_1wire_temp() if temp_mode or full_mode else 0
-                rc2 = con.get_1wire_id() if uid_mode or full_mode else 0
+                rc1 = con.get_1wire_temp() if temp_mode or full_mode else ()
+                rc2 = con.get_1wire_id() if uid_mode or full_mode else ()
 
-                results_map[con.address] = rc1, rc2
+                if len(rc1) == 0 and len(rc2) != 0:
+                    rc1 = ((0, 0),) * len(rc2)
+                elif len(rc2) == 0 and len(rc1) != 0:
+                    rc2 = ((0, 0),) * len(rc1)
+
+                group = ((x[0][0], x[0][1], x[1][1]) for x in zip(rc1, rc2))
+                for entry in group:
+                    results_map[entry[0], con.cable] = entry[1], entry[2]
+                    ctrbid_list.append((entry[0], con.cable))
+
+    ctrbid_list = communication.sort_by_tc(set(ctrbid_list))
 
     if full_mode:
         print("   TDC  Cable   Temp   WireId")
@@ -71,9 +81,7 @@ def asic_tempid(address, uid_mode, temp_mode, no_color, trbnet_map):
     else:
         print("   TDC  Cable   WireId")
 
-    print(stup_t)
-    print(results_map)
-    for addr in stup_t:
+    for addr in ctrbid_list:
         res = results_map[addr]
         if not no_color:
             print(Fore.YELLOW, end="")

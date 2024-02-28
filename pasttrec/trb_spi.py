@@ -250,7 +250,7 @@ class SpiTrbTdc:
         """
 
         rc = self.trb_com.read(self.trbid, 0x8)
-        return (rc >> 16) * 0.0625
+        return tuple((rc0[0], (rc0[1] >> 16) * 0.0625) for rc0 in rc)
 
     def get_1wire_id(self, cable: int):
         """
@@ -262,7 +262,8 @@ class SpiTrbTdc:
         rc0 = self.trb_com.read(self.trbid, 0xA)
         rc1 = self.trb_com.read(self.trbid, 0xB)
 
-        return (rc1 << 32) | rc0
+        merged = zip(rc0, rc1)
+        return tuple(tuple((rc1[0], (rc1[1] << 32) | rc0[1])) for rc0, rc1 in merged)
 
     def __enable_spi(self, cable: int):
         """The sequence is required to change from 1-wire to SPI."""

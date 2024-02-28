@@ -73,34 +73,97 @@ if trbnet_interface_env is not None:
 else:
     if trbnet_available:
         trbnet = TrbNet(libtrbnet=lib, daqopserver=host)
-
         from pasttrec.interface import TrbNetComLib
 
         trbnet_interface = TrbNetComLib(trbnet)
-
     elif cmd_to_file:
         from pasttrec.interface import TrbNetComShell
 
         trbnet_interface = TrbNetComShell()
-
     else:
         pass
         # import pasttrec.trb_comm.file as comm
 
 
+def static_vars(**kwargs):
+    def decorate(func):
+        for k in kwargs:
+            setattr(func, k, kwargs[k])
+        return func
+
+    return decorate
+
+
+@static_vars(designs_map={})
+def get_trb_design_type(trbid):
+    """Caches the design types."""
+
+    if type(trbid) == str:
+        trbid = int(trbid, 16)
+
+    if trbid not in get_trb_design_type.designs_map:
+        design = detect_design(trbid)
+        get_trb_design_type.designs_map[trbid] = design[1][0][1] if design else None
+
+    return get_trb_design_type.designs_map[trbid]
+
+
 def detect_design(address):
     """Detect the Trb board type"""
-
-    if type(address) == str:
-        address = int(address, 16)
-
-    rc = trbnet_interface.read(address, 0x42)
-
     try:
-        return hardware.TrbBoardTypeMapping[rc & 0xFFFF0000]
+        rc = trbnet_interface.read(address, 0x42)
+        return (address, tuple((irc[0], hardware.TrbBoardTypeMapping[irc[1] & 0xFFFF0000]) for irc in rc))
+
+    except ValueError:
+        print("TrbBoard {:s} not reachable.".format(trbaddr(address)))
+        return ()
+
     except KeyError:
         print("FrontendTypeMapping not known for hardware type {:s} in {:s}".format(hex(rc), trbaddr(address)))
-        return None
+        return ()
+
+
+def extract_and_validate_trbid(string):
+    sections = tuple(string.split(":"))
+
+    if len(sections) > 3:
+        print("Error in string ", string)
+        return ()
+
+    # check address
+    address = sections[0]
+    if len(address) == 6:
+        if address[0:2] != "0x":
+            print("Incorrect address in string: ", string, file=sys.stderr)
+            return ()
+    elif len(address) == 4:
+        address = "0x" + address
+    else:
+        print("Incorrect address in string: ", string, file=sys.stderr)
+        return ()
+
+    return sections
+
+
+def expand_ptrbid(sections, n_cables, n_asics):
+    sec_len = len(sections)
+
+    # do everything backwards
+    # asics
+    if sec_len == 3 and len(sections[2]) > 0:
+        _asics = sections[2].split(",")
+        asics = tuple(int(a) for a in _asics if int(a) in range(n_asics))  # TODO add 1-2 mode
+    else:
+        asics = tuple(range(n_asics))
+
+    # asics
+    if sec_len >= 2 and len(sections[1]) > 0:
+        _cables = sections[1].split(",")
+        cables = tuple(int(c) for c in _cables if int(c) in range(n_cables))  # TODO add 1-4 mode
+    else:
+        cables = tuple(range(n_cables))
+
+    return tuple((int(sections[0], 16), y, z) for y in cables for z in asics)
 
 
 def decode_address_entry(string, sort=False):
@@ -117,49 +180,19 @@ def decode_address_entry(string, sort=False):
      0x6400::2 - all cables, asic 2
     """
 
-    sections = string.split(":")
-    sec_len = len(sections)
-
-    if sec_len > 3:
-        print("Error in string ", string)
-        return ()
-
-    # check address
-    address = sections[0]
-    if len(address) == 6:
-        if address[0:2] != "0x":
-            print("Incorrect address in string: ", string, file=sys.stderr)
-            return ()
-    elif len(address) == 4:
-        address = "0x" + address
-    else:
-        print("Incorrect address in string: ", string, file=sys.stderr)
-        return ()
+    address_t = extract_and_validate_trbid(string)
 
     try:
-        trb_fe_type = detect_design(address)
-        if trb_fe_type is None:
+        trb_fe_type_t = get_trb_design_type(address_t[0])
+        if trb_fe_type_t == ():
             return ()
+
     except ValueError:
         print(Fore.RED + f"Incorrect address {address}" + Style.RESET_ALL, file=sys.stderr)
         return ()
 
-    # do everything backwards
-    # asics
-    if sec_len == 3 and len(sections[2]) > 0:
-        _asics = sections[2].split(",")
-        asics = (int(a) for a in _asics if int(a) in range(0, trb_fe_type.asics))  # TODO add 1-2 mode
-    else:
-        asics = tuple(range(trb_fe_type.asics))
-
-    # asics
-    if sec_len >= 2 and len(sections[1]) > 0:
-        _cables = sections[1].split(",")
-        cables = (int(c) for c in _cables if int(c) in range(0, trb_fe_type.cables))  # TODO add 1-4 mode
-    else:
-        cables = tuple(range(trb_fe_type.cables))
-
-    return tuple((int(address, 16), y, z) for y in cables for z in asics)
+    trb_fe_type = trb_fe_type_t
+    return expand_ptrbid(address_t, trb_fe_type.cables, trb_fe_type.asics) if trb_fe_type else ()
 
 
 def decode_address(string):
@@ -185,12 +218,15 @@ def filter_decoded_trbids(addresses):
 
 def filter_decoded_cables(addresses):
     """Return list of unique trbnet ctrbids."""
-    return tuple(set((trbid, cable) for trbid, cable, *_ in addresses))
+    return tuple(set((trbid, cable) for trbid, cable, *_ in addresses if addresses is not None))
 
 
 def group_cables(ctrbids_tuple: tuple):
-    min_c = min(ctrbids_tuple, key=lambda tup: tup[1])[1]
-    max_c = max(ctrbids_tuple, key=lambda tup: tup[1])[1]
+    try:
+        min_c = min(ctrbids_tuple, key=lambda tup: tup[1])[1]
+        max_c = max(ctrbids_tuple, key=lambda tup: tup[1])[1]
+    except ValueError:
+        return ()
 
     def tup_group(c, ct):
         return tuple(tup for tup in ct if tup[1] == c)
@@ -212,13 +248,6 @@ def sort_by_tc(xtrbids_tuple: tuple):
 
 def sort_by_trbid(xtrbids_tuple: tuple):
     return tuple(sorted(xtrbids_tuple, key=lambda tup: tup[0]))
-
-
-def get_trb_design_type(trbnetids):
-    trb_design_type = {}
-    for trbid in trbnetids:
-        trb_design_type[trbid] = detect_design(trbid)
-    return trb_design_type
 
 
 def print_verbose(rc):
@@ -287,10 +316,10 @@ def make_cable_connections(address):
     filtered_cables = filter_decoded_cables(address)
     sorted_cables = sort_by_cable(filtered_cables)
 
-    fee_types = get_trb_design_type(filter_decoded_trbids(address))
-
     return tuple(
-        CardConnection(fee_types[addr], addr, cable) for addr, cable in sorted_cables if fee_types[addr] is not None
+        CardConnection(get_trb_design_type(addr), addr, cable)
+        for addr, cable in sorted_cables
+        if get_trb_design_type(addr) is not None
     )
 
 
@@ -336,11 +365,10 @@ class PasttrecConnection(CardConnection):
 def make_asic_connections(address):
     """Make instances of PasttercConenction based on the decoded addresses."""
 
-    fee_types = get_trb_design_type(filter_decoded_trbids(address))
     return tuple(
-        PasttrecConnection(fee_types[addr], addr, cable, asic)
+        PasttrecConnection(get_trb_design_type(addr), addr, cable, asic)
         for addr, cable, asic in address
-        if fee_types[addr] is not None
+        if get_trb_design_type(addr) is not None
     )
 
 

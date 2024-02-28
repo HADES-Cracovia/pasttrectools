@@ -23,6 +23,9 @@
 import argparse
 from time import sleep
 from colorama import Fore, Style
+import sys
+
+from alive_progress import alive_bar
 
 from pasttrec import communication
 from pasttrec.misc import trbaddr
@@ -31,65 +34,51 @@ def_time = 0.0
 
 
 def read_asic(address):
+    results = {}
+    n_regs = 12
 
-    print("   TDC  Cable  Asic   Reg# " + Fore.YELLOW, end="", flush=True)
+    stup_ct = communication.sort_by_ct(address)
+
+    with alive_bar(len(stup_ct) * n_regs, title="Reading out registers", file=sys.stderr) as bar:
+
+        for cg in communication.group_cables(stup_ct):
+            cable_cons = communication.make_asic_connections(cg)
+
+            for con in cable_cons:
+                for reg in range(n_regs):
+
+                    rc = con.read_reg(reg)
+                    for irc in rc:
+                        addr = irc[0]
+                        faddr = (addr, con.cable, con.asic)
+                        if not faddr in results:
+                            results[faddr] = [0] * n_regs
+                        results[faddr][reg] = irc[1] & 0xFF
+                    bar()
+
+    print("   TDC  Cable  Asic   Reg# " + Fore.YELLOW, end="")
 
     if communication.g_verbose == 0:
-        for reg in range(12):
-            print("    {:2d}".format(reg), end="", flush=True)
-
+        for reg in range(n_regs):
+            print("    {:2d}".format(reg), end="")
     print(Style.RESET_ALL)
 
-    for con in communication.make_asic_connections(address):
-        if communication.g_verbose == 0:
-            print(
-                Fore.YELLOW
-                + "{:s}  {:5d}  {:4d}        ".format(trbaddr(con.trbid), con.cable, con.asic)
-                + Style.RESET_ALL,
-                end="",
-                flush=True,
-            )
+    sresults = dict(sorted(results.items()))
+    for key, res in sresults.items():
+        print(Fore.YELLOW + "{:s}  {:5d}  {:4d}        ".format(trbaddr(key[0]), key[1], key[2]), end="")
 
-        for reg in range(12):
-
-            rc = con.read_reg(reg)
-            try:
-                _t = rc & 0xFF
-            except ValueError as ve:
-                print("Wrong result: ", rc.split()[1])
-                print(ve)
-                _t = 0xDEADBEEF
-
-            if _t == 0xDEADBEEF:
-                print(
-                    Fore.RED + " Read failed for register {:s}".format(hex(reg)) + Style.RESET_ALL,
-                    end="",
-                )
-                print("  Received {:s}".format(hex(_t)))
+        for reg in range(n_regs):
+            if reg < 3:
+                print(Fore.MAGENTA, end="")
+            elif reg == 3:
+                print(Fore.CYAN, end="")
             else:
-                if communication.g_verbose > 0:
-                    print(
-                        Fore.YELLOW
-                        + "{:s}  {:5d}  {:4d}        ".format(trbaddr(con.trbid), con.cable, con.asic)
-                        + Style.RESET_ALL,
-                        end="",
-                        flush=True,
-                    )
+                print(Fore.GREEN, end="")
 
-                if reg < 3:
-                    print(Fore.MAGENTA, end="", flush=True)
-                elif reg == 3:
-                    print(Fore.CYAN, end="", flush=True)
-                else:
-                    print(Fore.GREEN, end="", flush=True)
-
-                if communication.g_verbose > 0:
-                    print("Register: {0:#0{1}x}    Value: {2:#0{3}x}".format(reg, 2, _t, 4))
-                else:
-                    print("  {:#0{}x}".format(_t, 4), end="", flush=True)
-
-            print(Style.RESET_ALL, end="", flush=True)
-            sleep(def_time)
+            if communication.g_verbose > 0:
+                print("Register: {0:#0{1}x}    Value: {2:#0{3}x}".format(reg, 2, _t, 4))
+            else:
+                print("  {:#0{}x}".format(res[reg], 4), end="")
 
         print(Style.RESET_ALL)
 

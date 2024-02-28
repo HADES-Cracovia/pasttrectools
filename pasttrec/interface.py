@@ -31,6 +31,10 @@ from pasttrec.misc import trbaddr
 import subprocess
 
 
+def group_output(trb_response):
+    return tuple(tuple(trb_response[i : i + 2]) for i in range(0, len(trb_response), 2))
+
+
 class TrbNetComInterface(metaclass=abc.ABCMeta):
     """A TrbMetaclass that will be used for trb interface class creation."""
 
@@ -94,18 +98,15 @@ class TrbNetComLib:
     def write(self, trbid, reg, data):
         rc = self.trbnet.trb_register_write(trbid, reg, data)
         self.print_verbose(rc)
-        return 0
 
     def write_mem(self, trbid, reg, data, option=1):
         rc = self.trbnet.trb_register_write_mem(trbid, reg, option, data)
-        self.print_verbose(rc)
-        return 0
 
     def read(self, trbid, reg):
         rc = self.trbnet.trb_register_read(trbid, reg)
         self.print_verbose(rc)
         if len(rc):
-            return rc[1]
+            return group_output(rc)
         else:
             raise ValueError("Trbid {:s} not available".format(trbaddr(trbid)))
 

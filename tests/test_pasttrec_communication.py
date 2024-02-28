@@ -5,8 +5,32 @@ from context import *
 from pasttrec import communication
 
 
-def test_decode_address():
-    pass
+def test_extract_and_validate_trbid():
+    assert communication.extract_and_validate_trbid("0x1000:1:1") == ("0x1000", "1", "1")
+    assert communication.extract_and_validate_trbid("0x1000:1:2") == ("0x1000", "1", "2")
+    assert communication.extract_and_validate_trbid("0x1000:1") == ("0x1000", "1")
+    assert communication.extract_and_validate_trbid("0x1000") == ("0x1000",)
+    assert communication.extract_and_validate_trbid("0x1000:1:1:1") == None
+
+
+def test_expand_ptrbid():
+    assert communication.expand_ptrbid(("0x1000", "1", "1"), 3, 3) == ((0x1000, 1, 1),)
+    assert communication.expand_ptrbid(("0x1000", "2", "1"), 3, 3) == ((0x1000, 2, 1),)
+    assert communication.expand_ptrbid(("0x1000", "1,2", "1"), 3, 3) == (
+        (0x1000, 1, 1),
+        (0x1000, 2, 1),
+    )
+    assert communication.expand_ptrbid(("0x1000", "", "1"), 3, 3) == (
+        (0x1000, 0, 1),
+        (0x1000, 1, 1),
+        (0x1000, 2, 1),
+    )
+    assert communication.expand_ptrbid(("0x1000", "", ""), 2, 2) == (
+        (0x1000, 0, 0),
+        (0x1000, 0, 1),
+        (0x1000, 1, 0),
+        (0x1000, 1, 1),
+    )
 
 
 def test_filter_raw_trbids():
