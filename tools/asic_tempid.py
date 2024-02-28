@@ -23,8 +23,7 @@
 
 import argparse
 from colorama import Fore, Style
-
-# import logging
+import json
 import time
 import sys
 
@@ -35,13 +34,10 @@ from pasttrec.misc import trbaddr
 
 def_time = 0
 
-# logging.basicConfig(level=logging.INFO)
-# logger = logging.getLogger('alive_progress')
 
+def asic_tempid(address, uid_mode, temp_mode, no_color, trbnet_map):
 
-def asic_tempid(address, uid_mode, temp_mode):
-
-    pretty_mode = not uid_mode and not temp_mode
+    full_mode = not uid_mode and not temp_mode
 
     results_map = {}
 
@@ -57,49 +53,62 @@ def asic_tempid(address, uid_mode, temp_mode):
                 bar()
                 rc1 = con.activate_1wire()
 
-            time.sleep(0.5)
+            if uid_mode:
+                time.sleep(con.spi.delay_1wire_id)
+            else:
+                time.sleep(con.spi.delay_1wire_temp)
 
             for con in cable_cons:
-                rc1 = con.get_1wire_temp() if temp_mode or pretty_mode else 0
-                rc2 = con.get_1wire_id() if uid_mode or pretty_mode else 0
+                rc1 = con.get_1wire_temp() if temp_mode or full_mode else 0
+                rc2 = con.get_1wire_id() if uid_mode or full_mode else 0
 
                 results_map[con.address] = rc1, rc2
 
-            # logger.info(f"Cable {cg[0][1]} done")
+    if full_mode:
+        print("   TDC  Cable   Temp   WireId")
+    elif temp_mode:
+        print("   TDC  Cable   Temp")
+    else:
+        print("   TDC  Cable   WireId")
 
-    if pretty_mode:
-        print("   TDC  Cable   Temp  WireId " + Fore.YELLOW, end="", flush=True)
-        print(Style.RESET_ALL)
-
+    print(stup_t)
+    print(results_map)
     for addr in stup_t:
         res = results_map[addr]
-        if pretty_mode:
-            print(
-                Fore.YELLOW + "{:s}  {:5d} ".format(trbaddr(addr[0]), addr[1]) + Style.RESET_ALL,
-                end="",
-                flush=True,
-            )
+        if not no_color:
+            print(Fore.YELLOW, end="")
 
-        if pretty_mode or temp_mode:
+        print("{:s}  {:5d} ".format(trbaddr(addr[0]), addr[1]) + Style.RESET_ALL, end="")
+
+        if not no_color:
+            print(Style.RESET_ALL, end="")
+
+        if full_mode or temp_mode:
             rc1 = res[0]
 
-            if pretty_mode:
+            if not no_color:
                 print(Fore.MAGENTA, end="")
-                print(" {:3.2f}".format(rc1), end="")
-            elif temp_mode:
-                print("{:3.2f}".format(rc1))
 
-        if pretty_mode or uid_mode:
+            print("  {:05.2f}".format(rc1), end="")
+
+        if full_mode or uid_mode:
             rc2 = res[1]
 
-            if pretty_mode:
+            if not no_color:
                 print(Fore.CYAN, end="")
-                print("  {:#0{}x}".format(rc2, 18), end="")
-            elif uid_mode:
-                print("{:#0{}x}".format(rc2, 18))
 
-        if pretty_mode:
-            print(Style.RESET_ALL)
+            print("  {:#0{}x}".format(rc2, 18), end="")
+
+        print(Style.RESET_ALL)
+
+    if trbnet_map is not None:
+        the_map = {hex(k[0]): {} for k, v in results_map.items() if v[1] != 0}
+        for k, v in results_map.items():
+            if v[1] != 0:
+                the_map[hex(k[0])][k[1]] = "{:#0{}x}".format(v[1], 18)
+
+        with open(trbnet_map, "w") as fp:
+            json.dump(the_map, fp, indent=2)
 
 
 if __name__ == "__main__":
@@ -130,6 +139,9 @@ if __name__ == "__main__":
     group.add_argument("--uid", help="show uid", action="store_true")
     group.add_argument("--temp", help="show temperature", action="store_true")
 
+    parser.add_argument("--no-color", help="don't use colors", action="store_true")
+    parser.add_argument("-m", "--trbnet-map", help="export trbnet map", type=str)
+
     args = parser.parse_args()
 
     communication.g_verbose = args.verbose
@@ -141,4 +153,4 @@ if __name__ == "__main__":
     etrbids = communication.decode_address(args.trbids)
     tup = communication.filter_decoded_cables(etrbids)
 
-    r = asic_tempid(tup, args.uid, args.temp)
+    r = asic_tempid(tup, args.uid, args.temp, args.no_color, args.trbnet_map)

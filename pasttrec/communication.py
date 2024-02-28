@@ -21,6 +21,7 @@
 # SOFTWARE.
 
 import os
+import sys
 from colorama import Fore, Style
 
 from pasttrec import hardware, g_verbose
@@ -127,12 +128,12 @@ def decode_address_entry(string, sort=False):
     address = sections[0]
     if len(address) == 6:
         if address[0:2] != "0x":
-            print("Incorrect address in string: ", string)
+            print("Incorrect address in string: ", string, file=sys.stderr)
             return ()
     elif len(address) == 4:
         address = "0x" + address
     else:
-        print("Incorrect address in string: ", string)
+        print("Incorrect address in string: ", string, file=sys.stderr)
         return ()
 
     try:
@@ -140,7 +141,7 @@ def decode_address_entry(string, sort=False):
         if trb_fe_type is None:
             return ()
     except ValueError:
-        print(Fore.RED + f"Incorrect address {address}" + Style.RESET_ALL)
+        print(Fore.RED + f"Incorrect address {address}" + Style.RESET_ALL, file=sys.stderr)
         return ()
 
     # do everything backwards
