@@ -94,9 +94,9 @@ def asic_tempid(address, uid_mode, temp_mode):
 
             if pretty_mode:
                 print(Fore.CYAN, end="")
-                print("  {:#0{}x}".format(rc2, 4), end="")
+                print("  {:#0{}x}".format(rc2, 18), end="")
             elif uid_mode:
-                print("{:#0{}x}".format(rc2, 4))
+                print("{:#0{}x}".format(rc2, 18))
 
         if pretty_mode:
             print(Style.RESET_ALL)
