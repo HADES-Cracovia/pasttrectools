@@ -1,4 +1,5 @@
-colorama
-setuptools
-matplotlib
 alive-progress
+colorama
+matplotlib
+setuptools
+tabulate

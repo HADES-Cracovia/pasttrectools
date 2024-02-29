@@ -180,7 +180,7 @@ class TrbNetComShell:
         rc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.print_verbose(rc)
         try:
-            return int(rc.stdout.decode().split()[1], 16)
+            return (int(x) for x in rc.stdout.decode().split())
         except IndexError:
             return 0xDEADBEEF  # TODO Add exceptions
 

@@ -20,85 +20,50 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import sys
 import argparse
+import sys
 from time import sleep
-from colorama import Fore, Style
 
 from alive_progress import alive_bar
+from colorama import Fore, Style
+from tabulate import tabulate
 
 from pasttrec import communication, g_verbose
-from pasttrec.misc import trbaddr
+from pasttrec.misc import trbaddr, write_asic, format_etrbid
 
 def_time = 0.0
 
 
-def scan_asic_communication(address, def_time=1.0, def_quick=False, def_no_skip=False):
+def scan_asic_communication(address, def_time=1.0, def_no_skip=False):
 
-    print("   TDC  Cable  Asic")
+    reg_range = range(12)
+    reg_test_vals = (0x00, 0xFF, 0x0F, 0xF0, 0x55, 0x99, 0x95, 0x59)
 
-    if def_quick is True:
-        reg_range = [3]
-        reg_test_vals = [0x5A]
-    else:
-        reg_range = range(12)
-        reg_test_vals = [0x00, 0xFF, 0x0F, 0xF0, 0x55, 0x99, 0x95, 0x59]
+    with alive_bar(
+        len(address) * len(reg_test_vals) * len(reg_range),
+        title=Fore.YELLOW + "Scanning ASIC registers:" + Style.RESET_ALL,
+        file=sys.stderr,
+    ) as bar:
+        sorted_results = write_asic(address, reg=reg_range, val=reg_test_vals, verify=True, bar=bar, sort=True)
 
-    test_ok = True
+    colalign = ("right",) * (len(reg_range) + 3)
+    header = ("TDC", "Cable", "Asic") + tuple(str(x) for x in reg_range)
+    rows = []
+    last_trbid = 0
 
-    for con in communication.make_asic_connections(address):
+    for key, res in sorted_results.items():
+        passed = all(val[0] == True for key, val in res.items())
+        line = (trbaddr(key[0]), key[1], key[2]) + tuple(
+            Fore.GREEN + "Passed" + Style.RESET_ALL
+            if all(val[0] == True for key, val in res.items() if key[0] == ref_reg)
+            else Fore.RED + "Failed" + Style.RESET_ALL
+            for ref_reg in reg_range
+        )
 
-        with alive_bar(
-            len(reg_range) * len(reg_test_vals),
-            title=Fore.YELLOW + "{:s}  {:5d} {:5d}  ".format(trbaddr(con.trbid), con.cable, con.asic) + Style.RESET_ALL,
-            file=sys.stderr,
-            receipt_text=True,
-            spinner=None,
-            monitor=False,
-            elapsed=False,
-            stats=False,
-        ) as bar:
-            asic_test_ok = True
+        rows.append(line)
 
-            for reg in reg_range:
-                reg_test_ok = True
-
-                for t in reg_test_vals:
-                    con.write_reg(reg, t)
-                    sleep(def_time)
-                    rc = con.read_reg(reg)
-                    try:
-                        _t = rc & 0xFF
-                    except ValueError as ve:
-                        bar.text(f"Wrong result: {rc.split()[1]} {ve}")
-                        _t = None
-
-                    if _t != t or _t is None:
-                        if not def_no_skip:
-                            bar.text(
-                                Fore.RED
-                                + " Test failed for register {:d}".format(reg)
-                                + Style.RESET_ALL
-                                + "  Sent {:d}, received {:d}".format(t, _t),
-                            )
-                            reg_test_ok = False
-                            break
-                    else:
-                        bar()
-
-                if reg_test_ok is False:
-                    asic_test_ok = False
-                    test_ok = False
-                    break
-
-            if asic_test_ok:
-                bar.text(Fore.GREEN + " OK" + Style.RESET_ALL)
-            else:
-                bar.text(Fore.RED + " FAILED" + Style.RESET_ALL)
-
-    if test_ok:
-        print("All test done and OK")
-        return True
+    if len(rows):
+        print(tabulate(rows, headers=header, colalign=colalign))
 
     return False
 
@@ -117,7 +82,6 @@ if __name__ == "__main__":
     )
 
     parser.add_argument("-n", "--no-skip", help="do not skip missing FEEs", action="store_true")
-    parser.add_argument("-q", "--quick", help="quick test", action="store_true")
     parser.add_argument("-t", "--time", help="sleep time", type=float, default=def_time)
     parser.add_argument(
         "-v",
@@ -135,5 +99,5 @@ if __name__ == "__main__":
         print(args)
 
     tup = communication.decode_address(args.trbids)
-    r = scan_asic_communication(tup, args.time, args.quick, args.no_skip)
+    r = scan_asic_communication(tup, args.time, args.no_skip)
     sys.exit(r)

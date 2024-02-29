@@ -21,13 +21,13 @@
 # SOFTWARE.
 
 import argparse
-from colorama import Fore, Style
 import sys
 
 from alive_progress import alive_bar
+from colorama import Fore, Style
 
 from pasttrec import communication
-from pasttrec.misc import trbaddr
+from pasttrec.misc import trbaddr, reset_asic
 
 def_spi_time = 0.0
 
@@ -65,16 +65,8 @@ if __name__ == "__main__":
     tup = communication.decode_address(args.trbids)
     tup = communication.filter_decoded_cables(tup)
 
-    conns = communication.make_cable_connections(tup)
-
     with alive_bar(
         len(tup), title=Fore.YELLOW + "Resetting" + Style.RESET_ALL, file=sys.stderr, receipt_text=True
     ) as bar:
-
-        for con in conns:
-            con.spi.delay_asic_spi = def_spi_time
-
-            bar.text(" {:s}:{:d}".format(trbaddr(con.trbid), con.cable))
-            rc = con.reset_spi()
-            bar()
+        reset_asic(tup, bar=bar)
         bar.text("Done")

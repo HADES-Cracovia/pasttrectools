@@ -20,78 +20,58 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import sys
 import argparse
+import sys
 from time import sleep
-from colorama import Fore, Style
 
 from alive_progress import alive_bar
+from colorama import Fore, Style
 
 from pasttrec import communication, g_verbose
-from pasttrec.misc import trbaddr
+from pasttrec.misc import trbaddr, write_asic, format_etrbid
 
 def_time = 0.0
 
 
 def scan_spi_communication(address, def_time=1.0, def_no_skip=False):
 
-    print("   TDC  Cable  Asic")
-
     reg_target = 0x0C
-    reg_test_vals = [0x00, 0xFF, 0x0F, 0xF0, 0x55, 0x99, 0x95, 0x59]
+    reg_test_vals = (0x00, 0xFF, 0x0F, 0xF0, 0x55, 0x99, 0x95, 0x59)
 
     tests_failed = 0
     tests_ok = 0
 
-    for con in communication.make_asic_connections(address):
+    with alive_bar(
+        len(address) * len(reg_test_vals),
+        title=Fore.YELLOW + "Scanning SPI connection  " + Style.RESET_ALL,
+        file=sys.stderr,
+    ) as bar:
+        sorted_results = write_asic(address, reg=(reg_target,), val=reg_test_vals, verify=True, bar=bar, sort=True)
 
-        with alive_bar(
-            len(reg_test_vals),
-            title=Fore.YELLOW + "{:s}  {:5d} {:5d}  ".format(trbaddr(con.trbid), con.cable, con.asic) + Style.RESET_ALL,
-            file=sys.stderr,
-            receipt_text=True,
-            spinner=None,
-            monitor=False,
-            elapsed=False,
-            stats=False,
-        ) as bar:
-            reg_test_ok = True
+    last_trbid = 0
+    print("Scan results:", end="")
+    for key, res in sorted_results.items():
 
-            for t in reg_test_vals:
-                con.write_reg(reg_target, t)
-                sleep(def_time)
-                rc = con.read_reg(reg_target)
-                try:
-                    _t = rc & 0xFF
-                except ValueError as ve:
-                    bar.text(f"Wrong result: {rc.split()[1]} {ve}")
-                    _t = None
+        if key[0] != last_trbid:
+            last_trbid = key[0]
+            print(f"\n- {trbaddr(last_trbid)}:", end="")
 
-                if _t != t or _t is None:
-                    if not def_no_skip:
-                        bar.text(
-                            Fore.RED
-                            + " Test failed for register {:d}".format(reg_target)
-                            + Style.RESET_ALL
-                            + "  Sent {:d}, received {:d}".format(t, _t),
-                        )
-                        reg_test_ok = False
-                        break
-                else:
-                    bar()
+        passed = all(val[0] == True for key, val in res.items())
 
-            if reg_test_ok:
-                bar.text(Fore.GREEN + " OK" + Style.RESET_ALL)
-                tests_ok += 1
-            else:
-                bar.text(Fore.RED + " FAILED" + Style.RESET_ALL)
-                tests_failed += 1
+        if passed:
+            print("  " + Fore.GREEN + format_etrbid(key) + Style.RESET_ALL, end="")
+            tests_ok += 1
+        else:
+            print("  " + Fore.RED + format_etrbid(key) + Style.RESET_ALL, end="")
+            tests_failed += 1
 
-    print(Fore.GREEN + f"OK tests: {tests_ok}  ", end="")
+    print(Style.RESET_ALL + "\n Summary:  ", end="")
+
+    print(Fore.YELLOW + f"Tests passed: {tests_ok}   ", end="")
     if tests_failed:
-        print(Fore.RED + f"Failed tests: {tests_failed}" + Style.RESET_ALL)
+        print(f"Tests failed: {tests_failed}" + Style.RESET_ALL)
     else:
-        print(Style.RESET_ALL + f"Failed tests: {tests_failed}")
+        print(Style.RESET_ALL + f"Tests failed: {tests_failed}")
 
     return False
 

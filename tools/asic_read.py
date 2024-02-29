@@ -21,66 +21,40 @@
 # SOFTWARE.
 
 import argparse
-from time import sleep
-from colorama import Fore, Style
 import sys
+from time import sleep
 
 from alive_progress import alive_bar
+from colorama import Fore, Style
+from tabulate import tabulate
 
 from pasttrec import communication
-from pasttrec.misc import trbaddr
+from pasttrec.misc import trbaddr, read_asic
 
 def_time = 0.0
 
 
-def read_asic(address):
-    results = {}
+def read_asics(address):
     n_regs = 12
 
-    stup_ct = communication.sort_by_ct(address)
+    with alive_bar(len(address) * n_regs, title="Reading out registers", file=sys.stderr) as bar:
+        sorted_results = read_asic(address, range(n_regs), bar=bar, sort=True)
 
-    with alive_bar(len(stup_ct) * n_regs, title="Reading out registers", file=sys.stderr) as bar:
+    color_map = (Fore.MAGENTA,) * 3 + (Fore.CYAN,) + (Fore.GREEN,) * 8
 
-        for cg in communication.group_cables(stup_ct):
-            cable_cons = communication.make_asic_connections(cg)
+    rows = []
+    for key, res in sorted_results.items():
+        color_res = zip(res, color_map)
+        line = tuple(Fore.YELLOW + str(s) for s in (trbaddr(key[0]), key[1], key[2], "")) + tuple(
+            color + f"{hex(val)}" + Style.RESET_ALL for ((reg, val), color) in color_res
+        )
+        rows.append(line)
 
-            for con in cable_cons:
-                for reg in range(n_regs):
+    colalign = ("right",) * (n_regs + 4)
+    header = ("TDC", "Cable", "Asic", "Reg#") + tuple(str(x) for x in range(n_regs))
 
-                    rc = con.read_reg(reg)
-                    for irc in rc:
-                        addr = irc[0]
-                        faddr = (addr, con.cable, con.asic)
-                        if not faddr in results:
-                            results[faddr] = [0] * n_regs
-                        results[faddr][reg] = irc[1] & 0xFF
-                    bar()
-
-    print("   TDC  Cable  Asic   Reg# " + Fore.YELLOW, end="")
-
-    if communication.g_verbose == 0:
-        for reg in range(n_regs):
-            print("    {:2d}".format(reg), end="")
-    print(Style.RESET_ALL)
-
-    sresults = dict(sorted(results.items()))
-    for key, res in sresults.items():
-        print(Fore.YELLOW + "{:s}  {:5d}  {:4d}        ".format(trbaddr(key[0]), key[1], key[2]), end="")
-
-        for reg in range(n_regs):
-            if reg < 3:
-                print(Fore.MAGENTA, end="")
-            elif reg == 3:
-                print(Fore.CYAN, end="")
-            else:
-                print(Fore.GREEN, end="")
-
-            if communication.g_verbose > 0:
-                print("Register: {0:#0{1}x}    Value: {2:#0{3}x}".format(reg, 2, _t, 4))
-            else:
-                print("  {:#0{}x}".format(res[reg], 4), end="")
-
-        print(Style.RESET_ALL)
+    if len(rows):
+        print(tabulate(rows, headers=header, colalign=colalign))
 
     return None
 
@@ -117,4 +91,4 @@ if __name__ == "__main__":
         print(args)
 
     tup = communication.decode_address(args.trbids)
-    r = read_asic(tup)
+    r = read_asics(tup)

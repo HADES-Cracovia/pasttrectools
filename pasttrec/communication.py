@@ -112,14 +112,19 @@ def detect_design(address):
     """Detect the Trb board type"""
     try:
         rc = trbnet_interface.read(address, 0x42)
-        return (address, tuple((irc[0], hardware.TrbBoardTypeMapping[irc[1] & 0xFFFF0000]) for irc in rc))
+        return (address, tuple((trbid, hardware.TrbBoardTypeMapping[hwtype & 0xFFFF0000]) for (trbid, hwtype) in rc))
 
     except ValueError:
-        print("TrbBoard {:s} not reachable.".format(trbaddr(address)))
+        print(Fore.RED + f"TrbBoard {trbaddr(address)} not reachable." + Style.RESET_ALL, file=sys.stderr)
         return ()
 
-    except KeyError:
-        print("FrontendTypeMapping not known for hardware type {:s} in {:s}".format(hex(rc), trbaddr(address)))
+    except KeyError as e:
+        print(
+            Fore.RED
+            + f"FrontendTypeMapping not known for hardware type {hex(e.args[0])} in {trbaddr(address)}"
+            + Style.RESET_ALL,
+            file=sys.stderr,
+        )
         return ()
 
 

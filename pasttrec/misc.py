@@ -21,8 +21,11 @@
 # SOFTWARE.
 
 from colorama import Fore, Style
+import itertools
+import time
+import types
 
-from pasttrec import hardware
+from pasttrec import communication, hardware
 
 # Custom settings
 
@@ -201,3 +204,158 @@ def bl_list_with_marker(bl_list, pos):
         else:
             s += "{:d}, ".format(bl_list[i])
     return s
+
+
+def is_iterable(object):
+    try:
+        iter(object)
+        return True
+    except TypeError:
+        return False
+
+
+def format_etrbid(etrbid):
+    return f"{trbaddr(etrbid[0])}:{etrbid[1]}:{etrbid[2]}"
+
+
+def format_ctrbid(ctrbid):
+    return f"{trbaddr(ctrbid[0])}:{ctrbid[1]}"
+
+
+def read_tempid(address, uid_mode, temp_mode, bar=None, sort=False):
+    """Read temperature and/or id of given cables."""
+    full_mode = not uid_mode and not temp_mode
+
+    address_ct_sorted = communication.sort_by_ct(address)
+
+    results = {}
+
+    for cg in communication.group_cables(address_ct_sorted):
+        cable_cons = communication.make_cable_connections(cg)
+
+        for con in cable_cons:
+            rc1 = con.activate_1wire()
+
+        if uid_mode:
+            time.sleep(con.spi.delay_1wire_id)
+        else:
+            time.sleep(con.spi.delay_1wire_temp)
+
+        for con in cable_cons:
+            rc1 = con.get_1wire_temp() if temp_mode or full_mode else ()
+            rc2 = con.get_1wire_id() if uid_mode or full_mode else ()
+
+            if len(rc1) == 0 and len(rc2) != 0:
+                rc1 = ((0, 0),) * len(rc2)
+            elif len(rc2) == 0 and len(rc1) != 0:
+                rc2 = ((0, 0),) * len(rc1)
+
+            group = ((x[0][0], x[0][1], x[1][1]) for x in zip(rc1, rc2))
+            for entry in group:
+                results[entry[0], con.cable] = entry[1], entry[2]
+            if bar:
+                bar()
+
+    if sort:
+        return dict(sorted(results.items()))
+    else:
+        return results
+
+
+def reset_asic(address, bar=None):
+    """Reset ASICs on given cables."""
+
+    address_ct_sorted = communication.sort_by_ct(address)
+
+    results = {}
+
+    for cg in communication.group_cables(address_ct_sorted):
+        cable_cons = communication.make_cable_connections(cg)
+
+        for con in cable_cons:
+            rc = con.reset_spi()
+            if bar:
+                bar()
+
+
+def read_asic(address, reg=None, bar=None, sort=False):
+    address_ct_sorted = communication.sort_by_ct(address)
+
+    results = {}
+
+    for cg in communication.group_cables(address_ct_sorted):
+        cable_cons = communication.make_asic_connections(cg)
+
+        for con in cable_cons:
+            if not is_iterable(reg):
+                reg = tuple(reg)
+
+            for r in reg:
+                rc = con.read_reg(r)
+                for irc in rc:
+                    addr = irc[0]
+                    faddr = (addr, con.cable, con.asic)
+                    if not faddr in results:
+                        results[faddr] = [0] * len(reg)
+                    results[faddr][r] = (r, irc[1] & 0xFF)
+                if bar:
+                    bar()
+
+    if sort:
+        return dict(sorted(results.items()))
+    else:
+        return results
+
+
+def write_asic(address, data=None, reg=None, val=None, verify=False, bar=None, sort=False):
+    is_data = data is not None
+    is_reg_val = reg is not None and val is not None
+
+    if not ((is_data and not is_reg_val) or (not is_data and is_reg_val)):
+        raise "Either data or reg,val can be used"
+
+    if is_data:
+        if not is_iterable(data):
+            raise "'data' must be of 'iterable' type"
+        _data = data
+
+    elif is_reg_val:
+        if not (is_iterable(reg) and is_iterable(val)):
+            raise "'reg' and 'val' must be of 'iterable' type"
+        _data = tuple(itertools.product(reg, val))
+
+    address_ct_sorted = communication.sort_by_ct(address)
+
+    results = {}
+
+    for cg in communication.group_cables(address_ct_sorted):
+        cable_cons = communication.make_asic_connections(cg)
+
+        for con in cable_cons:
+
+            for r, d in _data:
+                con.write_reg(r, d)
+
+                if verify:
+                    rc = con.read_reg(r)
+
+                    for irc in rc:
+                        addr = irc[0]
+                        faddr = (addr, con.cable, con.asic)
+
+                        if not faddr in results:
+                            results[faddr] = {}
+
+                        _d = irc[1] & 0xFF
+                        results[faddr][r, d] = _d == d, _d
+
+                if bar:
+                    bar()
+
+    if verify:
+        if sort:
+            return dict(sorted(results.items()))
+        else:
+            return results
+    else:
+        return None
