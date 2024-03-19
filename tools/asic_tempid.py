@@ -26,11 +26,12 @@ import json
 import sys
 import time
 
-from alive_progress import alive_bar
-from colorama import Fore, Style
+from alive_progress import alive_bar  # type: ignore
+from colorama import Fore, Style  # type: ignore
 
-from pasttrec import communication
-from pasttrec.misc import trbaddr, read_tempid
+from pasttrec import communication, misc
+from pasttrec.etrbid import trbaddr, ctrbids_from_etrbids
+from pasttrec.misc import read_tempid
 
 def_time = 0
 
@@ -38,8 +39,18 @@ def_time = 0
 def asic_tempid(address, uid_mode, temp_mode, no_color, trbnet_map):
     full_mode = not uid_mode and not temp_mode
 
-    with alive_bar(len(address), title="Reading out 1-wires", file=sys.stderr) as bar:
-        sorted_results = read_tempid(address, uid_mode, temp_mode, bar=bar, sort=True)
+    with alive_bar(
+        len(address),
+        title=f"{Fore.BLUE}Reading 1-wire{Style.RESET_ALL} ",
+        file=sys.stderr,
+    ) as bar:
+        sorted_results = read_tempid(
+            communication.make_cable_connections(address),
+            uid_mode,
+            temp_mode,
+            bar=bar,
+            sort=True,
+        )
 
     if full_mode:
         print("   TDC  Cable   Temp   FebId")
@@ -76,8 +87,8 @@ def asic_tempid(address, uid_mode, temp_mode, no_color, trbnet_map):
         print(Style.RESET_ALL)
 
     if trbnet_map is not None:
-        the_map = {hex(k[0]): {} for k, v in results.items() if v[1] != 0}
-        for k, v in results.items():
+        the_map = {hex(k[0]): {} for k, v in sorted_results.items() if v[1] != 0}
+        for k, v in sorted_results.items():
             if v[1] != 0:
                 the_map[hex(k[0])][k[1]] = "{:#0{}x}".format(v[1], 18)
 
@@ -91,22 +102,7 @@ if __name__ == "__main__":
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
-    parser.add_argument(
-        "trbids",
-        help="list of TRBids to scan in form" " addres[:card-0-1-2[:asic-0-1]]",
-        type=str,
-        nargs="+",
-    )
-
-    parser.add_argument("-t", "--time", help="sleep time", type=float, default=def_time)
-    parser.add_argument(
-        "-v",
-        "--verbose",
-        help="verbose level: 0, 1, 2, 3",
-        type=int,
-        choices=[0, 1, 2, 3],
-        default=0,
-    )
+    misc.parser_common_options(parser)
 
     group = parser.add_mutually_exclusive_group()
 
@@ -114,17 +110,13 @@ if __name__ == "__main__":
     group.add_argument("--temp", help="show temperature", action="store_true")
 
     parser.add_argument("--no-color", help="don't use colors", action="store_true")
-    parser.add_argument("-m", "--trbnet-map", help="export trbnet map", type=str)
+    parser.add_argument("-t", "--trbnet-map", help="export trbnet map", type=str)
 
     args = parser.parse_args()
 
-    communication.g_verbose = args.verbose
-    def_time = args.time
+    communication.make_trbids_db(args.trbids, args.ignore_missing)
 
-    if communication.g_verbose > 0:
-        print(args)
+    etrbids = communication.decode_address(args.trbids, args.ignore_missing)
+    ctrbids = ctrbids_from_etrbids(etrbids)
 
-    etrbids = communication.decode_address(args.trbids)
-    tup = communication.filter_decoded_cables(etrbids)
-
-    r = asic_tempid(tup, args.uid, args.temp, args.no_color, args.trbnet_map)
+    r = asic_tempid(ctrbids, args.uid, args.temp, args.no_color, args.trbnet_map)

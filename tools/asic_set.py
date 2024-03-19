@@ -36,7 +36,7 @@ def fill_register(address, value):
 
 
 def set_register(address, register, value):
-    for con in communication.make_asic_connections(address):
+    for con in communication.asic_connections(address):
         con.write_reg(register, value & 0xFF)
 
     return 0
@@ -52,7 +52,12 @@ if __name__ == "__main__":
 
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
-        "-f", "--fill", help="Fill all registers with value", type=lambda x: int(x, 0), nargs=1, metavar="VALUE"
+        "-f",
+        "--fill",
+        help="Fill all registers with value",
+        type=lambda x: int(x, 0),
+        nargs=1,
+        metavar="VALUE",
     )
     group.add_argument(
         "-r",
@@ -62,7 +67,13 @@ if __name__ == "__main__":
         nargs=2,
         metavar=("REGISTER", "VALUE"),
     )
-    group.add_argument("-t", "--threshold", help="Set threshold (range: 0-127)", type=lambda x: int(x, 0), nargs=1)
+    group.add_argument(
+        "-t",
+        "--threshold",
+        help="Set threshold (range: 0-127)",
+        type=lambda x: int(x, 0),
+        nargs=1,
+    )
 
     parser.add_argument(
         "-v",
@@ -75,12 +86,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    communication.g_verbose = args.verbose
-
-    if communication.g_verbose > 0:
-        print(args)
-
-    tup = communication.decode_address(args.trbids)
+    tup = communication.decode_address(args.trbids, args.ignore_missing)
 
     if args.fill:
         sys.exit(fill_register(tup, args.fill[0]))

@@ -26,8 +26,7 @@ This moduel provides implementation for various interfaces, like libtrbnet and s
 
 import abc
 
-from pasttrec import g_verbose
-from pasttrec.misc import trbaddr
+from pasttrec.etrbid import trbaddr
 import subprocess
 
 
@@ -92,19 +91,18 @@ class TrbNetComLib:
         if rc is None:
             return
 
-        if g_verbose >= 1:
-            print("[{:s}]  {:d}".format(hex(rc[0]), rc[1]))
+        print("[{:s}]  {:d}".format(hex(rc[0]), rc[1]))
 
     def write(self, trbid, reg, data):
         rc = self.trbnet.trb_register_write(trbid, reg, data)
-        self.print_verbose(rc)
+        # self.print_verbose(rc)
 
     def write_mem(self, trbid, reg, data, option=1):
         rc = self.trbnet.trb_register_write_mem(trbid, reg, option, data)
 
     def read(self, trbid, reg):
         rc = self.trbnet.trb_register_read(trbid, reg)
-        self.print_verbose(rc)
+        # self.print_verbose(rc)
         if len(rc):
             return group_output(rc)
         else:
@@ -116,7 +114,7 @@ class TrbNetComLib:
         Function return of map where the key is the trb address and value is tuple of memory block
         """
         rc = self.trbnet.trb_register_read_mem(trbid, reg, option, length)
-        self.print_verbose(rc)
+        # self.print_verbose(rc)
         i = 0
         res = {}
         while i < len(rc):
@@ -134,8 +132,7 @@ class TrbNetComShell:
         if rc is None:
             return
 
-        if g_verbose >= 1:
-            print("[{:s}]  {:d}".format(hex(rc[0]), rc[1]))
+        print("[{:s}]  {:d}".format(hex(rc[0]), rc[1]))
 
     def write(self, trbid, reg, data):
         cmd = ["trbcmd", "w", hex(trbid), hex(reg), hex(data)]
@@ -145,7 +142,7 @@ class TrbNetComShell:
             return True
         """
         rc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        self.print_verbose(rc)
+        # self.print_verbose(rc)
         return rc.stdout.decode()
 
     def write_mem(self, trbid, reg, data, option=1):
@@ -166,7 +163,7 @@ class TrbNetComShell:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        self.print_verbose(rc)
+        # self.print_verbose(rc)
         return rc.stdout.decode()
 
     def read(self, trbid, reg):
@@ -178,9 +175,8 @@ class TrbNetComShell:
         """
 
         rc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        self.print_verbose(rc)
         try:
-            return (int(x) for x in rc.stdout.decode().split())
+            return group_output(tuple((int(x, 16) for x in rc.stdout.decode().split())))
         except IndexError:
             return 0xDEADBEEF  # TODO Add exceptions
 
@@ -192,5 +188,5 @@ class TrbNetComShell:
             return True
         """
         rc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        self.print_verbose(rc)
+        # self.print_verbose(rc)
         return rc.stdout.decode()

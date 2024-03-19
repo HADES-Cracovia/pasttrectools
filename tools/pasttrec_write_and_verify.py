@@ -44,11 +44,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    communication.g_verbose = args.verbose
-
-    if communication.g_verbose > 0:
-        print(args)
-
     with open(args.file) as f:
         data = f.readlines()
         for line in data:

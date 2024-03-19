@@ -21,6 +21,8 @@
 # SOFTWARE.
 
 import argparse
+import json
+import sys
 from time import sleep
 import curses
 
@@ -30,14 +32,13 @@ def_time = 0
 def_diffs = False
 prev_scalers = None
 
-def_broadcast_addr = 0xFE4C
+def_broadcast_addr = 0xFFFF
 def_max_bl_register_steps = 32
 def_pastrec_thresh_range = [0x00, 0x7F]
 def_pastrec_channel_range = 8
 def_pastrec_bl_base = 0x00000
 def_pastrec_bl_range = [0x00, def_max_bl_register_steps]
 
-par_address = None
 par_loop = None
 
 
@@ -51,15 +52,16 @@ def show_scalers(stdscr):
     if prev_scalers is not None and def_diffs:
         ss = a1.diff(prev_scalers)
     else:
-        ss = a1
+        ss = a1.scalers
     prev_scalers = a1
 
-    ntdsc = len(ss.scalers)
+    max_tdcs = len(ss)
+    max_scalers = max((len(val) for key, val in ss.items()))
 
     field_width = 10
     height, width = stdscr.getmaxyx()
-    maxnx = min(ntdsc, (width - field_width) / field_width)
-    maxny = min(48, height - 1)
+    maxnx = min(max_tdcs, (width - field_width) / field_width)
+    maxny = min(max_scalers, height - 1)
 
     stdscr.clear()
     stdscr.addstr(0, 0, "R={:.2f} s".format(def_time), curses.A_DIM)
@@ -68,20 +70,20 @@ def show_scalers(stdscr):
         stdscr.addstr(chan + 1, 0, "Chan {:#3d}  ".format(chan), curses.A_STANDOUT)
 
     cnt = 0
-    for tdc in sorted(ss.scalers):
+    for tdc, counters in sorted(ss.items()):
         if cnt > int(maxnx) - 1:
             break
         stdscr.addstr(
             0,
             field_width + cnt * field_width,
-            "{:>{}s}".format(tdc[:field_width], field_width),
+            "{:>{}s}".format(hex(tdc), field_width),
             curses.A_STANDOUT,
         )
         for n in range(int(maxny)):
             stdscr.addstr(
                 1 + n,
                 field_width + cnt * field_width,
-                "{:>#{}d}".format(ss.scalers[tdc][n], field_width),
+                "{:>#{}d}".format(ss[tdc][n], field_width),
                 curses.A_BOLD,
             )
         cnt = cnt + 1
@@ -119,8 +121,7 @@ if __name__ == "__main__":
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
-    # parser.add_argument('trbids', help='list of TRBids to scan in form'
-    #                    ' addres[:card-0-1-2[:asic-0-1]]', type=str, nargs="+")
+    misc.parser_common_options(parser)
 
     parser.add_argument("-d", "--diffs", help="show differences", action="store_true")
 
@@ -134,5 +135,4 @@ if __name__ == "__main__":
     if def_time > 0:
         par_loop = True
 
-    par_address = 0xFE4C  # args.trbids
     curses.wrapper(scan_scalers)

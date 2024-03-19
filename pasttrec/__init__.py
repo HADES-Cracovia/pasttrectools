@@ -4,6 +4,5 @@
 # from .communication import *
 # from .output_formats import *
 
-LIBVERSION = "1.0"
-
-g_verbose = 0
+__version__ = "0.11.1"
+LIBVERSION = "3.0"

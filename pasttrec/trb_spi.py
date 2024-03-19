@@ -285,37 +285,3 @@ class SpiTrbTdc:
         print(f" SPI ASIC delay  : {self.delay_asic_spi}")
         print(f" 1wire temp delay: {self.delay_1wire_temp}")
         print(f" 1wire id delay  : {self.delay_1wire_id}")
-
-
-class TrbSpiEncoder(metaclass=abc.ABCMeta):
-    """A TrbMetaclass that will be used for trb interface class creation."""
-
-    @classmethod
-    def __subclasshook__(self, subclass):
-        return (
-            hasattr(subclass, "reg_write")
-            and callable(subclass.reg_write)
-            and hasattr(subclass, "reg_read")
-            and callable(subclass.reg_read)
-            and hasattr(subclass, "reg_write_data")
-            and callable(subclass.reg_write_data)
-            and hasattr(subclass, "reg_write_chunk")
-            and callable(subclass.reg_write_chunk)
-            or NotImplemented
-        )
-
-    @abc.abstractmethod
-    def reg_write(trbid, cable, asic, reg, val):
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def reg_read(trbid, cable, asic, reg):
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def reg_write_data(trbid, cable, asic, data):
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def reg_write_chunk(trbid, cable, asic, data):
-        raise NotImplementedError

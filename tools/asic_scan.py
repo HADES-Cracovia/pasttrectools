@@ -24,27 +24,33 @@ import argparse
 import sys
 from time import sleep
 
-from alive_progress import alive_bar
-from colorama import Fore, Style
-from tabulate import tabulate
+from alive_progress import alive_bar  # type: ignore
+from colorama import Fore, Style  # type: ignore
+from tabulate import tabulate  # type: ignore
 
-from pasttrec import communication, g_verbose
-from pasttrec.misc import trbaddr, write_asic, format_etrbid
+from pasttrec import communication, misc
+from pasttrec.etrbid import trbaddr
+from pasttrec.requests import write_asic
 
-def_time = 0.0
 
-
-def scan_asic_communication(address, def_time=1.0, def_no_skip=False):
+def scan_asic_communication(address, def_no_skip=False):
 
     reg_range = range(12)
     reg_test_vals = (0x00, 0xFF, 0x0F, 0xF0, 0x55, 0x99, 0x95, 0x59)
 
     with alive_bar(
         len(address) * len(reg_test_vals) * len(reg_range),
-        title=Fore.YELLOW + "Scanning ASIC registers:" + Style.RESET_ALL,
+        title=f"{Fore.BLUE}Scanning ASIC{Style.RESET_ALL}  ",
         file=sys.stderr,
     ) as bar:
-        sorted_results = write_asic(address, reg=reg_range, val=reg_test_vals, verify=True, bar=bar, sort=True)
+        sorted_results = write_asic(
+            communication.make_asic_connections(address),
+            reg=reg_range,
+            val=reg_test_vals,
+            verify=True,
+            bar=bar,
+            sort=True,
+        )
 
     colalign = ("right",) * (len(reg_range) + 3)
     header = ("TDC", "Cable", "Asic") + tuple(str(x) for x in reg_range)
@@ -52,11 +58,13 @@ def scan_asic_communication(address, def_time=1.0, def_no_skip=False):
     last_trbid = 0
 
     for key, res in sorted_results.items():
-        passed = all(val[0] == True for key, val in res.items())
+        passed = all(val[0] is True for key, val in res.items())
         line = (trbaddr(key[0]), key[1], key[2]) + tuple(
-            Fore.GREEN + "Passed" + Style.RESET_ALL
-            if all(val[0] == True for key, val in res.items() if key[0] == ref_reg)
-            else Fore.RED + "Failed" + Style.RESET_ALL
+            (
+                Fore.GREEN + "Passed" + Style.RESET_ALL
+                if all(val[0] is True for key, val in res.items() if key[0] == ref_reg)
+                else Fore.RED + "Failed" + Style.RESET_ALL
+            )
             for ref_reg in reg_range
         )
 
@@ -74,30 +82,14 @@ if __name__ == "__main__":
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
-    parser.add_argument(
-        "trbids",
-        help="list of TRBids to scan in form" " addres[:card-0-1-2[:asic-0-1]]",
-        type=str,
-        nargs="+",
-    )
+    misc.parser_common_options(parser)
 
     parser.add_argument("-n", "--no-skip", help="do not skip missing FEEs", action="store_true")
-    parser.add_argument("-t", "--time", help="sleep time", type=float, default=def_time)
-    parser.add_argument(
-        "-v",
-        "--verbose",
-        help="verbose level: 0, 1, 2, 3",
-        type=int,
-        choices=[0, 1, 2, 3],
-        default=0,
-    )
 
     args = parser.parse_args()
 
-    g_verbose = args.verbose
-    if g_verbose > 0:
-        print(args)
+    communication.make_trbids_db(args.trbids, args.ignore_missing)
 
-    tup = communication.decode_address(args.trbids)
-    r = scan_asic_communication(tup, args.time, args.no_skip)
+    etrbids = communication.decode_address(args.trbids, args.ignore_missing)
+    r = scan_asic_communication(etrbids, args.no_skip)
     sys.exit(r)

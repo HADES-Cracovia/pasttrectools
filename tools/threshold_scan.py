@@ -21,8 +21,8 @@
 # SOFTWARE.
 
 import argparse
-from time import sleep
 import json
+from time import sleep
 
 from pasttrec import hardware, communication, misc
 from pasttrec.misc import parse_rm_scalers, calc_tdc_channel
@@ -179,12 +179,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    communication.g_verbose = args.verbose
     def_time = args.time
     def_threshold_max = args.limit
-
-    if communication.g_verbose > 0:
-        print(args)
 
     p = hardware.AsicRegistersValue(
         bg_int=args.source,
@@ -198,7 +194,7 @@ if __name__ == "__main__":
         bl=[0] * 8,
     )
 
-    tup = communication.decode_address(args.trbids)
+    tup = communication.decode_address(args.trbids, args.ignore_missing)
 
     if args.defaults:
         communication.asics_to_defaults(tup, p)

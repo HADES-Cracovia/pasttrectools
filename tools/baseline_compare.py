@@ -21,12 +21,13 @@
 # SOFTWARE.
 
 import argparse
-from colorama import Fore, Style
 import json
+
+from colorama import Fore, Style  # type: ignore
 
 try:
     import numpy as np
-    import gnuplotlib as gp
+    import gnuplotlib as gp  # type: ignore
 
     found = True
 except ModuleNotFoundError:
@@ -80,10 +81,6 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-
-    communication.g_verbose = args.verbose
-    if communication.g_verbose > 0:
-        print(args)
 
     with open(args.json_file1) as json_data:
         d1 = json.load(json_data)

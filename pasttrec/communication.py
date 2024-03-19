@@ -22,10 +22,10 @@
 
 import os
 import sys
+import time
 from colorama import Fore, Style
 
-from pasttrec import hardware, g_verbose
-from pasttrec.misc import trbaddr
+from pasttrec import etrbid, hardware, misc
 from pasttrec.trb_spi import SpiTrbTdc
 
 
@@ -39,8 +39,7 @@ else:
     trbnet_available = True
     lib = os.getenv("LIBTRBNET")
     host = os.getenv("DAQOPSERVER")
-    if g_verbose:
-        print("INFO: Trbnet library found in {:s} at host {:s}".format(lib, host))
+    # print("INFO: Trbnet library found in {:s} at host {:s}".format(lib, host))
 
 cmd_to_file = None  # if set to file, redirect output to this file
 trbnet_interface_env = os.getenv("TRBNET_INTERFACE")
@@ -94,6 +93,100 @@ def static_vars(**kwargs):
     return decorate
 
 
+def read_trb_features(trbid, ignore_missing):
+    """
+    Get TRB features Info.
+
+    Parameters
+    ----------
+    trbid : int
+        Valid trbid address
+    ignore_missing : bool
+        Do not throw exception when trbid is not responding
+
+    Returns
+    -------
+    features : tuple(trbid, responders) or None
+        List of the trbid responders with hw and features.
+        The 'responders' is a tuple of (responding_trbid, (hwtype, features)).
+    """
+
+    try:
+        rc_hw = trbnet_interface.read(trbid, 0x42)
+        rc_fh = trbnet_interface.read(trbid, 0x43)
+        rc_fl = trbnet_interface.read(trbid, 0x41)
+    except ValueError as e:
+        if ignore_missing:
+            return None
+        else:
+            raise e
+
+    responders = tuple(
+        (responder_trbid, (hw, fh << 32 | fl)) for (responder_trbid, hw), (_, fh), (_, fl) in zip(rc_hw, rc_fh, rc_fl)
+    )
+
+    return (trbid, responders)
+
+
+def make_trbids_db(ptrbids: tuple, ignore_missing):
+    """
+    Make database of trbids and design types.
+
+    The trbids are checket for the address type. The broadcasts addresses are takend from design types db, and regular
+    addresses are queried from the trbnet. For the broadcast adddress having responders, each responder is also add
+    with itself being its own responder.
+
+    Parameters
+    ----------
+    ptrbids : tuple
+        Tuple of ptrbids strings
+    ignore_missing : bool
+        Ignore missing trbids. If trbid is missing, the exception is raised.
+    """
+    trbids = etrbid.trbids_from_ptrbids(ptrbids)
+
+    for trbid in trbids:
+        if trbid in hardware.trb_designs_map:
+            continue
+
+        res = read_trb_features(trbid, ignore_missing)
+
+        if res is None:
+            continue
+
+        # Loop over all responders. If this was single trbid one expect also single responder.
+        # In case of broadcast address, responders would have different trbids.
+        # If this was broadcast, cehck whetehr are responders are of the same hwtype and features.
+        # If they are not, the address cannot be used for commin actions.
+
+        is_broadcast = False
+        responders_features = set()
+        responders_hwtypes = set()
+        responders_trbids = set()
+
+        if res[1] is not None:
+            for responder_trbid, (hwtype, features) in res[1]:
+
+                responders_trbids.add(responder_trbid)
+                responders_hwtypes.add(hwtype)
+                responders_features.add(features)
+
+                hardware.trb_designs_map[responder_trbid] = hardware.TrbDesignInfo(hwtype, features, (responder_trbid,))
+
+                if responder_trbid != trbid:
+                    is_broadcast = True
+
+        # If the 'responders_features' set has length larger than 1, then we had different features set.
+        if is_broadcast:
+            hardware.trb_designs_map[trbid] = hardware.TrbDesignInfo(
+                0 if len(responders_hwtypes) != 1 else tuple(responders_hwtypes)[0],
+                0 if len(responders_features) != 1 else tuple(responders_features)[0],
+                tuple(responders_trbids),
+            )
+
+    return hardware.trb_designs_map
+
+
 @static_vars(designs_map={})
 def get_trb_design_type(trbid):
     """Caches the design types."""
@@ -102,78 +195,16 @@ def get_trb_design_type(trbid):
         trbid = int(trbid, 16)
 
     if trbid not in get_trb_design_type.designs_map:
-        design = detect_design(trbid)
+        design = hardware.detect_design(trbid)
         get_trb_design_type.designs_map[trbid] = design[1][0][1] if design else None
 
     return get_trb_design_type.designs_map[trbid]
 
 
-def detect_design(address):
-    """Detect the Trb board type"""
-    try:
-        rc = trbnet_interface.read(address, 0x42)
-        return (address, tuple((trbid, hardware.TrbBoardTypeMapping[hwtype & 0xFFFF0000]) for (trbid, hwtype) in rc))
-
-    except ValueError:
-        print(Fore.RED + f"TrbBoard {trbaddr(address)} not reachable." + Style.RESET_ALL, file=sys.stderr)
-        return ()
-
-    except KeyError as e:
-        print(
-            Fore.RED
-            + f"FrontendTypeMapping not known for hardware type {hex(e.args[0])} in {trbaddr(address)}"
-            + Style.RESET_ALL,
-            file=sys.stderr,
-        )
-        return ()
-
-
-def extract_and_validate_trbid(string):
-    sections = tuple(string.split(":"))
-
-    if len(sections) > 3:
-        print("Error in string ", string)
-        return ()
-
-    # check address
-    address = sections[0]
-    if len(address) == 6:
-        if address[0:2] != "0x":
-            print("Incorrect address in string: ", string, file=sys.stderr)
-            return ()
-    elif len(address) == 4:
-        address = "0x" + address
-    else:
-        print("Incorrect address in string: ", string, file=sys.stderr)
-        return ()
-
-    return sections
-
-
-def expand_ptrbid(sections, n_cables, n_asics):
-    sec_len = len(sections)
-
-    # do everything backwards
-    # asics
-    if sec_len == 3 and len(sections[2]) > 0:
-        _asics = sections[2].split(",")
-        asics = tuple(int(a) for a in _asics if int(a) in range(n_asics))  # TODO add 1-2 mode
-    else:
-        asics = tuple(range(n_asics))
-
-    # asics
-    if sec_len >= 2 and len(sections[1]) > 0:
-        _cables = sections[1].split(",")
-        cables = tuple(int(c) for c in _cables if int(c) in range(n_cables))  # TODO add 1-4 mode
-    else:
-        cables = tuple(range(n_cables))
-
-    return tuple((int(sections[0], 16), y, z) for y in cables for z in asics)
-
-
-def decode_address_entry(string, sort=False):
+def decode_address_entry(strbid, ignore_missing, sort=False):
     """
-    Converts address into [ trbnet, cable, cable, asic ] tuples input string:
+    Converts strbid into ( trbnet, cable, cable, asic ) tuples from input string.
+
     AAAAAA[:B[:C]]
       AAAAAA - trbnet address, can be in form 0xAAAA or AAAA
       B - cable: 1, 2, 3, or empty ("", all cables), or two or three cables
@@ -185,82 +216,40 @@ def decode_address_entry(string, sort=False):
      0x6400::2 - all cables, asic 2
     """
 
-    address_t = extract_and_validate_trbid(string)
+    if isinstance(strbid, (int,)):
+        address_t = (strbid,)
+    else:
+        address_t = etrbid.extract_strbid(strbid)
 
     try:
         trb_fe_type_t = get_trb_design_type(address_t[0])
         if trb_fe_type_t == ():
             return ()
 
+    except hardware.MissingFeatures as e:
+        if ignore_missing:
+            return ()
+        else:
+            raise e
+
     except ValueError:
         print(Fore.RED + f"Incorrect address {address}" + Style.RESET_ALL, file=sys.stderr)
         return ()
 
     trb_fe_type = trb_fe_type_t
-    return expand_ptrbid(address_t, trb_fe_type.cables, trb_fe_type.asics) if trb_fe_type else ()
+    return etrbid.expand_strbid(address_t, trb_fe_type.cables, trb_fe_type.asics) if trb_fe_type else ()
 
 
-def decode_address(string):
+def decode_address(strbid, ignore_missing):
     """Use this for a single string or list of strings."""
 
-    if type(string) is str:
-        return decode_address_entry(string)
+    if len(hardware.trb_designs_map) == 0:
+        print(Fore.RED + f"TRB database is empty. Did you call 'make_trbids_db()'?" + Style.RESET_ALL, file=sys.stderr)
+
+    if isinstance(strbid, (tuple, list)):
+        return sum((decode_address_entry(s, ignore_missing) for s in strbid), ())
     else:
-        return sum((decode_address_entry(s) for s in string), ())
-
-
-def filter_raw_trbids(addresses):
-    """Return list of unique trbnet addresses."""
-
-    return tuple(set((int(x.split(":")[0], 16) for x in addresses)))
-
-
-def filter_decoded_trbids(addresses):
-    """Return list of unique trbnet addresses."""
-
-    return tuple(set(trbid for trbid, *_ in addresses))
-
-
-def filter_decoded_cables(addresses):
-    """Return list of unique trbnet ctrbids."""
-    return tuple(set((trbid, cable) for trbid, cable, *_ in addresses if addresses is not None))
-
-
-def group_cables(ctrbids_tuple: tuple):
-    try:
-        min_c = min(ctrbids_tuple, key=lambda tup: tup[1])[1]
-        max_c = max(ctrbids_tuple, key=lambda tup: tup[1])[1]
-    except ValueError:
-        return ()
-
-    def tup_group(c, ct):
-        return tuple(tup for tup in ct if tup[1] == c)
-
-    return tuple(sort_by_trbid(tup_group(x, ctrbids_tuple)) for x in range(min_c, max_c + 1))
-
-
-def sort_by_cable(xtrbids_tuple: tuple):
-    return tuple(sorted(xtrbids_tuple, key=lambda tup: (tup[1], tup[0])))
-
-
-def sort_by_ct(xtrbids_tuple: tuple):
-    return tuple(sorted(xtrbids_tuple, key=lambda tup: (tup[1], tup[0])))
-
-
-def sort_by_tc(xtrbids_tuple: tuple):
-    return tuple(sorted(xtrbids_tuple, key=lambda tup: (tup[0], tup[1])))
-
-
-def sort_by_trbid(xtrbids_tuple: tuple):
-    return tuple(sorted(xtrbids_tuple, key=lambda tup: tup[0]))
-
-
-def print_verbose(rc):
-    cmd = " ".join(rc.args)
-    rtc = rc.returncode
-
-    if g_verbose >= 1:
-        print("[{:d}]  {:s}".format(rtc, cmd))
+        return decode_address_entry(strbid, ignore_missing)
 
 
 class CardConnection:
@@ -270,8 +259,8 @@ class CardConnection:
     encoder = hardware.PasttrecDataWordEncoder()
 
     def __init__(self, trb_frontend, trbid, cable):
-        if not isinstance(trb_frontend, hardware.TrbBoardType):
-            raise TypeError("Must be of TrbBoardType type")
+        if not isinstance(trb_frontend, hardware.TrbDesignSpecs):
+            raise TypeError("Must be of TrbDesignSpecs type")
 
         self.trb_fe_type = trb_frontend
         self.trbid = trbid
@@ -290,7 +279,7 @@ class CardConnection:
         return self.trb_spi
 
     @property
-    def address(self):
+    def cable_address(self):
         return (self.trbid, self.cable)
 
     def read_1wire_temp(self):
@@ -315,17 +304,23 @@ class CardConnection:
         return f"Frontend connection to {trbaddr(self.trbid)} for cable={self.cable}"
 
 
-def make_cable_connections(address):
+def cable_connections(address):
     """Make instances of CardConenction based on the decoded addresses."""
 
-    filtered_cables = filter_decoded_cables(address)
-    sorted_cables = sort_by_cable(filtered_cables)
+    filtered_cables = etrbid.ctrbids_from_etrbids(address)
+    sorted_cables = etrbid.sort_by_cable(filtered_cables)
 
     return tuple(
         CardConnection(get_trb_design_type(addr), addr, cable)
         for addr, cable in sorted_cables
         if get_trb_design_type(addr) is not None
     )
+
+
+def make_cable_connections(address):
+    """Make groups of CardConenction based on the decoded addresses."""
+
+    return tuple((cg, cable_connections(cg)) for cg in etrbid.group_cables(address))
 
 
 class PasttrecConnection(CardConnection):
@@ -364,17 +359,25 @@ class PasttrecConnection(CardConnection):
         self.trb_spi.write(self.cable, word << 1)
 
     def __str__(self):
-        return f"Pasttrec connection to {trbaddr(self.trbid)} for cable={self.cable} asic={self.asic}"
+        return f"Pasttrec connection to {etrbid.trbaddr(self.trbid)} for cable={self.cable} asic={self.asic}"
+
+
+def asic_connections(address):
+    """Make instances of PasttercConenction based on the decoded addresses."""
+
+    address_ct_sorted = etrbid.sort_by_ct(address)
+
+    return tuple(
+        PasttrecConnection(get_trb_design_type(addr), addr, cable, asic)
+        for addr, cable, asic in address_ct_sorted
+        if get_trb_design_type(addr) is not None
+    )
 
 
 def make_asic_connections(address):
     """Make instances of PasttercConenction based on the decoded addresses."""
 
-    return tuple(
-        PasttrecConnection(get_trb_design_type(addr), addr, cable, asic)
-        for addr, cable, asic in address
-        if get_trb_design_type(addr) is not None
-    )
+    return tuple((cg, asic_connections(cg)) for cg in etrbid.group_cables(address))
 
 
 def asics_to_defaults(address, def_pasttrec):
@@ -390,8 +393,21 @@ def asic_to_defaults(address, cable, asic, def_pasttrec):
 
 
 def read_rm_scalers(trbid, n_scalers):
-    return trbnet_interface.read_mem(trbid, hardware.TrbRegisters.SCALERS.value, n_scalers)
+    return trbnet_interface.read_mem(trbid, hardware.TrbRegisters.SCALERS.value, n_scalers, option=0)
 
 
 def read_r_scalers(trbid, channel):
     return trbnet_interface.read(trbid, hardware.TrbRegisters.SCALERS.value + channel)
+
+
+def read_diff_scalers(trbid, n_scalers, sleep_time):
+    """Read scalers from 'trbid' twice with 'sleep_time'
+    pause and calculate the counts difference."""
+
+    v1 = read_rm_scalers(trbid, n_scalers)
+    time.sleep(sleep_time)
+    v2 = read_rm_scalers(trbid, n_scalers)
+    a1 = misc.parse_rm_scalers(n_scalers, v1)
+    a2 = misc.parse_rm_scalers(n_scalers, v2)
+    bb = a2.diff(a1)
+    return bb

@@ -1,12 +1,12 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools >= 61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pasttrec"
-version = "0.9.1"
+name = "pasttrectools"
+dynamic = ["version"]
 dependencies = [
-    "colorama",
+    "alive-progress", "colorama", "matplotlib", "tabulate"
 ]
 authors = [
     { name = "Rafał Lalik", email = "rafal.lalik@uj.edu.pl" },
@@ -16,7 +16,20 @@ readme = "README.md"
 license = {text = "MIT License"}
 keywords = [ "pasttrec" ]
 classifiers = [
-    "Private :: Do Not Upload"
+  "Development Status :: 5 - Production/Stable",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Software Development :: Quality Assurance",
 ]
 
 requires-python = ">= 3.8"
@@ -28,6 +41,7 @@ Repository = "https://github.com/HADES-Cracovia/pasttrectools"
 [tool.tox]
 legacy_tox_ini = """
 [tox]
+isolated_build = True
 min_version = 4.0
 env_list =
     py312
@@ -36,4 +50,26 @@ env_list =
     py39
     py38
     type
+
+[testenv]
+description = run unit tests
+deps =
+    pytest
+    pytest-sugar
+commands =
+    pytest {posargs:tests}
+
+[testenv:lint]
+description = run linters
+skip_install = true
+deps =
+    black
+commands = black -l 120 {posargs:.}
+
+[testenv:type]
+description = run type checks
+deps =
+    mypy
+commands =
+    mypy {posargs:tools pasttrec tests}
 """

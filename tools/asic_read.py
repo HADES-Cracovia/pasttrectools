@@ -24,29 +24,41 @@ import argparse
 import sys
 from time import sleep
 
-from alive_progress import alive_bar
-from colorama import Fore, Style
-from tabulate import tabulate
+from alive_progress import alive_bar  # type: ignore
+from colorama import Fore, Style  # type: ignore
+from tabulate import tabulate  # type: ignore
 
-from pasttrec import communication
-from pasttrec.misc import trbaddr, read_asic
-
-def_time = 0.0
+from pasttrec import communication, misc
+from pasttrec.etrbid import trbaddr
+from pasttrec.actions import asic_parallel_access, read_register
 
 
 def read_asics(address):
     n_regs = 12
 
-    with alive_bar(len(address) * n_regs, title="Reading out registers", file=sys.stderr) as bar:
-        sorted_results = read_asic(address, range(n_regs), bar=bar, sort=True)
+    reg = range(n_regs)
+
+    with alive_bar(
+        len(address) * n_regs,
+        title=f"{Fore.BLUE}Reading ASICs{Style.RESET_ALL}  ",
+        file=sys.stderr,
+    ) as bar:
+        sorted_results = asic_parallel_access(
+            communication.make_asic_connections(address),
+            read_register,
+            data=reg,
+            post_action=lambda: bar(),
+            sort=True,
+        )
 
     color_map = (Fore.MAGENTA,) * 3 + (Fore.CYAN,) + (Fore.GREEN,) * 8
+    funcs = (hex,) + (oct,) * 2 + (hex,) + (int,) * 8
 
     rows = []
     for key, res in sorted_results.items():
-        color_res = zip(res, color_map)
+        color_res = zip(funcs, res, color_map)
         line = tuple(Fore.YELLOW + str(s) for s in (trbaddr(key[0]), key[1], key[2], "")) + tuple(
-            color + f"{hex(val)}" + Style.RESET_ALL for ((reg, val), color) in color_res
+            color + f"{func(val)}" + Style.RESET_ALL for (func, (reg, val), color) in color_res
         )
         rows.append(line)
 
@@ -65,30 +77,11 @@ if __name__ == "__main__":
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
-    parser.add_argument(
-        "trbids",
-        help="list of TRBids to scan in form" " addres[:card-0-1-2[:asic-0-1]]",
-        type=str,
-        nargs="+",
-    )
-
-    parser.add_argument("-t", "--time", help="sleep time", type=float, default=def_time)
-    parser.add_argument(
-        "-v",
-        "--verbose",
-        help="verbose level: 0, 1, 2, 3",
-        type=int,
-        choices=[0, 1, 2, 3],
-        default=0,
-    )
+    misc.parser_common_options(parser)
 
     args = parser.parse_args()
 
-    communication.g_verbose = args.verbose
-    def_time = args.time
+    communication.make_trbids_db(args.trbids, args.ignore_missing)
 
-    if communication.g_verbose > 0:
-        print(args)
-
-    tup = communication.decode_address(args.trbids)
-    r = read_asics(tup)
+    etrbids = communication.decode_address(args.trbids, args.ignore_missing)
+    r = read_asics(etrbids)

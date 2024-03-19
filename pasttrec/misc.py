@@ -20,76 +20,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from colorama import Fore, Style
 import itertools
+import json
 import time
-import types
 
-from pasttrec import communication, hardware
+from colorama import Fore, Style
 
-# Custom settings
-
-# Baselines
-pasttrec_bl_reg_num = 32
-
-
-class Baselines:
-    """Holds baseline info for given card"""
-
-    baselines = None
-    config = None
-
-    def __init__(self):
-        self.baselines = {}
-
-    def add_trb(self, trbid, trb_design_type):
-        if trbid not in self.baselines:
-            w = hardware.TrbRegistersOffsets.bl_register_size
-            h = trb_design_type.n_channels
-            a = trb_design_type.n_asics
-            c = trb_design_type.n_cables
-            self.baselines[trbid] = [[[[0 for x in range(w)] for y in range(h)] for _a in range(a)] for _c in range(c)]
-
-
-class Thresholds:
-    thresholds = None
-    config = None
-
-    def __init__(self):
-        self.thresholds = {}
-
-    def add_trb(self, trbid, trb_design_type):
-        if trbid not in self.thresholds:
-            w = 128
-            h = trb_design_type.n_channels
-            a = trb_design_type.n_asics
-            c = trb_design_type.n_cables
-            self.thresholds[trbid] = [[[[0 for x in range(w)] for y in range(h)] for _a in range(a)] for _c in range(c)]
-
-
-class Scalers:
-    scalers = None
-    n_scalers = 0
-
-    def __init__(self, n_scalers):
-        self.scalers = {}
-        self.n_scalers = n_scalers
-
-    def add_trb(self, trb):
-        if trb not in self.scalers:
-            self.scalers[trb] = [0] * self.n_scalers
-
-    def diff(self, scalers):
-        s = Scalers(self.n_scalers)
-        for k, v in self.scalers.items():
-            if k in scalers.scalers:
-                s.add_trb(k)
-                for i in list(range(self.n_scalers)):
-                    vv = self.scalers[k][i] - scalers.scalers[k][i]
-                    if vv < 0:
-                        vv += 0x80000000
-                    s.scalers[k][i] = vv
-        return s
+from pasttrec.types import Scalers
+from pasttrec.etrbid import trbaddr
 
 
 def parse_rm_scalers(n_scalers, res):
@@ -172,30 +110,6 @@ def convertToInt(num_string):
         return int(num_string)
 
 
-def padded_hex(value, length):
-    """
-    based on https://stackoverflow.com/questions/12638408/decorating-hex-function-to-pad-zeros
-    """
-
-    hex_result = hex(value)[2:]  # remove '0x' from beginning of str
-    num_hex_chars = len(hex_result)
-    extra_zeros = "0" * (length - num_hex_chars)  # may not get used..
-
-    return (
-        "0x" + hex_result
-        if num_hex_chars == length
-        else "?" * length
-        if num_hex_chars > length
-        else "0x" + extra_zeros + hex_result
-        if num_hex_chars < length
-        else None
-    )
-
-
-def trbaddr(addr):
-    return padded_hex(addr, 4)
-
-
 def bl_list_with_marker(bl_list, pos):
     s = ""
     for i in range(len(bl_list)):
@@ -222,16 +136,12 @@ def format_ctrbid(ctrbid):
     return f"{trbaddr(ctrbid[0])}:{ctrbid[1]}"
 
 
-def read_tempid(address, uid_mode, temp_mode, bar=None, sort=False):
+def read_tempid(connections, uid_mode, temp_mode, bar=None, sort=False):
     """Read temperature and/or id of given cables."""
     full_mode = not uid_mode and not temp_mode
 
-    address_ct_sorted = communication.sort_by_ct(address)
-
     results = {}
-
-    for cg in communication.group_cables(address_ct_sorted):
-        cable_cons = communication.make_cable_connections(cg)
+    for cg, cable_cons in connections:
 
         for con in cable_cons:
             rc1 = con.activate_1wire()
@@ -250,7 +160,7 @@ def read_tempid(address, uid_mode, temp_mode, bar=None, sort=False):
             elif len(rc2) == 0 and len(rc1) != 0:
                 rc2 = ((0, 0),) * len(rc1)
 
-            group = ((x[0][0], x[0][1], x[1][1]) for x in zip(rc1, rc2))
+            group = ((max(x[0][0], x[1][0]), x[0][1], x[1][1]) for x in zip(rc1, rc2))
             for entry in group:
                 results[entry[0], con.cable] = entry[1], entry[2]
             if bar:
@@ -262,100 +172,19 @@ def read_tempid(address, uid_mode, temp_mode, bar=None, sort=False):
         return results
 
 
-def reset_asic(address, bar=None):
-    """Reset ASICs on given cables."""
+def print_verbose(rc, verbose=0):
+    cmd = " ".join(rc.args)
+    rtc = rc.returncode
 
-    address_ct_sorted = communication.sort_by_ct(address)
-
-    results = {}
-
-    for cg in communication.group_cables(address_ct_sorted):
-        cable_cons = communication.make_cable_connections(cg)
-
-        for con in cable_cons:
-            rc = con.reset_spi()
-            if bar:
-                bar()
+    if verbose >= 1:
+        print("[{:d}]  {:s}".format(rtc, cmd))
 
 
-def read_asic(address, reg=None, bar=None, sort=False):
-    address_ct_sorted = communication.sort_by_ct(address)
-
-    results = {}
-
-    for cg in communication.group_cables(address_ct_sorted):
-        cable_cons = communication.make_asic_connections(cg)
-
-        for con in cable_cons:
-            if not is_iterable(reg):
-                reg = tuple(reg)
-
-            for r in reg:
-                rc = con.read_reg(r)
-                for irc in rc:
-                    addr = irc[0]
-                    faddr = (addr, con.cable, con.asic)
-                    if not faddr in results:
-                        results[faddr] = [0] * len(reg)
-                    results[faddr][r] = (r, irc[1] & 0xFF)
-                if bar:
-                    bar()
-
-    if sort:
-        return dict(sorted(results.items()))
-    else:
-        return results
-
-
-def write_asic(address, data=None, reg=None, val=None, verify=False, bar=None, sort=False):
-    is_data = data is not None
-    is_reg_val = reg is not None and val is not None
-
-    if not ((is_data and not is_reg_val) or (not is_data and is_reg_val)):
-        raise "Either data or reg,val can be used"
-
-    if is_data:
-        if not is_iterable(data):
-            raise "'data' must be of 'iterable' type"
-        _data = data
-
-    elif is_reg_val:
-        if not (is_iterable(reg) and is_iterable(val)):
-            raise "'reg' and 'val' must be of 'iterable' type"
-        _data = tuple(itertools.product(reg, val))
-
-    address_ct_sorted = communication.sort_by_ct(address)
-
-    results = {}
-
-    for cg in communication.group_cables(address_ct_sorted):
-        cable_cons = communication.make_asic_connections(cg)
-
-        for con in cable_cons:
-
-            for r, d in _data:
-                con.write_reg(r, d)
-
-                if verify:
-                    rc = con.read_reg(r)
-
-                    for irc in rc:
-                        addr = irc[0]
-                        faddr = (addr, con.cable, con.asic)
-
-                        if not faddr in results:
-                            results[faddr] = {}
-
-                        _d = irc[1] & 0xFF
-                        results[faddr][r, d] = _d == d, _d
-
-                if bar:
-                    bar()
-
-    if verify:
-        if sort:
-            return dict(sorted(results.items()))
-        else:
-            return results
-    else:
-        return None
+def parser_common_options(parser):
+    parser.add_argument(
+        "trbids",
+        help="list of TRBids to scan in form" " addres[:card-0-1-2[:asic-0-1]]",
+        type=str,
+        nargs="+",
+    )
+    parser.add_argument("-m", "--ignore-missing", help="ignore missing trbids", action="store_true")

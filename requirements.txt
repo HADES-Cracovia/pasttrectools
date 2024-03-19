@@ -1,5 +1,4 @@
 alive-progress
 colorama
 matplotlib
-setuptools
 tabulate

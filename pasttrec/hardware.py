@@ -11,7 +11,15 @@ The functions provide also export/import of the components settings.
 from enum import Enum
 
 from pasttrec import LIBVERSION
+from pasttrec.types import NoIndent
 from pasttrec.trb_spi import SpiTrbTdc
+from pasttrec.etrbid import padded_hex
+
+
+class MissingFeatures(Exception):
+    def __init__(self, features):
+        super().__init__(f"Features type {hex(features)} not supported")
+        self.features = features
 
 
 class AsicRegisters(Enum):
@@ -30,15 +38,8 @@ class AsicRegisters(Enum):
 
 
 class AsicRegistersValue:
-    bg_int = 1
-    gain = 0
-    peaking = 0
-    tc1c = 0
-    tc1r = 0
-    tc2c = 0
-    tc2r = 0
-    vth = 0
-    bl = [0] * 8
+
+    n_regs = 12
 
     def __init__(
         self,
@@ -60,7 +61,7 @@ class AsicRegistersValue:
         self.tc2c = tc2c
         self.tc2r = tc2r
         self.vth = vth
-        self.bl = [i for i in bl]
+        self.bl = NoIndent([i for i in bl])
 
     @staticmethod
     def load_asic_from_dict(d, test_version=None):
@@ -68,36 +69,74 @@ class AsicRegistersValue:
             return False
         p = AsicRegistersValue()
         for k, v in d.items():
-            setattr(p, k, v)
+            if k == "bl":
+                p.bl = NoIndent([x for x in v])
+            else:
+                setattr(p, k, v)
         return p
 
+    def load_config(self, data: tuple):
+        if len(data) != self.n_regs:
+            raise TyepError(f"The config data tuple has size {len(data)}, must be {self.n_regs}")
+
+        self.bg_int = (data[0] >> 4) & 0x01
+        self.gain = (data[0] >> 2) & 0x03
+        self.peaking = (data[0] >> 0) & 0x03
+        self.tc1c = (data[1] >> 3) & 0x07
+        self.tc1r = (data[1] >> 0) & 0x07
+        self.tc2c = (data[2] >> 3) & 0x07
+        self.tc2r = (data[2] >> 0) & 0x07
+        self.vth = (data[3] >> 0) & 0x3F
+        self.bl.value = [x for x in data[4:]]
+
     def dump_config(self):
-        r_all = [0] * 12
-        t = (self.bg_int << 4) | (self.gain << 2) | self.peaking
-        r_all[0] = TrbRegistersOffsets.c_config_reg[0] | t
-        t = (self.tc1c << 3) | self.tc1r
-        r_all[1] = TrbRegistersOffsets.c_config_reg[1] | t
-        t = (self.tc2c << 3) | self.tc2r
-        r_all[2] = TrbRegistersOffsets.c_config_reg[2] | t
-        r_all[3] = TrbRegistersOffsets.c_config_reg[3] | self.vth
+        return tuple(
+            (
+                (self.bg_int << 4) | (self.gain << 2) | self.peaking,
+                (self.tc1c << 3) | self.tc1r,
+                (self.tc2c << 3) | self.tc2r,
+                self.vth,
+            )
+            + tuple(self.bl.value)
+        )
 
-        for i in range(8):
-            r_all[4 + i] = TrbRegistersOffsets.c_bl_reg[i] | self.bl[i]
+    def dump_spi_config(self):
+        cfg = self.dump_config()
+        return tuple(((TrbRegistersOffsets.c_reg_offsets[i] | cfg[i]) for i in range(self.n_regs)))
 
-        return r_all
+    def dump_spi_config_hex(self):
+        return tuple((hex(i) for i in self.dump_spi_config()))
 
-    def dump_config_hex(self):
-        return [hex(i) for i in self.dump_config()]
-
-    def dump_bl_hex(self):
-        return [hex(i) for i in self.dump_config()[4:]]
+    def dump_spi_bl_hex(self):
+        return tuple((hex(i) for i in self.dump_spi_config()[4:]))
 
 
-class TrbBoardType(Enum):
+class TrbDesignInfo:
+    """Stores pairs of Trb hwtype nad features."""
+
+    def __init__(self, hwtype: int, features: int, responders: tuple):
+        self.hwtype = hwtype
+        self.features = features
+        self.responders = responders
+
+    def __eq__(self, other):
+        return self.hwtype == other.hwtype and self.features == other.features and self.responders == other.responders
+
+    def __hash__(self):
+        return hash(self.features << 32 | self.hwtype << len(self.responders))
+
+    def __str__(self):
+        return f"TrbDesignInfo({padded_hex(self.hwtype, 8)}, {padded_hex(self.features, 16)}, {self.responders})"
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class TrbDesignSpecs(Enum):
     """Use it to discriminate between different frontend types."""
 
     TRB3 = (3, 2, 0xFE4C, SpiTrbTdc)
-    TRB5SC = (4, 2, 0xFE81, SpiTrbTdc)
+    TRB5SC_16CH = (2, 2, 0xFE81, SpiTrbTdc)
 
     def __init__(self, cables, asics, broadcast, spi):
         self.cables = cables
@@ -128,9 +167,59 @@ class TrbBoardType(Enum):
 
 
 TrbBoardTypeMapping = {
-    0x91000000: TrbBoardType.TRB3,
-    0xA5000000: TrbBoardType.TRB5SC,
+    # 0x91000000: TrbDesignSpecs.TRB3,
+    0x02010C000000F301: TrbDesignSpecs.TRB5SC_16CH,
 }
+
+
+def get_design_specs(features):
+    if features in TrbBoardTypeMapping:
+        return TrbBoardTypeMapping[features]
+    else:
+        return None
+        raise MissingFeatures(features)
+
+
+"""Stores the quered trb design data."""
+trb_designs_map = {}
+
+
+def detect_design(address):
+    """Detect the Trb board type"""
+
+    if address in trb_designs_map:
+        features = trb_designs_map[address].features
+        return (
+            address,
+            tuple((responder, get_design_specs(features)) for responder in trb_designs_map[address].responders),
+        )
+
+
+def check_broadcats_address(trbid: int):
+    """
+    Check if the address is of broadcast type, and if yes return the boards properties.
+
+    Parameters
+    ----------
+    trbid : int or str
+        The trb address
+
+    Returns
+    -------
+    board_type : TrbBoardType or None
+        The board type based on broadcast address or None
+    """
+    pass
+
+
+def filter_known_designs(db: dict):
+    return tuple(
+        (
+            trbid
+            for trbid, design_info in db.items()
+            if (design_info is not None and get_design_specs(design_info.features))
+        )
+    )
 
 
 class PasttrecDataWordEncoder:
@@ -168,143 +257,15 @@ class TrbRegisters(Enum):
 
 
 class TrbRegistersOffsets:
-    c_asic = [0x2000, 0x4000]
+    c_asic = (0x2000, 0x4000)
 
     # reg desc.: g_int,K,Tp      TC1      TC2      Vth
-    c_config_reg = [0x00000, 0x00100, 0x00200, 0x00300]
-    c_bl_reg = [0x00400, 0x00500, 0x00600, 0x00700, 0x00800, 0x00900, 0x00A00, 0x00B00]
+    c_config_reg = (0x00000, 0x00100, 0x00200, 0x00300)
+    c_bl_reg = (0x00400, 0x00500, 0x00600, 0x00700, 0x00800, 0x00900, 0x00A00, 0x00B00)
+
+    c_reg_offsets = c_config_reg + c_bl_reg
 
     c_base_w = 0x0050000
     c_base_r = 0x0051000
 
     bl_register_size = 32
-
-
-class PasttrecCard:
-    name = None
-    asic1 = None
-    asic2 = None
-
-    def __init__(self, name, asic1=None, asic2=None):
-        self.name = name
-        self.asic1 = asic1
-        self.asic2 = asic2
-
-    def set_asic(self, pos, asic):
-        if pos == 0:
-            self.asic1 = asic
-        elif pos == 1:
-            self.asic2 = asic
-
-    def export(self):
-        return {
-            "name": self.name,
-            "asic1": self.asic1.__dict__ if self.asic1 is not None else None,
-            "asic2": self.asic2.__dict__ if self.asic2 is not None else None,
-        }
-
-    def export_script(self, cable):
-        regs = []
-        if self.asic1:
-            regs.extend(self.asic1.dump_config(cable, 0))
-        if self.asic2:
-            regs.extend(self.asic2.dump_config(cable, 1))
-        return regs
-
-    @staticmethod
-    def load_card_from_dict(d, test_version=None):
-        if (test_version is not None) and (test_version != LIBVERSION):
-            return False, LIBVERSION
-
-        if d is None:
-            return False, None
-
-        pc = PasttrecCard(
-            d["name"],
-            AsicRegistersValue().load_asic_from_dict(d["asic1"]),
-            AsicRegistersValue().load_asic_from_dict(d["asic2"]),
-        )
-
-        return True, pc
-
-
-class TdcConnection:
-    id = 0
-    cable1 = None
-    cable2 = None
-    cable3 = None
-
-    def __init__(self, id, cable1=None, cable2=None, cable3=None):
-        self.id = hex(id) if isinstance(id, int) else id
-        self.cable1 = cable1
-        self.cable2 = cable2
-        self.cable3 = cable3
-
-    def set_card(self, pos, card):
-        if pos == 0:
-            self.cable1 = card
-        elif pos == 1:
-            self.cable2 = card
-        elif pos == 2:
-            self.cable3 = card
-
-    def export(self):
-        c1 = self.cable1.export() if isinstance(self.cable1, PasttrecCard) else None
-        c2 = self.cable2.export() if isinstance(self.cable2, PasttrecCard) else None
-        c3 = self.cable3.export() if isinstance(self.cable3, PasttrecCard) else None
-
-        return self.id, {"cable1": c1, "cable2": c2, "cable3": c3}
-
-    def export_script(self):
-        c1 = self.cable1.export_script(0) if isinstance(self.cable1, PasttrecCard) else None
-        c2 = self.cable2.export_script(1) if isinstance(self.cable2, PasttrecCard) else None
-        c3 = self.cable3.export_script(2) if isinstance(self.cable3, PasttrecCard) else None
-
-        c = []
-        if c1:
-            c.extend(c1)
-        if c2:
-            c.extend(c2)
-        if c3:
-            c.extend(c3)
-        return self.id, c
-
-
-def dump(tdcs):
-    d = {"version": LIBVERSION}
-    if isinstance(tdcs, list):
-        for t in tdcs:
-            k, v = t.export()
-            d[k] = v
-    elif isinstance(tdcs, TdcConnection):
-        k, v = tdcs.export()
-        d[k] = v
-
-    return d
-
-
-def load(d, test_version=True):
-    if test_version:
-        if "version" in d:
-            if d["version"] != LIBVERSION:
-                return False, d["version"]
-        else:
-            return False, "0.0.0"
-
-    connections = []
-    for k, v in d.items():
-        if k == "version":
-            continue
-
-        id = int(k, 16)
-        r1, _c1 = PasttrecCard.load_card_from_dict(v["cable1"])
-        r2, _c2 = PasttrecCard.load_card_from_dict(v["cable2"])
-        r3, _c3 = PasttrecCard.load_card_from_dict(v["cable3"])
-
-        c1 = _c1 if r1 else None
-        c2 = _c2 if r2 else None
-        c3 = _c3 if r3 else None
-
-        connections.append(TdcConnection(id, cable1=c1, cable2=c2, cable3=c3))
-
-    return True, connections

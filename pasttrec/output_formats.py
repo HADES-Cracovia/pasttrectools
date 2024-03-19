@@ -25,19 +25,30 @@ bgs = "    "
 igs = "  "
 
 
-def export_chunk(trbid, cable, asic, data, format_string=None):
-    if isinstance(data, list):
-        v = [x & 0xFF for x in data]
+def export_chunk(entry_type, uid, asic, data, format_string=None):
+    if isinstance(data, (list, tuple)):
+        v = tuple((x & 0xFF for x in data))
     else:
         v = data & 0xFF
-    dat_write_chunk(trbid, cable, asic, v, format_string)
+    dat_write_chunk(entry_type, uid, asic, v, format_string)
 
 
-def dat_write_chunk(trbid, cable, asic, data, format_string=None):
+def dat_write_chunk(entry_type, uid, asic, data, format_string=None):
     if format_string is None:
-        format_string = "  %s  %d  %d    %#04x  %#04x  %#04x    %3d    %2d  %2d  %2d  %2d  %2d  %2d  %2d  %2d"
+        format_string = "%s  %s  %d    %#04x  %#04x  %#04x    %3d    %2d  %2d  %2d  %2d  %2d  %2d  %2d  %2d"
 
     if cmd_to_file is not None:
-        cmd_to_file.write(format_string % tuple([trbid, cable, asic] + data) + "\n")
+        cmd_to_file.write(
+            format_string
+            % tuple(
+                (
+                    entry_type,
+                    uid,
+                    asic,
+                )
+                + data
+            )
+            + "\n"
+        )
     else:
-        print(format_string % tuple(trbid, cable, asic + data) + "\n")
+        print(format_string % tuple(entry_type + uid + asic + data) + "\n")

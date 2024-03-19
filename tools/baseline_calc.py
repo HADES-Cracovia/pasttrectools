@@ -21,11 +21,12 @@
 # SOFTWARE.
 
 import argparse
-from colorama import Fore, Style
 import copy
 import json
 
-from pasttrec import hardware, communication, misc, output_formats
+from colorama import Fore, Style  # type: ignore
+
+from pasttrec import communication, hardware, misc, output_formats, types
 
 
 if __name__ == "__main__":
@@ -33,12 +34,10 @@ if __name__ == "__main__":
     parser.add_argument("json_file", help="list of arguments", type=str)
 
     parser.add_argument("-o", "--output", help="output file", type=str)
-    parser.add_argument("-O", "--old", help="old output format", action="store_true")
     parser.add_argument("--range", help="range based blo finder", action="store_true")
 
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument("-d", "--dump", help="trbcmd dump file, bl regs only", type=str)
-    group.add_argument("-D", "--Dump", help="trbcmd dump file, all regs", type=str)
+    parser.add_argument("-d", "--dump", help="trbcmd dump file, bl regs only", type=str)
+    parser.add_argument("-D", "--Dump", help="trbcmd dump file, all regs", type=str)
     parser.add_argument("-e", "--exec", help="execute", action="store_true")
 
     parser.add_argument(
@@ -72,159 +71,131 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    communication.g_verbose = args.verbose
-    if communication.g_verbose > 0:
-        print(args)
-
     with open(args.json_file) as json_data:
-        d = json.load(json_data)
+        bls = json.load(json_data)
         json_data.close()
 
-    dump_file = None
     if args.dump:
-        dump_file = open(args.dump, "w")
+        dump_file_bl = open(args.dump, "w")
 
     if args.Dump:
-        dump_file = open(args.Dump, "w")
+        dump_file_full = open(args.Dump, "w")
 
     out_file = None
     if args.output:
         out_file = open(args.output, "w")
 
-    bls = d["baselines"]
-    cfg = d["config"]
-
-    tlist = []
-    p = hardware.AsicRegistersValue()
-
-    for k, v in cfg.items():
-        setattr(p, k, v)
-
-    if args.threshold is not None:
-        p.vth = args.threshold
-
-    if args.gain is not None:
-        p.gain = args.gain
-
-    print(cfg)
+    calculated_baselines = {}
 
     x = list(range(0, 32))
 
     idx = 1
     for k, v in bls.items():
+        calculated_baselines[k] = [None] * 2
 
-        t = hardware.TdcConnection(k)
+        asic_cfg = hardware.AsicRegistersValue.load_asic_from_dict(v["config"])
 
-        for c in range(len(v)):  # deduce number of cards from file
-            card = hardware.PasttrecCard("noname")
+        if args.threshold is not None:
+            asic_cfg.vth = args.threshold
 
-            for a in range(2):  # two asics
-                print(Fore.YELLOW + "Processing  {:s}  CARD: {:d}  ASIC: {:d}".format(k, c, a) + Style.RESET_ALL)
-                bl = [0] * 8
+        if args.gain is not None:
+            asic_cfg.gain = args.gain
 
-                for ch in list(range(8)):
-                    b = v[c][a][ch]
-                    s = 0
-                    w = 0
-                    if args.range:  # old way
-                        for i in range(1, 32):
-                            s = s + (i + 1) * b[i]
-                            w += b[i]
-                    else:
-                        cnt_max = max(b)
-                        # find duplicates
-                        indices = [index for index, item in enumerate(b) if item == cnt_max]
-                        if len(indices) == 1:
-                            s = indices[0] + 1
-                            w = 1
-                        else:
-                            w = 0
-                    if w == 0:
-                        b = 0
-                    else:
-                        b = s / w - 1
-                    bl[ch] = int(round(b))
-                    print(
-                        ch,
-                        " bl:",
-                        Fore.YELLOW,
-                        "{:2d}".format(bl[ch]),
-                        Style.RESET_ALL,
-                        "(0x{:s})".format(hex(bl[ch])[2:].zfill(2)),
-                        Fore.GREEN if w > 0 else Fore.RED,
-                        "{:>+3d} mV".format(-31 + 2 * bl[ch]),
-                        Style.RESET_ALL,
-                        " [ ",
-                        misc.bl_list_with_marker(v[c][a][ch], bl[ch]),
-                        "]",
-                    )
-                #                    if w == 0:
-                #                        print(Fore.RED, "All Zero - check it", Style.RESET_ALL)
-                #                    else:
-                #                        print(Fore.GREEN, " * OK *", Style.RESET_ALL)
+        scan_results = v["results"]
 
-                if args.offset is None:
-                    while True:
-                        bbb = input("Offset for base lines (default: 0): ")
-                        if bbb == "":
-                            bl_offset = 0
-                            break
+        for a in range(2):  # two asics
+            print(Fore.YELLOW + "Processing CARD {:s}  ASIC {:d}".format(k, a) + Style.RESET_ALL)
+            bl = [0] * 8
 
-                        if not bbb.isdigit():
-                            print("Input is not a number, try again")
-                            continue
-
-                        bl_offset = int(bbb)
-                        break
+            for ch in list(range(8)):
+                b = scan_results[a][ch]
+                s = 0
+                w = 0
+                if args.range:  # old way
+                    for i in range(1, 32):
+                        s = s + (i + 1) * b[i]
+                        w += b[i]
                 else:
-                    bl_offset = args.offset
-
-                for ch in list(range(8)):
-
-                    _r = bl[ch] + bl_offset
-                    _r = max(_r, 0)
-                    _r = min(_r, 127)
-
-                    p.bl[ch] = _r
-
-                card.set_asic(a, copy.deepcopy(p))
-
-                if args.dump:
-                    regs = p.dump_config()[4:]
-                    if args.old:
-                        communication.cmd_to_file = dump_file
-                        communication.write_chunk(k, c, a, regs)
-                        communication.cmd_to_file = None
+                    cnt_max = max(b)
+                    # find duplicates
+                    indices = [index for index, item in enumerate(b) if item == cnt_max]
+                    if len(indices) == 1:
+                        s = indices[0] + 1
+                        w = 1
                     else:
-                        output_formats.cmd_to_file = dump_file
-                        output_formats.export_chunk(
-                            k,
-                            c,
-                            a,
-                            regs,
-                            "  %s  %d  %d    %2d  %2d  %2d  %2d  %2d  %2d  %2d  %2d",
-                        )
+                        w = 0
+                if w == 0:
+                    b = 0
+                else:
+                    b = s / w - 1
+                bl[ch] = int(round(b))
+                print(
+                    ch,
+                    " bl:",
+                    Fore.BLUE,
+                    "{:2d}".format(bl[ch]),
+                    Style.RESET_ALL,
+                    "(0x{:s})".format(hex(bl[ch])[2:].zfill(2)),
+                    Fore.GREEN if w > 0 else Fore.RED,
+                    "{:>+3d} mV".format(-31 + 2 * bl[ch]),
+                    Style.RESET_ALL,
+                    " [ ",
+                    misc.bl_list_with_marker(scan_results[a][ch], bl[ch]),
+                    "]",
+                )
 
-                if args.Dump:
-                    regs = p.dump_config()
-                    if args.old:
-                        communication.cmd_to_file = dump_file
-                        communication.write_chunk(k, c, a, regs)
-                        communication.cmd_to_file = None
-                    else:
-                        output_formats.cmd_to_file = dump_file
-                        output_formats.export_chunk(k, c, a, regs)
+            if args.offset is None:
+                while True:
+                    bbb = input("Offset for base lines (default: 0): ")
+                    if bbb == "":
+                        bl_offset = 0
+                        break
 
-                if args.exec:
-                    communication.write_chunk(k, c, a, regs)
+                    if not bbb.isdigit():
+                        print("Input is not a number, try again")
+                        continue
 
-            t.set_card(c, card)
+                    bl_offset = int(bbb)
+                    break
+            else:
+                bl_offset = args.offset
 
-        tlist.append(t)
+            for ch in list(range(8)):
 
-    if dump_file:
-        dump_file.close()
+                _r = bl[ch] + bl_offset
+                _r = max(_r, 0)
+                _r = min(_r, 127)
+
+                asic_cfg.bl.value[ch] = _r
+
+            calculated_baselines[k][a] = copy.deepcopy(asic_cfg.__dict__)
+
+            if args.dump:
+                regs = asic_cfg.dump_spi_config()[4:]
+                output_formats.cmd_to_file = dump_file_bl
+                output_formats.export_chunk(
+                    "b",
+                    k,
+                    a,
+                    regs,
+                    "%s  %s  %d    %2d  %2d  %2d  %2d  %2d  %2d  %2d  %2d",
+                )
+
+            if args.Dump:
+                regs = asic_cfg.dump_spi_config()
+                output_formats.cmd_to_file = dump_file_full
+                output_formats.export_chunk("f", k, a, regs)
+
+            # Not sure yet how it should works
+            # if args.exec:
+            # communication.write_chunk(k, c, a, regs)
+
+    if dump_file_bl:
+        dump_file_bl.close()
+
+    if dump_file_full:
+        dump_file_full.close()
 
     if out_file:
-        out_file.write(json.dumps(dump(tlist), indent=2))
+        out_file.write(json.dumps(calculated_baselines, indent=4, cls=types.MyEncoder))
         out_file.close()

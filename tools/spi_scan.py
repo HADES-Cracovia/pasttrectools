@@ -24,16 +24,15 @@ import argparse
 import sys
 from time import sleep
 
-from alive_progress import alive_bar
-from colorama import Fore, Style
+from alive_progress import alive_bar  # type: ignore
+from colorama import Fore, Style  # type: ignore
 
-from pasttrec import communication, g_verbose
-from pasttrec.misc import trbaddr, write_asic, format_etrbid
+from pasttrec import communication, misc
+from pasttrec.misc import trbaddr, format_etrbid
+from pasttrec.requests import write_asic
 
-def_time = 0.0
 
-
-def scan_spi_communication(address, def_time=1.0, def_no_skip=False):
+def scan_spi_communication(address, def_no_skip=False):
 
     reg_target = 0x0C
     reg_test_vals = (0x00, 0xFF, 0x0F, 0xF0, 0x55, 0x99, 0x95, 0x59)
@@ -43,10 +42,17 @@ def scan_spi_communication(address, def_time=1.0, def_no_skip=False):
 
     with alive_bar(
         len(address) * len(reg_test_vals),
-        title=Fore.YELLOW + "Scanning SPI connection  " + Style.RESET_ALL,
+        title=f"{Fore.BLUE}Scanning SPI{Style.RESET_ALL}   ",
         file=sys.stderr,
     ) as bar:
-        sorted_results = write_asic(address, reg=(reg_target,), val=reg_test_vals, verify=True, bar=bar, sort=True)
+        sorted_results = write_asic(
+            communication.make_asic_connections(address),
+            reg=(reg_target,),
+            val=reg_test_vals,
+            verify=True,
+            bar=bar,
+            sort=True,
+        )
 
     last_trbid = 0
     print("Scan results:", end="")
@@ -56,7 +62,7 @@ def scan_spi_communication(address, def_time=1.0, def_no_skip=False):
             last_trbid = key[0]
             print(f"\n- {trbaddr(last_trbid)}:", end="")
 
-        passed = all(val[0] == True for key, val in res.items())
+        passed = all(val[0] is True for key, val in res.items())
 
         if passed:
             print("  " + Fore.GREEN + format_etrbid(key) + Style.RESET_ALL, end="")
@@ -82,30 +88,14 @@ if __name__ == "__main__":
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
-    parser.add_argument(
-        "trbids",
-        help="list of TRBids to scan in form" " addres[:card-0-1-2[:asic-0-1]]",
-        type=str,
-        nargs="+",
-    )
+    misc.parser_common_options(parser)
 
     parser.add_argument("-n", "--no-skip", help="do not skip missing FEEs", action="store_true")
-    parser.add_argument("-t", "--time", help="sleep time", type=float, default=def_time)
-    parser.add_argument(
-        "-v",
-        "--verbose",
-        help="verbose level: 0, 1, 2, 3",
-        type=int,
-        choices=[0, 1, 2, 3],
-        default=0,
-    )
 
     args = parser.parse_args()
 
-    g_verbose = args.verbose
-    if g_verbose > 0:
-        print(args)
+    communication.make_trbids_db(args.trbids, args.ignore_missing)
 
-    tup = communication.decode_address(args.trbids)
-    r = scan_spi_communication(tup, args.time, args.no_skip)
+    etrbids = communication.decode_address(args.trbids, args.ignore_missing)
+    r = scan_spi_communication(etrbids, args.no_skip)
     sys.exit(r)

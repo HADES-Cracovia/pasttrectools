@@ -23,13 +23,12 @@
 import argparse
 import sys
 
-from alive_progress import alive_bar
-from colorama import Fore, Style
+from alive_progress import alive_bar  # type: ignore
+from colorama import Fore, Style  # type: ignore
 
-from pasttrec import communication
-from pasttrec.misc import trbaddr, reset_asic
-
-def_spi_time = 0.0
+from pasttrec import communication, misc
+from pasttrec.etrbid import trbaddr, ctrbids_from_etrbids
+from pasttrec.requests import reset_asic
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -37,36 +36,20 @@ if __name__ == "__main__":
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
-    parser.add_argument(
-        "trbids",
-        help="list of TRBids to scan in form" " addres[:card-0-1-2[:asic-0-1]]",
-        type=str,
-        nargs="+",
-    )
-
-    parser.add_argument("-t", "--time", help="SPI sleep time", type=float, default=def_spi_time)
-    parser.add_argument(
-        "-v",
-        "--verbose",
-        help="verbose level: 0, 1, 2, 3",
-        type=int,
-        choices=[0, 1, 2, 3],
-        default=0,
-    )
+    misc.parser_common_options(parser)
 
     args = parser.parse_args()
 
-    communication.g_verbose = args.verbose
-    def_spi_time = args.time
+    communication.make_trbids_db(args.trbids, args.ignore_missing)
 
-    if communication.g_verbose > 0:
-        print(args)
-
-    tup = communication.decode_address(args.trbids)
-    tup = communication.filter_decoded_cables(tup)
+    etrbids = communication.decode_address(args.trbids, args.ignore_missing)
+    ctrbids = ctrbids_from_etrbids(etrbids)
 
     with alive_bar(
-        len(tup), title=Fore.YELLOW + "Resetting" + Style.RESET_ALL, file=sys.stderr, receipt_text=True
+        len(ctrbids),
+        title=f"{Fore.BLUE}Resetting ASICs{Style.RESET_ALL}",
+        file=sys.stderr,
+        receipt_text=True,
     ) as bar:
-        reset_asic(tup, bar=bar)
+        reset_asic(communication.make_cable_connections(ctrbids), bar=bar)
         bar.text("Done")

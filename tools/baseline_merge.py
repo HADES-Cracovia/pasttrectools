@@ -20,9 +20,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import os
 import argparse
 import json
+import os
 
 from pasttrec import communication, misc
 
@@ -46,11 +46,6 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-
-    communication.g_verbose = args.verbose
-
-    if communication.g_verbose > 0:
-        print(args)
 
     if args.output:
         out_file = open(args.output, "w")
