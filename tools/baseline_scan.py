@@ -184,7 +184,7 @@ if __name__ == "__main__":
         help="peaking time: 35, 20, 15 or 10 [ns]",
         type=int,
         choices=(3, 2, 1, 0),
-        default=3,
+        default=2,
     )
 
     parser.add_argument(
@@ -199,14 +199,14 @@ if __name__ == "__main__":
         help="TC1 R: 0-7",
         type=lambda x: int(x, 0),
         choices=range(8),
-        default=2,
+        default=6,
     )
     parser.add_argument(
         "-TC2C",
         help="TC2 C: 0-7",
         type=lambda x: int(x, 0),
         choices=range(8),
-        default=6,
+        default=2,
     )
     parser.add_argument(
         "-TC2R",
