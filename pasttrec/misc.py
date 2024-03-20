@@ -20,8 +20,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import itertools
-import json
 import time
 
 from colorama import Fore, Style
@@ -99,7 +97,7 @@ def convertToInt(num_string):
     """
     From https://python-forum.io/Thread-decimal-or-hexadecimal-digits-to-int
     """
-    determine_base = {"0x": 16, "0b": 2, "0o": 8}  # dict to detrmine base
+    determine_base = {"0x": 16, "0b": 2, "0o": 8}  # dict to determine base
 
     # returns base from dict defaults to None(for base 10)
     base = determine_base.get(num_string[:2].lower(), None)
@@ -183,7 +181,7 @@ def print_verbose(rc, verbose=0):
 def parser_common_options(parser):
     parser.add_argument(
         "trbids",
-        help="list of TRBids to scan in form" " addres[:card-0-1-2[:asic-0-1]]",
+        help="list of TRBids to scan in form" " address[:card-0-1-2[:asic-0-1]]",
         type=str,
         nargs="+",
     )

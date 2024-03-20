@@ -54,7 +54,7 @@ class SpiTrbTdc:
         """
         The constructor
 
-        Paramaters
+        Parameters
         ----------
         trb_com : TrbNet
             The TrbNet object
@@ -78,7 +78,7 @@ class SpiTrbTdc:
         """
         Prepare the SPI interface
 
-        Paramaters
+        Parameters
         ----------
         trbid : int
             The trbid address
@@ -106,7 +106,7 @@ class SpiTrbTdc:
         """
         Transmit the data
 
-        Paramaters
+        Parameters
         ----------
         length: int
             Number of words to transmit
@@ -128,7 +128,7 @@ class SpiTrbTdc:
         """
         Write data to spi interface
 
-        Paramaters
+        Parameters
         ----------
         cable : int
             The cable number 0..max (typically 3 or 4 cables on a single TDC)
@@ -147,7 +147,7 @@ class SpiTrbTdc:
         """
         Write data to spi interface and expect result.
 
-        Paramaters
+        Parameters
         ----------
         cable : int
             The cable number 0..max (typically 3 or 4 cables on a single TDC)

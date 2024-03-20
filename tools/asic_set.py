@@ -23,9 +23,9 @@
 import argparse
 import sys
 
-from pasttrec import communication
+from pasttrec import communication, misc
 
-def_pastrec_thresh_range = [0x00, 0x7F]
+def_pastrec_thresh_range = (0x00, 0x7F)
 
 
 def fill_register(address, value):
@@ -48,7 +48,7 @@ if __name__ == "__main__":
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
-    parser.add_argument("trbids", help="trb address" " addres[:card-0-1-2[:asic-0-1]]", type=str)
+    misc.parser_common_options(parser)
 
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
@@ -86,17 +86,18 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    tup = communication.decode_address(args.trbids, args.ignore_missing)
+    communication.make_trbids_db(args.trbids, args.ignore_missing)
+    etrbids = communication.decode_address(args.trbids, args.ignore_missing)
 
     if args.fill:
-        sys.exit(fill_register(tup, args.fill[0]))
+        sys.exit(fill_register(etrbids, args.fill[0]))
     elif args.reg:
-        sys.exit(set_register(tup, args.reg[0], args.reg[1]))
+        sys.exit(set_register(etrbids, args.reg[0], args.reg[1]))
     elif args.threshold:
         if args.threshold[0] > def_pastrec_thresh_range[1] or args.threshold[0] < def_pastrec_thresh_range[0]:
             print("\nOption error: Threshold value {:d} is to high, " " allowed value is 0-127".format(args.threshold))
             sys.exit(1)
 
-        sys.exit(set_register(tup, 3, args.threshold[0]))
+        sys.exit(set_register(etrbids, 3, args.threshold[0]))
     else:
         sys.exit(1)

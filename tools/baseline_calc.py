@@ -26,7 +26,7 @@ import json
 
 from colorama import Fore, Style  # type: ignore
 
-from pasttrec import communication, hardware, misc, output_formats, types
+from pasttrec import hardware, misc, output_formats, types
 
 
 if __name__ == "__main__":

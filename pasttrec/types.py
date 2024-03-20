@@ -1,9 +1,8 @@
 import json
 import re
-import types
 from _ctypes import PyObj_FromPtr  # see https://stackoverflow.com/a/15012814/355230
 
-from pasttrec import etrbid, hardware
+from pasttrec import etrbid
 
 
 # From https://stackoverflow.com/questions/42710879/write-two-dimensional-list-to-json-file
@@ -15,40 +14,45 @@ class NoIndent(object):
             raise TypeError("Only lists and tuples can be wrapped")
         self.value = value
 
+    def __eq__(self, other):
+        return self.value == other.value
 
-class Baselines:
-    """Holds baseline info for given card"""
+    def __str__(self):
+        return str(self.value)
 
-    baselines = None
+    def __repr__(self):
+        return "NoIndent(" + self.__str__() + ")"
 
-    def __init__(self):
-        self.baselines = {}
+
+class ScanData:
+    """Holds scan data for given card."""
+
+    def __init__(self, depth):
+        self.data = {}
+        self.depth = depth
 
     def add_card(self, uid, trb_design_type):
-        if uid not in self.baselines:
-            w = hardware.TrbRegistersOffsets.bl_register_size
+        if uid not in self.data:
+            w = self.depth
             h = trb_design_type.n_channels
             a = trb_design_type.n_asics
-            self.baselines[etrbid.padded_hex(uid, 16)] = {
+            self.data[etrbid.padded_hex(uid, 16)] = {
                 "config": None,
                 "results": [[NoIndent([0 for x in range(w)]) for y in range(h)] for _a in range(a)],
             }
 
 
-class Thresholds:
-    thresholds = None
-    config = None
+class Baselines(ScanData):
+    """Holds baseline info for given card"""
 
     def __init__(self):
-        self.thresholds = {}
+        super().__init__(32)
 
-    def add_trb(self, trbid, trb_design_type):
-        if trbid not in self.thresholds:
-            w = 128
-            h = trb_design_type.n_channels
-            a = trb_design_type.n_asics
-            c = trb_design_type.n_cables
-            self.thresholds[trbid] = [[[[0 for x in range(w)] for y in range(h)] for _a in range(a)] for _c in range(c)]
+
+class Thresholds(ScanData):
+
+    def __init__(self):
+        super().__init__(128)
 
 
 class Scalers:

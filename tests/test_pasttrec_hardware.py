@@ -1,8 +1,6 @@
 #!/bin/env python3
 
-from context import *
-
-from pasttrec.hardware import *
+from pasttrec.hardware import AsicRegistersValue
 
 
 def test_AsicRegistersValue():

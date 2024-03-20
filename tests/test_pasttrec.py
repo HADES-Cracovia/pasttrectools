@@ -1,12 +1,5 @@
 #!/bin/env python3
 
-from context import *
-
-# import json
-# import os
-# import unittest
-# import tempfile
-
 from pasttrec import hardware, LIBVERSION
 
 # from pasttrec.trb_spi import TrbSpiProtocol, Trb3Spi, Trb5scSpi

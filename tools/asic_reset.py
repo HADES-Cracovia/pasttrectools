@@ -27,7 +27,7 @@ from alive_progress import alive_bar  # type: ignore
 from colorama import Fore, Style  # type: ignore
 
 from pasttrec import communication, misc
-from pasttrec.etrbid import trbaddr, ctrbids_from_etrbids
+from pasttrec.etrbid import ctrbids_from_etrbids
 from pasttrec.requests import reset_asic
 
 if __name__ == "__main__":

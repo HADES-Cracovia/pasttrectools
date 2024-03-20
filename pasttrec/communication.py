@@ -26,7 +26,6 @@ import time
 from colorama import Fore, Style
 
 from pasttrec import etrbid, hardware, misc
-from pasttrec.trb_spi import SpiTrbTdc
 
 
 """Try to import TrbNet library"""
@@ -133,7 +132,7 @@ def make_trbids_db(ptrbids: tuple, ignore_missing):
     Make database of trbids and design types.
 
     The trbids are checket for the address type. The broadcasts addresses are takend from design types db, and regular
-    addresses are queried from the trbnet. For the broadcast adddress having responders, each responder is also add
+    addresses are queried from the trbnet. For the broadcast address having responders, each responder is also add
     with itself being its own responder.
 
     Parameters
@@ -156,7 +155,7 @@ def make_trbids_db(ptrbids: tuple, ignore_missing):
 
         # Loop over all responders. If this was single trbid one expect also single responder.
         # In case of broadcast address, responders would have different trbids.
-        # If this was broadcast, cehck whetehr are responders are of the same hwtype and features.
+        # If this was broadcast, check whether are responders are of the same hwtype and features.
         # If they are not, the address cannot be used for commin actions.
 
         is_broadcast = False
@@ -233,7 +232,7 @@ def decode_address_entry(strbid, ignore_missing, sort=False):
             raise e
 
     except ValueError:
-        print(Fore.RED + f"Incorrect address {address}" + Style.RESET_ALL, file=sys.stderr)
+        print(Fore.RED + f"Incorrect address {address_t}" + Style.RESET_ALL, file=sys.stderr)
         return ()
 
     trb_fe_type = trb_fe_type_t
@@ -244,7 +243,7 @@ def decode_address(strbid, ignore_missing):
     """Use this for a single string or list of strings."""
 
     if len(hardware.trb_designs_map) == 0:
-        print(Fore.RED + f"TRB database is empty. Did you call 'make_trbids_db()'?" + Style.RESET_ALL, file=sys.stderr)
+        print(Fore.RED + "TRB database is empty. Did you call 'make_trbids_db()'?" + Style.RESET_ALL, file=sys.stderr)
 
     if isinstance(strbid, (tuple, list)):
         return sum((decode_address_entry(s, ignore_missing) for s in strbid), ())
@@ -301,14 +300,14 @@ class CardConnection:
         self.trb_spi.spi_reset(self.cable)
 
     def __str__(self):
-        return f"Frontend connection to {trbaddr(self.trbid)} for cable={self.cable}"
+        return f"Frontend connection to {etrbid.trbaddr(self.trbid)} for cable={self.cable}"
 
 
 def cable_connections(address):
     """Make instances of CardConenction based on the decoded addresses."""
 
     filtered_cables = etrbid.ctrbids_from_etrbids(address)
-    sorted_cables = etrbid.sort_by_cable(filtered_cables)
+    sorted_cables = etrbid.sort_by_ct(filtered_cables)
 
     return tuple(
         CardConnection(get_trb_design_type(addr), addr, cable)

@@ -24,7 +24,6 @@
 import argparse
 import json
 import sys
-import time
 
 from alive_progress import alive_bar  # type: ignore
 from colorama import Fore, Style  # type: ignore
@@ -115,7 +114,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     communication.make_trbids_db(args.trbids, args.ignore_missing)
-
     etrbids = communication.decode_address(args.trbids, args.ignore_missing)
     ctrbids = ctrbids_from_etrbids(etrbids)
 

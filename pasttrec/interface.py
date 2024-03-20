@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 """
-This moduel provides implementation for various interfaces, like libtrbnet and shell.
+This module provides implementation for various interfaces, like libtrbnet and shell.
 """
 
 import abc
@@ -94,11 +94,11 @@ class TrbNetComLib:
         print("[{:s}]  {:d}".format(hex(rc[0]), rc[1]))
 
     def write(self, trbid, reg, data):
-        rc = self.trbnet.trb_register_write(trbid, reg, data)
+        self.trbnet.trb_register_write(trbid, reg, data)
         # self.print_verbose(rc)
 
     def write_mem(self, trbid, reg, data, option=1):
-        rc = self.trbnet.trb_register_write_mem(trbid, reg, option, data)
+        self.trbnet.trb_register_write_mem(trbid, reg, option, data)
 
     def read(self, trbid, reg):
         rc = self.trbnet.trb_register_read(trbid, reg)

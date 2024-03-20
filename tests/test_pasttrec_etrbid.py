@@ -1,9 +1,6 @@
 #!/bin/env python3
 
 import pytest
-import sys
-
-from context import *
 
 from pasttrec import etrbid
 
@@ -14,6 +11,7 @@ def test_extract_strbid():
     assert etrbid.extract_strbid("0x1000:1") == ("0x1000", "1")
     assert etrbid.extract_strbid("0x1000::1") == ("0x1000", "", "1")
     assert etrbid.extract_strbid("0x1000") == ("0x1000",)
+    assert etrbid.extract_strbid("1000") == ("0x1000",)
     with pytest.raises(ValueError):
         etrbid.extract_strbid("0x1000:1:1:1")
     with pytest.raises(ValueError):
@@ -93,12 +91,16 @@ def test_ctrbids_from_etrbids():
     )
 
 
-def test_sort_by_cable():
-    assert etrbid.sort_by_cable(((0x01, 1), (0x01, 0))) == ((0x01, 0), (0x01, 1))
+def test_sort_by_ct():
+    assert etrbid.sort_by_ct(((0x01, 1), (0x01, 0))) == ((0x01, 0), (0x01, 1))
+
+
+def test_sort_by_tc():
+    assert etrbid.sort_by_tc(((0x02, 1), (0x01, 0), (0x02, 0))) == ((0x01, 0), (0x02, 0), (0x02, 1))
 
 
 def test_sort_decoded_cables():
-    data1 = (
+    test_data = (
         (
             (
                 (8208, 0, 0),
@@ -143,40 +145,28 @@ def test_sort_decoded_cables():
         ),
     )
 
-    for inp, outp in data1:
+    for inp, outp in test_data:
         res = etrbid.ctrbids_from_etrbids(inp)
         assert res == outp
-        assert etrbid.sort_by_cable(res) == tuple(sorted(outp, key=lambda tup: (tup[1], tup[0])))
+        assert etrbid.sort_by_ct(res) == tuple(sorted(outp, key=lambda tup: (tup[1], tup[0])))
 
 
 def test_group_decoded_cables():
-    data1 = (
+    test_data = (
         (
             (
-                (8208, 0, 0),
-                (8208, 0, 1),
-                (8208, 1, 0),
-                (8208, 1, 1),
-                (8208, 2, 0),
-                (8208, 2, 1),
-                (8208, 3, 0),
-                (8208, 3, 1),
-                (8209, 0, 0),
-                (8209, 0, 1),
-                (8209, 1, 0),
-                (8209, 1, 1),
-                (8209, 2, 0),
-                (8209, 2, 1),
-                (8209, 3, 0),
-                (8209, 3, 1),
-                (8210, 0, 0),
-                (8210, 0, 1),
-                (8210, 1, 0),
-                (8210, 1, 1),
-                (8210, 2, 0),
-                (8210, 2, 1),
-                (8210, 3, 0),
-                (8210, 3, 1),
+                (8208, 0),
+                (8209, 0),
+                (8210, 0),
+                (8208, 1),
+                (8209, 1),
+                (8210, 1),
+                (8208, 2),
+                (8209, 2),
+                (8210, 2),
+                (8208, 3),
+                (8209, 3),
+                (8210, 3),
             ),
             (
                 ((8208, 0), (8209, 0), (8210, 0)),
@@ -185,9 +175,19 @@ def test_group_decoded_cables():
                 ((8208, 3), (8209, 3), (8210, 3)),
             ),
         ),
+        ((), ()),
     )
 
-    for inp, outp in data1:
-        filtered_inp = etrbid.ctrbids_from_etrbids(inp)
-        sorted_inp = etrbid.sort_by_cable(filtered_inp)
-        assert etrbid.group_cables(sorted_inp) == outp
+    for inp, outp in test_data:
+        assert etrbid.group_cables(inp) == outp
+
+
+def tests_paddex_hex():
+    assert etrbid.padded_hex(0xFF, 1) == "?"
+    assert etrbid.padded_hex(0xFF, 2) == "0xff"
+    assert etrbid.padded_hex(0xFF, 3) == "0x0ff"
+    assert etrbid.padded_hex(0xFF, 4) == "0x00ff"
+
+
+def tests_trbaddr():
+    assert etrbid.trbaddr(0xFF) == "0x00ff"

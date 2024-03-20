@@ -81,7 +81,7 @@ def read_register(con, results, register):
 
 
 def write_register(con, results, register_data):
-    rc = con.write_reg(*register_data)
+    con.write_reg(*register_data)
 
 
 def activate_1wire(con, results):
@@ -133,5 +133,5 @@ def read_diff_scalers(con, results, time_delta):
                 bbb.baselines[hex_addr][con.cable][con.asic][c][blv] = vv
 
             # This line kills baseline scan for the reg #16 (last of 2nd asic
-            # but dunno why. Why writing zero kills it?
+            # but do not know why. Why writing zero kills it?
             # communication.write_chunk(addr, cable, asic, blv_data)

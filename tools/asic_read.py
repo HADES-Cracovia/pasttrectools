@@ -22,7 +22,6 @@
 
 import argparse
 import sys
-from time import sleep
 
 from alive_progress import alive_bar  # type: ignore
 from colorama import Fore, Style  # type: ignore

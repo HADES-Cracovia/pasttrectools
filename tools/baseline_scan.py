@@ -22,15 +22,12 @@
 
 import sys
 import argparse
-from time import sleep
 import json
 
 from alive_progress import alive_bar  # type: ignore
 from colorama import Fore, Style  # type: ignore
 
-from pasttrec import communication, etrbid, hardware, misc, requests, types
-from pasttrec.misc import parser_common_options
-from pasttrec.requests import write_asic
+from pasttrec import communication, etrbid, hardware, misc, types
 
 def_time = 1
 
@@ -64,10 +61,10 @@ def update_baselines(bbb, ctrbid_uid_map, broadcasts_list, connections, blv):
                     if vv < 0:
                         vv += 0x80000000
 
-                    bbb.baselines[uid]["results"][con.asic][c].value[blv] = vv
+                    bbb.data[uid]["results"][con.asic][c].value[blv] = vv
 
                 # This line kills baseline scan for the reg #16 (last of 2nd asic
-                # but dunno why. Why writing zero kills it?
+                # but don't know why. Why writing zero kills it?
                 # communication.write_chunk(addr, cable, asic, blv_data)
 
 
@@ -285,11 +282,11 @@ if __name__ == "__main__":
     else:
         r = scan_baseline_single(etrbids, baselines, filtered_cards)
 
-    for k, v in baselines.baselines.items():
+    for k, v in baselines.data.items():
         v["config"] = dict(p.__dict__)
 
     if args.defaults:
         communication.asics_to_defaults(etrbids, p)
 
     with open(args.output, "w") as fp:
-        json.dump(r.baselines, fp, indent=4, cls=types.MyEncoder)
+        json.dump(r.data, fp, indent=4, cls=types.MyEncoder)

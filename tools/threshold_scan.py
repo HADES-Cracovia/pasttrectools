@@ -88,7 +88,7 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "trbids",
-        help="list of TRBids to scan in form" " addres[:card-0-1-2[:asic-0-1]]",
+        help="list of TRBids to scan in form" " address[:card-0-1-2[:asic-0-1]]",
         type=str,
         nargs="+",
     )

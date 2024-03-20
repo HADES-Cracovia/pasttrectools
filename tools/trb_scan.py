@@ -20,11 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import sys
 import argparse
-from time import sleep
 
-from alive_progress import alive_bar  # type: ignore
 from colorama import Fore, Style  # type: ignore
 from tabulate import tabulate  # type: ignore
 

@@ -52,7 +52,7 @@ if __name__ == "__main__":
             # write word
             rc = subprocess.run(words, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-            # preapre readback
+            # prepare readback
             rb = words
             data = int(rb[4], 16) | 0x1000
             rb[4] = hex(data)

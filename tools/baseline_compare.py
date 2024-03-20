@@ -36,8 +36,6 @@ except ModuleNotFoundError:
     gp = None
     found = False
 
-from pasttrec import communication
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Calculates baselines from scan results")

@@ -3,7 +3,7 @@ This module provides generic structures describing various hardware components.
 
 This includes:
 * the TrbNet registers to communicate with Pasttrec
-* the Pasttrec card with peripherials
+* the Pasttrec card with peripherals
 * the Pasttrec ASIC with internal registers
 The functions provide also export/import of the components settings.
 """
@@ -38,7 +38,6 @@ class AsicRegisters(Enum):
 
 
 class AsicRegistersValue:
-
     n_regs = 12
 
     def __init__(
@@ -77,7 +76,7 @@ class AsicRegistersValue:
 
     def load_config(self, data: tuple):
         if len(data) != self.n_regs:
-            raise TyepError(f"The config data tuple has size {len(data)}, must be {self.n_regs}")
+            raise TypeError(f"The config data tuple has size {len(data)}, must be {self.n_regs}")
 
         self.bg_int = (data[0] >> 4) & 0x01
         self.gain = (data[0] >> 2) & 0x03

@@ -57,7 +57,7 @@ def trbaddr(addr: int):
     Pamateres
     ---------
     addr : int
-        Addres value
+        Address value
 
     Returns
     -------
@@ -100,7 +100,7 @@ def extract_strbid(ptrbid: str):
         if address[0:2] != "0x":
             raise ValueError(f"Incorrect address in ptrbid: {ptrbid}")
     elif len(address) == 4:
-        address = "0x" + address
+        sections[0] = "0x" + address
     else:
         raise ValueError(f"Incorrect address in ptrbid: {ptrbid}")
 
@@ -199,7 +199,7 @@ def ctrbids_from_etrbids(etrbid):
     Returns
     -------
     ctrbids : tuple
-        Tuple of unqiue ctrbids
+        Tuple of unique ctrbids
     """
 
     return tuple(set((trbid, cable) for trbid, cable, *_ in etrbid))
@@ -216,10 +216,6 @@ def group_cables(ctrbids_tuple: tuple):
         return tuple(tup for tup in ct if tup[1] == c)
 
     return tuple(sort_by_trbid(tup_group(x, ctrbids_tuple)) for x in range(min_c, max_c + 1))
-
-
-def sort_by_cable(xtrbids_tuple: tuple):
-    return tuple(sorted(xtrbids_tuple, key=lambda tup: (tup[1], tup[0])))
 
 
 def sort_by_ct(xtrbids_tuple: tuple):

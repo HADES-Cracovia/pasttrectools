@@ -23,7 +23,7 @@
 import sys
 import argparse
 
-from pasttrec import communication
+from pasttrec import communication, misc
 
 def_pastrec_thresh_range = [0x00, 0x7F]
 
@@ -41,12 +41,7 @@ if __name__ == "__main__":
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
-    parser.add_argument(
-        "trbids",
-        help="list of TRBids to scan in form" " addres[:card-0-1-2[:asic-0-1]]",
-        type=str,
-        nargs="+",
-    )
+    misc.parser_common_options(parser)
 
     parser.add_argument(
         "-v",
@@ -73,5 +68,6 @@ if __name__ == "__main__":
 
     ex = True
 
-    tup = communication.decode_address(args.trbids, args.ignore_missing)
-    set_thresholds(tup, args.threshold)
+    communication.make_trbids_db(args.trbids, args.ignore_missing)
+    etrbids = communication.decode_address(args.trbids, args.ignore_missing)
+    set_thresholds(etrbids, args.threshold)

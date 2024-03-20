@@ -21,8 +21,6 @@
 # SOFTWARE.
 
 import argparse
-import json
-import sys
 from time import sleep
 import curses
 

@@ -22,7 +22,6 @@
 
 import argparse
 import sys
-from time import sleep
 
 from alive_progress import alive_bar  # type: ignore
 from colorama import Fore, Style  # type: ignore
@@ -55,10 +54,8 @@ def scan_asic_communication(address, def_no_skip=False):
     colalign = ("right",) * (len(reg_range) + 3)
     header = ("TDC", "Cable", "Asic") + tuple(str(x) for x in reg_range)
     rows = []
-    last_trbid = 0
 
     for key, res in sorted_results.items():
-        passed = all(val[0] is True for key, val in res.items())
         line = (trbaddr(key[0]), key[1], key[2]) + tuple(
             (
                 Fore.GREEN + "Passed" + Style.RESET_ALL
@@ -89,7 +86,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     communication.make_trbids_db(args.trbids, args.ignore_missing)
-
     etrbids = communication.decode_address(args.trbids, args.ignore_missing)
+
     r = scan_asic_communication(etrbids, args.no_skip)
     sys.exit(r)
