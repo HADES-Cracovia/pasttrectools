@@ -67,25 +67,12 @@ def test_trbids_from_ptrbids():
 
 def test_trbids_from_etrbids():
     assert etrbid.trbids_from_etrbids(((0x01, 1, 0),)) == (0x01,)
-    assert etrbid.trbids_from_etrbids(
-        (
-            (0x01, 1, 0),
-            (0x02, 2, 1),
-        )
-    ) == (
-        0x01,
-        0x02,
-    )
+    assert etrbid.trbids_from_etrbids(((0x01, 1, 0), (0x02, 2, 1))) == (0x01, 0x02)
 
 
 def test_ctrbids_from_etrbids():
     assert etrbid.ctrbids_from_etrbids(((0x01, 1, 0),)) == ((0x01, 1),)
-    assert etrbid.ctrbids_from_etrbids(
-        (
-            (0x01, 1, 0),
-            (0x02, 2, 1),
-        )
-    ) == (
+    assert etrbid.ctrbids_from_etrbids(((0x01, 1, 0), (0x02, 2, 1))) == (
         (0x01, 1),
         (0x02, 2),
     )
@@ -96,7 +83,11 @@ def test_sort_by_ct():
 
 
 def test_sort_by_tc():
-    assert etrbid.sort_by_tc(((0x02, 1), (0x01, 0), (0x02, 0))) == ((0x01, 0), (0x02, 0), (0x02, 1))
+    assert etrbid.sort_by_tc(((0x02, 1), (0x01, 0), (0x02, 0))) == (
+        (0x01, 0),
+        (0x02, 0),
+        (0x02, 1),
+    )
 
 
 def test_sort_decoded_cables():
@@ -148,7 +139,9 @@ def test_sort_decoded_cables():
     for inp, outp in test_data:
         res = etrbid.ctrbids_from_etrbids(inp)
         assert res == outp
-        assert etrbid.sort_by_ct(res) == tuple(sorted(outp, key=lambda tup: (tup[1], tup[0])))
+        assert etrbid.sort_by_ct(res) == tuple(
+            sorted(outp, key=lambda tup: (tup[1], tup[0]))
+        )
 
 
 def test_group_decoded_cables():

@@ -74,6 +74,13 @@ class AsicRegistersValue:
                 setattr(p, k, v)
         return p
 
+    def print_all(self):
+        print("Pasttrec Asic settings:\n"
+              f"bg_int={self.bg_int}  gain={self.gain}  peaking={self.peaking}\n"
+              f"tc1c={self.tc1c}  tc1r={self.tc2r}\n"
+              f"tc2c={self.tc2c}  tc1r={self.tc2r}\n"
+              f"baseline={' '.join([str(x) for x in self.bl.value])}\n")
+
     def load_config(self, data: tuple):
         if len(data) != self.n_regs:
             raise TypeError(f"The config data tuple has size {len(data)}, must be {self.n_regs}")
@@ -88,7 +95,7 @@ class AsicRegistersValue:
         self.vth = (data[3] >> 0) & 0x3F
         self.bl.value = [x for x in data[4:]]
 
-    def dump_config(self):
+    def dump_registers(self):
         return tuple(
             (
                 (self.bg_int << 4) | (self.gain << 2) | self.peaking,
@@ -99,8 +106,19 @@ class AsicRegistersValue:
             + tuple(self.bl.value)
         )
 
+    def dump_values(self):
+        return tuple(
+            (
+                self.bg_int, self.gain, self.peaking,
+                self.tc1c, self.tc1r,
+                self.tc2c, self.tc2r,
+                self.vth,
+            )
+            + tuple(self.bl.value)
+        )
+
     def dump_spi_config(self):
-        cfg = self.dump_config()
+        cfg = self.dump_registers()
         return tuple(((TrbRegistersOffsets.c_reg_offsets[i] | cfg[i]) for i in range(self.n_regs)))
 
     def dump_spi_config_hex(self):
