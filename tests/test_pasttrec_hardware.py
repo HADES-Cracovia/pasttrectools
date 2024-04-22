@@ -12,8 +12,8 @@ def test_load_asic_from_dict():
         "tc1r": 6,
         "tc2c": 2,
         "tc2r": 5,
-        "vth": 0,
-        "bl": [1, 2, 3, 4, 5, 6, 7, 8],
+        "threshold": 0,
+        "baselines": [1, 2, 3, 4, 5, 6, 7, 8],
     }
 
     asic = AsicRegistersValue().load_asic_from_dict(data)

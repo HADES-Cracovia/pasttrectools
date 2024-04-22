@@ -49,8 +49,8 @@ class AsicRegistersValue:
         tc1r=0,
         tc2c=0,
         tc2r=0,
-        vth=0,
-        bl=[0] * 8,
+        threshold=0,
+        baselines=[0] * 8,
     ):
         self.bg_int = bg_int
         self.gain = gain
@@ -59,8 +59,8 @@ class AsicRegistersValue:
         self.tc1r = tc1r
         self.tc2c = tc2c
         self.tc2r = tc2r
-        self.vth = vth
-        self.bl = NoIndent([i for i in bl])
+        self.threshold = threshold
+        self.baselines = NoIndent([i for i in baselines])
 
     @staticmethod
     def load_asic_from_dict(d, test_version=None):
@@ -68,8 +68,8 @@ class AsicRegistersValue:
             return False
         p = AsicRegistersValue()
         for k, v in d.items():
-            if k == "bl":
-                p.bl = NoIndent([x for x in v])
+            if k == "baselines":
+                p.baselines = NoIndent([x for x in v])
             else:
                 setattr(p, k, v)
         return p
@@ -79,7 +79,7 @@ class AsicRegistersValue:
               f"bg_int={self.bg_int}  gain={self.gain}  peaking={self.peaking}\n"
               f"tc1c={self.tc1c}  tc1r={self.tc2r}\n"
               f"tc2c={self.tc2c}  tc1r={self.tc2r}\n"
-              f"baseline={' '.join([str(x) for x in self.bl.value])}\n")
+              f"baseline={' '.join([str(x) for x in self.baselines.value])}\n")
 
     def load_config(self, data: tuple):
         if len(data) != self.n_regs:
@@ -92,8 +92,8 @@ class AsicRegistersValue:
         self.tc1r = (data[1] >> 0) & 0x07
         self.tc2c = (data[2] >> 3) & 0x07
         self.tc2r = (data[2] >> 0) & 0x07
-        self.vth = (data[3] >> 0) & 0x3F
-        self.bl.value = [x for x in data[4:]]
+        self.threshold = (data[3] >> 0) & 0x3F
+        self.baselines.value = [x for x in data[4:]]
 
     def dump_registers(self):
         return tuple(
@@ -101,9 +101,9 @@ class AsicRegistersValue:
                 (self.bg_int << 4) | (self.gain << 2) | self.peaking,
                 (self.tc1c << 3) | self.tc1r,
                 (self.tc2c << 3) | self.tc2r,
-                self.vth,
+                self.threshold,
             )
-            + tuple(self.bl.value)
+            + tuple(self.baselines.value)
         )
 
     def dump_values(self):
@@ -112,9 +112,9 @@ class AsicRegistersValue:
                 self.bg_int, self.gain, self.peaking,
                 self.tc1c, self.tc1r,
                 self.tc2c, self.tc2r,
-                self.vth,
+                self.threshold,
             )
-            + tuple(self.bl.value)
+            + tuple(self.baselines.value)
         )
 
     def dump_spi_config(self):
@@ -124,7 +124,7 @@ class AsicRegistersValue:
     def dump_spi_config_hex(self):
         return tuple((hex(i) for i in self.dump_spi_config()))
 
-    def dump_spi_bl_hex(self):
+    def dump_spi_baselines_hex(self):
         return tuple((hex(i) for i in self.dump_spi_config()[4:]))
 
 
@@ -245,10 +245,10 @@ class PasttrecDataWordEncoder:
     c_asic = [0x2000, 0x4000]
     # reg desc.: g_int,K,Tp      TC1      TC2      Vth
     c_config_reg = [0x00000, 0x00100, 0x00200, 0x00300]
-    c_bl_reg = [0x00400, 0x00500, 0x00600, 0x00700, 0x00800, 0x00900, 0x00A00, 0x00B00]
+    c_baselines_reg = [0x00400, 0x00500, 0x00600, 0x00700, 0x00800, 0x00900, 0x00A00, 0x00B00]
     c_base_w = 0x0050000
     c_base_r = 0x0051000
-    bl_register_size = 32
+    baselines_register_size = 32
 
     def write(self, asic, reg, val):
         return self.c_base_w | self.c_asic[asic] | (reg << 8) | val
@@ -278,11 +278,11 @@ class TrbRegistersOffsets:
 
     # reg desc.: g_int,K,Tp      TC1      TC2      Vth
     c_config_reg = (0x00000, 0x00100, 0x00200, 0x00300)
-    c_bl_reg = (0x00400, 0x00500, 0x00600, 0x00700, 0x00800, 0x00900, 0x00A00, 0x00B00)
+    c_baselines_reg = (0x00400, 0x00500, 0x00600, 0x00700, 0x00800, 0x00900, 0x00A00, 0x00B00)
 
-    c_reg_offsets = c_config_reg + c_bl_reg
+    c_reg_offsets = c_config_reg + c_baselines_reg
 
     c_base_w = 0x0050000
     c_base_r = 0x0051000
 
-    bl_register_size = 32
+    baselines_register_size = 32
