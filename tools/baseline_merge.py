@@ -26,7 +26,6 @@ import os
 
 from pasttrec import communication, misc
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Merge baseline scans of PASTTREC chips",

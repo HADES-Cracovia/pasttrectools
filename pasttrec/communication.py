@@ -25,8 +25,7 @@ import sys
 import time
 from colorama import Fore, Style
 
-from pasttrec import etrbid, hardware, misc
-
+from pasttrec import etrbid, hardware, misc, interface
 
 """Try to import TrbNet library"""
 try:
@@ -43,7 +42,7 @@ else:
 cmd_to_file = None  # if set to file, redirect output to this file
 trbnet_interface_env = os.getenv("TRBNET_INTERFACE")
 
-trbnet_interface = None
+trbnet_interface: interface.TrbNetComLib | interface.TrbNetComShell | None = None
 
 
 """
@@ -67,7 +66,7 @@ if trbnet_interface_env is not None:
         pass
         # import pasttrec.trb_comm.file as comm
     else:
-        raise "TRBNET_INTERFACE is incorrect"
+        raise ValueError("TRBNET_INTERFACE is incorrect")
 else:
     if trbnet_available:
         trbnet = TrbNet(libtrbnet=lib, daqopserver=host)
@@ -254,7 +253,7 @@ def decode_address(strbid, ignore_missing):
 class CardConnection:
     """These functions write, read memory for given cable and asic."""
 
-    shared_trb_spi = {}
+    shared_trb_spi: dict = {}
     encoder = hardware.PasttrecDataWordEncoder()
 
     def __init__(self, trb_frontend, trbid, cable):
@@ -379,16 +378,17 @@ def make_asic_connections(address):
     return tuple((cg, asic_connections(cg)) for cg in etrbid.group_cables(address))
 
 
-def asics_to_defaults(address, def_pasttrec):
-    """Set asics to defaults from config."""
-    d = def_pasttrec.dump_config()
-    for addr, cable, asic in address:
-        write_data(addr, cable, asic, d)
+def asics_configure(address, new_configuration):
+    """Set asics from config."""
+    connections = asic_connections(address)
+    for conn in connections:
+        new_configuration.write_data_to_asic(conn)
 
 
-def asic_to_defaults(address, cable, asic, def_pasttrec):
-    """Set asics to defaults from config."""
-    write_data(address, cable, asic, def_pasttrec.dump_config())
+# FIXME
+# def asic_configure(address, cable, asic, new_configuration):
+#     """Set asic from config."""
+#     write_data(address, cable, asic, new_configuration.dump_config())
 
 
 def read_rm_scalers(trbid, n_scalers):

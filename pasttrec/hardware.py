@@ -75,11 +75,13 @@ class AsicRegistersValue:
         return p
 
     def print_all(self):
-        print("Pasttrec Asic settings:\n"
-              f"bg_int={self.bg_int}  gain={self.gain}  peaking={self.peaking}\n"
-              f"tc1c={self.tc1c}  tc1r={self.tc2r}\n"
-              f"tc2c={self.tc2c}  tc1r={self.tc2r}\n"
-              f"baseline={' '.join([str(x) for x in self.baselines.value])}\n")
+        print(
+            "Pasttrec Asic settings:\n"
+            f"bg_int={self.bg_int}  gain={self.gain}  peaking={self.peaking}\n"
+            f"tc1c={self.tc1c}  tc1r={self.tc2r}\n"
+            f"tc2c={self.tc2c}  tc1r={self.tc2r}\n"
+            f"baseline={' '.join([str(x) for x in self.baselines.value])}\n"
+        )
 
     def load_config(self, data: tuple):
         if len(data) != self.n_regs:
@@ -109,9 +111,13 @@ class AsicRegistersValue:
     def dump_values(self):
         return tuple(
             (
-                self.bg_int, self.gain, self.peaking,
-                self.tc1c, self.tc1r,
-                self.tc2c, self.tc2r,
+                self.bg_int,
+                self.gain,
+                self.peaking,
+                self.tc1c,
+                self.tc1r,
+                self.tc2c,
+                self.tc2r,
                 self.threshold,
             )
             + tuple(self.baselines.value)
@@ -126,6 +132,11 @@ class AsicRegistersValue:
 
     def dump_spi_baselines_hex(self):
         return tuple((hex(i) for i in self.dump_spi_config()[4:]))
+
+    def write_data_to_asic(self, conn):  # PasttrecConnection
+        regs = self.dump_registers()
+        for i in range(self.n_regs):
+            conn.write_reg(i, regs[i])
 
 
 class TrbDesignInfo:

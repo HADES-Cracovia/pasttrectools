@@ -53,7 +53,7 @@ def update_baselines(bbb, ctrbid_uid_map, broadcasts_list, connections, blv):
                 blv_data = []
                 for c in list(range(con.fetype.n_channels)):
 
-                    blv_data.append(hardware.TrbRegistersOffsets.c_bl_reg[c])
+                    blv_data.append(hardware.TrbRegistersOffsets.c_baselines_reg[c])
 
                     chan = misc.calc_tdc_channel(con.fetype, con.cable, con.asic, c)
 
@@ -120,7 +120,7 @@ def scan_baseline_multi(address, bbb, ctrbid_uid_map):
                 blv_data = []
 
                 for c in list(range(con.fetype.n_channels)):
-                    blv_data.append(hardware.TrbRegistersOffsets.c_bl_reg[c] | blv)
+                    blv_data.append(hardware.TrbRegistersOffsets.c_baselines_reg[c] | blv)
 
                 con.write_chunk(blv_data)
 
@@ -140,7 +140,7 @@ if __name__ == "__main__":
 
     misc.parser_common_options(parser)
 
-    parser.add_argument("-t", "--time", help="sleep time", type=float, default=def_time)
+    parser.add_argument("-p", "--period", help="measurement period", type=float, default=def_time)
     parser.add_argument("-o", "--output", help="output file", type=str, default="results_bl.json")
     parser.add_argument(
         "-s",
@@ -153,10 +153,13 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--defaults",
-        dest="defaults",
+        "--configure",
+        dest="configure",
         action="store_true",
-        help="Override settings with defaults from cmd line",
+        help=(
+            "Configure ASICs with values from command line (either given or defaults). "
+            "This option is required for cmd values to take effect."
+        ),
     )
 
     parser.add_argument(
@@ -214,7 +217,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "-Vth",
+        "-t",
         "--threshold",
         help="threshold: 0-127",
         type=lambda x: int(x, 0),
@@ -224,7 +227,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    def_time = args.time
+    def_time = args.period
 
     if args.threshold > def_pastrec_thresh_range[1] or args.threshold < def_pastrec_thresh_range[0]:
         print("\nOption error: Threshold value {:d} is to high," " allowed value is 0-127".format(args.threshold))
@@ -239,7 +242,7 @@ if __name__ == "__main__":
     elif def_scan_type == "multi":
         def_pastrec_bl_base = def_pastrec_bl_range[0]
 
-    p = hardware.AsicRegistersValue(
+    pasttrec_config = hardware.AsicRegistersValue(
         bg_int=args.source,
         gain=args.gain,
         peaking=args.peaking,
@@ -247,8 +250,8 @@ if __name__ == "__main__":
         tc1r=args.TC1R,
         tc2c=args.TC2C,
         tc2r=args.TC2R,
-        vth=args.threshold,
-        bl=[def_pastrec_bl_base] * 8,
+        threshold=args.threshold,
+        baselines=[def_pastrec_bl_base] * 8,
     )
 
     db = communication.make_trbids_db(args.trbids, args.ignore_missing)
@@ -256,8 +259,9 @@ if __name__ == "__main__":
     etrbids = communication.decode_address(args.trbids, args.ignore_missing)
     ctrbids = etrbid.ctrbids_from_etrbids(etrbids)
 
-    if args.defaults:
-        communication.asics_to_defaults(etrbids, p)
+    # FIXME we should have some restore/configure mode
+    # if args.configure:
+    communication.asics_configure(etrbids, pasttrec_config)
 
     with alive_bar(
         len(ctrbids),
@@ -283,10 +287,11 @@ if __name__ == "__main__":
         r = scan_baseline_single(etrbids, baselines, filtered_cards)
 
     for k, v in baselines.data.items():
-        v["config"] = dict(p.__dict__)
+        v["config"] = dict(pasttrec_config.__dict__)
 
-    if args.defaults:
-        communication.asics_to_defaults(etrbids, p)
+    # FIXME here we should restore settings from before the scan
+    # if args.configure:
+    communication.asics_configure(etrbids, pasttrec_config)
 
     with open(args.output, "w") as fp:
         json.dump(r.data, fp, indent=4, cls=types.MyEncoder)

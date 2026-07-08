@@ -28,7 +28,6 @@ from colorama import Fore, Style  # type: ignore
 
 from pasttrec import hardware, misc, output_formats, types
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Calculates baselines from scan results")
     parser.add_argument("json_file", help="list of arguments", type=str)
@@ -57,10 +56,12 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "-Vth",
+        "-t",
         "--threshold",
         help="threshold: 0-127" " (overwrites value from input file)",
         type=lambda x: int(x, 0),
+        choices=range(128),
+        default=0,
     )
     parser.add_argument(
         "-g",
@@ -74,6 +75,9 @@ if __name__ == "__main__":
     with open(args.json_file) as json_data:
         bls = json.load(json_data)
         json_data.close()
+
+    dump_file_bl = None
+    dump_file_full = None
 
     if args.dump:
         dump_file_bl = open(args.dump, "w")
@@ -95,8 +99,7 @@ if __name__ == "__main__":
 
         asic_cfg = hardware.AsicRegistersValue.load_asic_from_dict(v["config"])
 
-        if args.threshold is not None:
-            asic_cfg.vth = args.threshold
+        asic_cfg.threshold = args.threshold
 
         if args.gain is not None:
             asic_cfg.gain = args.gain
@@ -166,18 +169,18 @@ if __name__ == "__main__":
                 _r = max(_r, 0)
                 _r = min(_r, 127)
 
-                asic_cfg.bl.value[ch] = _r
+                asic_cfg.baselines.value[ch] = _r
 
             calculated_baselines[k][a] = copy.deepcopy(asic_cfg.__dict__)
 
             if args.dump:
-                regs = asic_cfg.dump_spi_config()[4:]
+                bl_regs = asic_cfg.dump_spi_config()[4:]
                 output_formats.cmd_to_file = dump_file_bl
                 output_formats.export_chunk(
                     "b",
                     k,
                     a,
-                    regs,
+                    bl_regs,
                     "%s  %s  %d    %2d  %2d  %2d  %2d  %2d  %2d  %2d  %2d",
                 )
 

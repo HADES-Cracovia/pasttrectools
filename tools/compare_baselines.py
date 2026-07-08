@@ -27,7 +27,6 @@ from colorama import Fore, Style  # type: ignore
 
 from pasttrec import hardware, misc
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Calculates baselines from scan results")
     parser.add_argument("json_file1", help="first json file", type=str)

@@ -7,7 +7,6 @@ from pasttrec.interface import TrbNetComInterface, TrbNetComLib, TrbNetComShell
 
 from pasttrec.hardware import PasttrecDataWordEncoder
 
-
 # class TestPasstreRegs(unittest.TestCase):
 # pass
 

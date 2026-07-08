@@ -139,9 +139,7 @@ def test_sort_decoded_cables():
     for inp, outp in test_data:
         res = etrbid.ctrbids_from_etrbids(inp)
         assert res == outp
-        assert etrbid.sort_by_ct(res) == tuple(
-            sorted(outp, key=lambda tup: (tup[1], tup[0]))
-        )
+        assert etrbid.sort_by_ct(res) == tuple(sorted(outp, key=lambda tup: (tup[1], tup[0])))
 
 
 def test_group_decoded_cables():

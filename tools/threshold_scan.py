@@ -20,28 +20,86 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import sys
 import argparse
 import json
 from time import sleep
 
-from pasttrec import hardware, communication, misc
-from pasttrec.misc import parse_rm_scalers, calc_tdc_channel
+from alive_progress import alive_bar  # type: ignore
+from colorama import Fore, Style  # type: ignore
+
+from pasttrec import communication, etrbid, hardware, misc, types
 
 def_time = 1
 
 def_pastrec_thresh_range = [0x00, 0x7F]
 
 
-def scan_threshold(address):
-    ttt = misc.Thresholds()
-
-    connections = communication.make_asic_connections(address)
+def scan_threshold(address, ttt, ctrbid_uid_map):
+    connections = communication.asic_connections(address)
 
     # Store here pairs of bc address and number of channels in an endpoint
     broadcasts_list = set()
     for con in connections:
         broadcasts_list.add((con.trbid, con.fetype.n_scalers))
 
+    thr_range = range(def_pastrec_thresh_range[0], def_pastrec_thresh_range[1])
+    with alive_bar(
+        len(thr_range),
+        title=f"{Fore.BLUE}Scanning all{Style.RESET_ALL}   ",
+        file=sys.stderr,
+        receipt_text=True,
+    ) as bar:
+
+        for thrv in thr_range:
+
+            for con in connections:
+                thrv_data = []
+
+                thrv_data.append(hardware.TrbRegistersOffsets.c_config_reg[3] | thrv)
+
+                con.write_chunk(thrv_data)
+
+            update_thresholds(ttt, ctrbid_uid_map, broadcasts_list, connections, thrv)
+            bar()
+
+        bar.text("Scanning done")
+
+    return ttt
+
+
+def update_thresholds(ttt, ctrbid_uid_map, broadcasts_list, connections, thrv):
+    for bc_addr, n_scalers in broadcasts_list:
+        scalers_diffs = communication.read_diff_scalers(bc_addr, n_scalers, def_time)
+
+        for con in connections:
+
+            for trbid, data in scalers_diffs.items():
+                ctrbid = (trbid, con.cable)
+                if ctrbid not in ctrbid_uid_map:
+                    continue
+
+                uid = etrbid.padded_hex(ctrbid_uid_map[ctrbid], 16)
+
+                thrv_data = []
+                for c in list(range(con.fetype.n_channels)):
+
+                    thrv_data.append(hardware.TrbRegistersOffsets.c_baselines_reg[c])
+
+                    chan = misc.calc_tdc_channel(con.fetype, con.cable, con.asic, c)
+
+                    vv = data[chan]
+                    if vv < 0:
+                        vv += 0x80000000
+
+                    ttt.data[uid]["results"][con.asic][c].value[thrv] = vv
+
+                # This line kills baseline scan for the reg #16 (last of 2nd asic
+                # but don't know why. Why writing zero kills it?
+                # communication.write_chunk(addr, cable, asic, blv_data)
+
+
+def nooop():
     print(" trbid   channel   th 0{:s}{:d}".format(" " * def_threshold_max, def_threshold_max))
     print("                      |{:s}|".format("-" * def_threshold_max))
     print("{:s}    {:s}          ".format(hex(0xFFFF), "all"), end="", flush=True)
@@ -86,14 +144,9 @@ if __name__ == "__main__":
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
-    parser.add_argument(
-        "trbids",
-        help="list of TRBids to scan in form" " address[:card-0-1-2[:asic-0-1]]",
-        type=str,
-        nargs="+",
-    )
+    misc.parser_common_options(parser)
 
-    parser.add_argument("-t", "--time", help="sleep time", type=float, default=def_time)
+    parser.add_argument("-p", "--period", help="measurement period", type=float, default=def_time)
     parser.add_argument("-o", "--output", help="output file", type=str, default="results_th.json")
     parser.add_argument(
         "-v",
@@ -113,10 +166,13 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--defaults",
-        dest="defaults",
+        "--configure",
+        dest="configure",
         action="store_true",
-        help="Override settings with defaults from cmd line",
+        help=(
+            "Configure ASICs with values from command line (either given or defaults). "
+            "This option is required for cmd values to take effect."
+        ),
     )
 
     parser.add_argument(
@@ -179,10 +235,10 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    def_time = args.time
+    def_time = args.period
     def_threshold_max = args.limit
 
-    p = hardware.AsicRegistersValue(
+    pasttrec_config = hardware.AsicRegistersValue(
         bg_int=args.source,
         gain=args.gain,
         peaking=args.peaking,
@@ -190,20 +246,45 @@ if __name__ == "__main__":
         tc1r=args.timecancelationR1,
         tc2c=args.timecancelationC2,
         tc2r=args.timecancelationR2,
-        vth=0,
-        bl=[0] * 8,
+        threshold=0,
+        baselines=[0] * 8,
     )
 
-    tup = communication.decode_address(args.trbids, args.ignore_missing)
+    db = communication.make_trbids_db(args.trbids, args.ignore_missing)
 
-    if args.defaults:
-        communication.asics_to_defaults(tup, p)
+    etrbids = communication.decode_address(args.trbids, args.ignore_missing)
+    ctrbids = etrbid.ctrbids_from_etrbids(etrbids)
 
-    r = scan_threshold(tup)
-    r.config = p.__dict__
+    # FIXME we should have some restore/configure mode
+    # if args.configure:
+    communication.asics_configure(etrbids, pasttrec_config)
 
-    if args.defaults:
-        communication.asics_to_defaults(tup, p)
+    with alive_bar(
+        len(ctrbids),
+        title=f"{Fore.BLUE}Reading IDs{Style.RESET_ALL}    ",
+        file=sys.stderr,
+        receipt_text=True,
+    ) as bar:
+        results_tempid = misc.read_tempid(communication.make_cable_connections(ctrbids), True, False, bar=bar)
+        bar.text("Done")
+
+    filtered_cards = {k: v[1] for k, v in results_tempid.items() if v[1] != 0}
+    tempid_map = {v: k for k, v in filtered_cards.items()}
+    thresholds = types.Thresholds()
+
+    for k, v in filtered_cards.items():
+        design_info = db[k[0]]
+        design_specs = hardware.get_design_specs(design_info.features)
+        thresholds.add_card(v, design_specs)
+
+    r = scan_threshold(etrbids, thresholds, filtered_cards)
+    # r.config = pasttrec_config.__dict__
+    for k, v in thresholds.data.items():
+        v["config"] = dict(pasttrec_config.__dict__)
+
+    # FIXME we should have some restore/configure mode
+    # if args.configure:
+    communication.asics_configure(etrbids, pasttrec_config)
 
     with open(args.output, "w") as fp:
-        json.dump(r.__dict__, fp, indent=2)
+        json.dump(r.data, fp, indent=4, cls=types.MyEncoder)

@@ -23,11 +23,11 @@ classifiers = [
   "Operating System :: OS Independent",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Topic :: Software Development :: Libraries :: Python Modules",
   "Topic :: Software Development :: Quality Assurance",
 ]
@@ -44,12 +44,12 @@ legacy_tox_ini = """
 isolated_build = True
 min_version = 4.0
 env_list =
+    type
+    py314
+    py313
     py312
     py311
     py310
-    py39
-    py38
-    type
 
 [testenv]
 description = run unit tests
@@ -70,6 +70,7 @@ commands = black -l 120 {posargs:.}
 description = run type checks
 deps =
     mypy
+    types-colorama
 commands =
     mypy {posargs:tools pasttrec tests}
 """

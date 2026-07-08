@@ -33,8 +33,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Push or dump registers to asic/file")
     parser.add_argument("dat_file", help="list of arguments", type=str, nargs="+")
 
-    group = parser.add_mutually_exclusive_group()
-
     parser.add_argument("-m", "--ignore-invalid", help="ignore invalid entries", action="store_true")
 
     parser.add_argument(
@@ -81,12 +79,18 @@ if __name__ == "__main__":
                 for line in lines:
                     parts = line.split()
 
+                    use_old_format = False
+
                     # do only baselines
                     if parts[0] == "b" and len(parts) == 11:
                         do_baselines = True
                         regs = range(4, 12)
                     # do full registers
                     elif parts[0] == "f" and len(parts) == 15:
+                        do_full_asic = True
+                        regs = range(12)
+                    elif int(parts[0], 16) > 0 and len(parts) == 15:
+                        use_old_format = True
                         do_full_asic = True
                         regs = range(12)
                     else:
@@ -96,15 +100,25 @@ if __name__ == "__main__":
                         else:
                             raise ValueError(f"Incorrect line: {line}")
 
-                    nl = tuple((misc.convertToInt(x) for x in parts[1:]))
-                    data = zip(regs, nl[2:], strict=True)
+                    if use_old_format:
+                        nl = tuple((misc.convertToInt(x) for x in parts[0:]))
+                        data = zip(regs, nl[3:], strict=True)
 
-                    current_ctrbid = map_id_to_ctrbid[nl[0]]
-                    dst = current_ctrbid + (nl[1],)
-                    con = communication.make_asic_connections((dst,))[0][1]
+                        dst = nl[0:3]
+                        con = communication.make_asic_connections((dst,))[0][1]
 
-                    for d in data:
-                        write_register(con[0], None, d)
+                        for d in data:
+                            write_register(con[0], None, d)
+                    else:
+                        nl = tuple((misc.convertToInt(x) for x in parts[1:]))
+                        data = zip(regs, nl[2:], strict=True)
+
+                        current_ctrbid = map_id_to_ctrbid[nl[0]]
+                        dst = current_ctrbid + (nl[1],)
+                        con = communication.make_asic_connections((dst,))[0][1]
+
+                        for d in data:
+                            write_register(con[0], None, d)
 
                     bar()
                 bar.text("Done")

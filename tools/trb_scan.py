@@ -28,7 +28,6 @@ from tabulate import tabulate  # type: ignore
 from pasttrec import communication, misc
 from pasttrec.etrbid import trbaddr, padded_hex
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Scan communication of PASTTREC chips",
