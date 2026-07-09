@@ -63,7 +63,7 @@ if __name__ == "__main__":
         results_tempid = misc.read_tempid(communication.make_cable_connections(ctrbids), True, False, bar=bar)
         bar.text("Done")
 
-    filtered_cards = {v: k for k, v in misc.filter_tempids(results_tempid)}
+    filtered_cards = {v: k for k, v in misc.filter_tempids(results_tempid, False, False).items()}
 
     for f in args.dat_file:
         with open(f) as data:

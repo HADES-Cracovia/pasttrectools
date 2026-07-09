@@ -104,7 +104,9 @@ def scan_baseline_multi(address, bbb, ctrbid_uid_map):
     # Store here pairs of bc address and number of channels in an endpoint
     broadcasts_list = set()
     for con in connections:
-        broadcasts_list.add((con.trbid, con.fetype.n_scalers))
+        broadcasts_list.add((0xFE81, con.fetype.n_scalers))
+        break
+        # broadcasts_list.add((con.trbid, con.fetype.n_scalers)) # FIXME this is bottleneck, each scaler is read separatelly
 
     bl_range = range(def_pastrec_bl_range[0], def_pastrec_bl_range[1])
     with alive_bar(
