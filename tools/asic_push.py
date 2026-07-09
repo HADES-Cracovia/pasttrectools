@@ -36,6 +36,10 @@ if __name__ == "__main__":
     parser.add_argument("-m", "--ignore-invalid", help="ignore invalid entries", action="store_true")
 
     parser.add_argument(
+        "-f", "--fakeid", help="use fake IDs instead of real temp IDs", action="store_true", default=True
+    )
+
+    parser.add_argument(
         "-v",
         "--verbose",
         help="verbose level: 0, 1, 2, 3",
@@ -60,7 +64,9 @@ if __name__ == "__main__":
         file=sys.stderr,
         receipt_text=True,
     ) as bar:
-        results_tempid = misc.read_tempid(communication.make_cable_connections(ctrbids), True, False, bar=bar)
+        results_tempid = misc.read_tempid(
+            communication.make_cable_connections(ctrbids), True, False, bar=bar, fakeid=args.fakeid
+        )
         bar.text("Done")
 
     filtered_cards = {v: k for k, v in misc.filter_tempids(results_tempid, False, False).items()}

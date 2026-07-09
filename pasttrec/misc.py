@@ -134,7 +134,7 @@ def format_ctrbid(ctrbid):
     return f"{trbaddr(ctrbid[0])}:{ctrbid[1]}"
 
 
-def read_tempid(connections, uid_mode, temp_mode, bar=None, sort=False):
+def read_tempid(connections, uid_mode, temp_mode, bar=None, sort=False, fakeid: bool = False):
     """Read temperature and/or id of given cables."""
     full_mode = not uid_mode and not temp_mode
 
@@ -160,10 +160,33 @@ def read_tempid(connections, uid_mode, temp_mode, bar=None, sort=False):
 
             group = ((max(x[0][0], x[1][0]), x[0][1], x[1][1]) for x in zip(rc1, rc2))
             for entry in group:
-                results[entry[0], con.cable] = entry[1], entry[2]
+                if fakeid:
+                    results[entry[0], con.cable] = 0, (entry[0] << 4) + (con.cable << 0)
+                else:
+                    results[entry[0], con.cable] = entry[1], entry[2]
             if bar:
                 bar()
 
+    if sort:
+        return dict(sorted(results.items()))
+    else:
+        return results
+
+
+def read_tempid_fake(connections, uid_mode, temp_mode, bar=None, sort=False):
+    """Read temperature and/or id of given cables."""
+    full_mode = not uid_mode and not temp_mode
+
+    results = {}
+    for cg, cable_cons in connections:
+        print(cg, cable_cons)
+
+        for con in cable_cons:
+            print(con)
+
+            if bar:
+                bar()
+    print("RESULTS:", results)
     if sort:
         return dict(sorted(results.items()))
     else:
@@ -196,3 +219,6 @@ def parser_common_options(parser):
         nargs="+",
     )
     parser.add_argument("-m", "--ignore-missing", help="ignore missing trbids", action="store_true")
+    parser.add_argument(
+        "-f", "--fakeid", help="use fake IDs instead of real temp IDs", action="store_true", default=True
+    )

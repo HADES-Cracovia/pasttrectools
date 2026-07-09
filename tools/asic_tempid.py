@@ -49,6 +49,7 @@ def asic_tempid(address, uid_mode, temp_mode, no_color, trbnet_map):
             temp_mode,
             bar=bar,
             sort=True,
+            fakeid=args.fakeid,
         )
 
     if full_mode:

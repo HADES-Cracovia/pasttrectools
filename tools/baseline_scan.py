@@ -271,7 +271,9 @@ if __name__ == "__main__":
         file=sys.stderr,
         receipt_text=True,
     ) as bar:
-        results_tempid = misc.read_tempid(communication.make_cable_connections(ctrbids), True, False, bar=bar)
+        results_tempid = misc.read_tempid(
+            communication.make_cable_connections(ctrbids), True, False, bar=bar, fakeid=args.fakeid
+        )
         bar.text("Done")
 
     filtered_cards = misc.filter_tempids(results_tempid)
