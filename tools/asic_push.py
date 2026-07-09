@@ -63,7 +63,7 @@ if __name__ == "__main__":
         results_tempid = misc.read_tempid(communication.make_cable_connections(ctrbids), True, False, bar=bar)
         bar.text("Done")
 
-    map_id_to_ctrbid = {hwinfo[1]: ctrbid for (ctrbid, hwinfo) in results_tempid.items() if hwinfo[1] != 0}
+    filtered_cards = {v: k for k, v in misc.filter_tempids(results_tempid)}
 
     for f in args.dat_file:
         with open(f) as data:
@@ -113,7 +113,7 @@ if __name__ == "__main__":
                         nl = tuple((misc.convertToInt(x) for x in parts[1:]))
                         data = zip(regs, nl[2:], strict=True)
 
-                        current_ctrbid = map_id_to_ctrbid[nl[0]]
+                        current_ctrbid = filtered_cards[nl[0]]
                         dst = current_ctrbid + (nl[1],)
                         con = communication.make_asic_connections((dst,))[0][1]
 

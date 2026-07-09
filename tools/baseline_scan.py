@@ -272,7 +272,7 @@ if __name__ == "__main__":
         results_tempid = misc.read_tempid(communication.make_cable_connections(ctrbids), True, False, bar=bar)
         bar.text("Done")
 
-    filtered_cards = {k: v[1] for k, v in results_tempid.items() if v[1] != 0}
+    filtered_cards = misc.filter_tempids(results_tempid)
     tempid_map = {v: k for k, v in filtered_cards.items()}
     baselines = types.Baselines()
 

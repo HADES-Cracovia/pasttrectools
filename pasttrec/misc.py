@@ -170,6 +170,16 @@ def read_tempid(connections, uid_mode, temp_mode, bar=None, sort=False):
         return results
 
 
+def filter_tempids(results_tempid: tuple, remove_zeros: bool = True, remove_fffs: bool = True):
+    """Filter tempid dabaase and remove selected bad tempids."""
+
+    return {
+        ctrbid: hwinfo[1]
+        for (ctrbid, hwinfo) in results_tempid.items()
+        if (((not remove_zeros) or hwinfo[1] != 0) or ((not remove_fffs) or hwinfo[1] != 0xFFFFFFFFFFFFFFFF))
+    }
+
+
 def print_verbose(rc, verbose=0):
     cmd = " ".join(rc.args)
     rtc = rc.returncode
